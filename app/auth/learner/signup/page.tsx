@@ -3,9 +3,9 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
-import { login } from "../actions"
+import { signup } from "../actions"
 
-export default async function LearnerLoginPage({
+export default async function LearnerSignupPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>
@@ -17,8 +17,8 @@ export default async function LearnerLoginPage({
       <div className="text-2xl font-bold text-ring">sanggabiz</div>
       <div className="w-full max-w-sm space-y-5 rounded-xl border border-border bg-card p-8">
         <div className="space-y-1 text-center">
-          <h1 className="text-xl font-bold">Learner login</h1>
-          <p className="text-sm text-muted-foreground">Welcome back — sign in to continue.</p>
+          <h1 className="text-xl font-bold">Create your account</h1>
+          <p className="text-sm text-muted-foreground">Start learning with Sanggabiz.</p>
         </div>
 
         {error && (
@@ -27,18 +27,19 @@ export default async function LearnerLoginPage({
           </p>
         )}
 
-        <form action={login} className="space-y-3">
+        <form action={signup} className="space-y-3">
+          <Input type="text" name="fullName" placeholder="Full name" required />
           <Input type="email" name="email" placeholder="Email" required />
-          <Input type="password" name="password" placeholder="Password" required />
+          <Input type="password" name="password" placeholder="Password" required minLength={6} />
           <Button type="submit" className="w-full">
-            Log in
+            Sign up
           </Button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link href="/auth/learner/signup" className="text-ring hover:underline">
-            Sign up
+          Already have an account?{" "}
+          <Link href="/auth/learner/login" className="text-ring hover:underline">
+            Log in
           </Link>
         </p>
       </div>
