@@ -52,3 +52,7 @@ feedback-issue-template.md
 # claude code tooling
 .agents/
 .claude/
+
+reference/
+CLAUDE.md
+erd.md
