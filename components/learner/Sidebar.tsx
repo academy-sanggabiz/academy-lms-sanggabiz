@@ -20,8 +20,9 @@ export function Sidebar({ open, onToggle }: { open: boolean; onToggle: () => voi
         open ? "w-[250px]" : "w-0 border-r-0"
       )}
     >
-      <div className="flex items-center gap-2 px-5 py-4 whitespace-nowrap">
-        <span className="text-lg font-bold tracking-tight text-ring">sanggabiz</span>
+      <div className="flex items-center gap-2 px-4 py-4 whitespace-nowrap">
+        <img src="/logo.png" alt="Sanggabiz" className="size-8 object-contain" />
+        <span className="text-[17px] font-bold tracking-tight text-ring">sanggabiz</span>
         <div className="flex-1" />
         <button
           onClick={onToggle}
