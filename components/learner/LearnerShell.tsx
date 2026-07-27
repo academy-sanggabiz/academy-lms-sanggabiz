@@ -28,7 +28,7 @@ export function LearnerShell({
               className="mr-2 flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
               title="Open sidebar"
             >
-              <span className="text-lg font-bold text-ring">s</span>
+              <img src="/logo.png" alt="Sanggabiz" className="size-7 object-contain" />
             </button>
           )}
           <div className="flex-1" />

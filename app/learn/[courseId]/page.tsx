@@ -47,7 +47,7 @@ export default async function LearnPage({
         >
           <ArrowLeft className="size-4" />
         </Link>
-        <span className="text-lg font-bold text-ring">s</span>
+        <img src="/logo.png" alt="Sanggabiz" className="size-7 object-contain" />
         <div className="min-w-0 flex-1 truncate text-sm font-semibold">{course.title}</div>
         <div className="flex items-center gap-2.5">
           <div className="h-1.5 w-32 overflow-hidden rounded-full bg-secondary">

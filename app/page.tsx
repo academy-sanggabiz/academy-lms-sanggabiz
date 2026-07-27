@@ -30,7 +30,10 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-card">
       <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border bg-card/90 px-6 backdrop-blur-sm sm:px-10">
-        <div className="text-xl font-bold tracking-tight text-ring">sanggabiz</div>
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="Sanggabiz" className="size-8 object-contain" />
+          <span className="text-xl font-bold tracking-tight text-ring">sanggabiz</span>
+        </div>
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -131,7 +134,10 @@ export default function Home() {
       </section>
 
       <footer className="flex flex-col items-center gap-4 border-t border-border bg-card px-6 py-14 text-center">
-        <div className="text-lg font-bold text-ring">sanggabiz</div>
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="Sanggabiz" className="size-6 object-contain" />
+          <span className="text-lg font-bold text-ring">sanggabiz</span>
+        </div>
         <p className="max-w-lg text-sm text-muted-foreground">
           Transform your life through knowledge with Sanggabiz. Access world-class
           courses designed to help you achieve your goals.
