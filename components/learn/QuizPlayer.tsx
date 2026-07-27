@@ -73,29 +73,33 @@ export function QuizPlayer({
 
   if (stage === "intro") {
     return (
-      <div className="flex flex-col items-center gap-4 p-14 text-center">
-        <div className="flex size-16 items-center justify-center rounded-full bg-secondary">
-          <CircleHelp className="size-6 text-ring" />
+      <div className="mx-auto w-full max-w-[640px] px-6">
+        <div className="rounded-2xl border border-border bg-card p-14 text-center shadow-sm">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex size-16 items-center justify-center rounded-full bg-secondary">
+              <CircleHelp className="size-6 text-ring" />
+            </div>
+            <div className="text-xl font-bold">{quiz.title}</div>
+            <p className="text-sm text-muted-foreground">
+              {quiz.questions.length} questions · test what you&apos;ve learned in this module
+            </p>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            {canAttempt ? (
+              <Button
+                size="xl"
+                disabled={isPending}
+                onClick={handleStart}
+                className="bg-brand-gradient text-white hover:brightness-105"
+              >
+                {attemptsUsed > 0 ? "Retry Quiz" : "Start Quiz"}
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {alreadyPassed ? "You already passed this quiz." : "No attempts remaining."}
+              </p>
+            )}
+          </div>
         </div>
-        <div className="text-xl font-bold">{quiz.title}</div>
-        <p className="text-sm text-muted-foreground">
-          {quiz.questions.length} questions · test what you&apos;ve learned in this module
-        </p>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        {canAttempt ? (
-          <Button
-            size="xl"
-            disabled={isPending}
-            onClick={handleStart}
-            className="bg-brand-gradient text-white hover:brightness-105"
-          >
-            {attemptsUsed > 0 ? "Retry Quiz" : "Start Quiz"}
-          </Button>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {alreadyPassed ? "You already passed this quiz." : "No attempts remaining."}
-          </p>
-        )}
       </div>
     )
   }

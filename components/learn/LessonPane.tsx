@@ -25,9 +25,11 @@ export function LessonPane({
   nextLessonId: string | null
   quizAttempt?: QuizAttemptInfo
 }) {
+  const isQuiz = lesson.content_type === "quiz" || lesson.content_type === "mixed"
+
   return (
-    <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
-      <div className="flex-1">
+    <div className={cn("flex min-w-0 flex-1 flex-col overflow-y-auto", isQuiz && "bg-[#f4f8fa]")}>
+      <div className={cn("flex-1", isQuiz && "flex flex-col justify-center py-10")}>
         {lesson.content_type === "video" && <VideoContent lesson={lesson} />}
         {lesson.content_type === "text" && <TextContent lesson={lesson} />}
         {(lesson.content_type === "quiz" || lesson.content_type === "mixed") &&
