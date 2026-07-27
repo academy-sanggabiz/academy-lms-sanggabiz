@@ -38,8 +38,9 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims()
   const user = data?.claims
 
-  if (!user && request.nextUrl.pathname.startsWith('/learner')) {
+  if (!user && request.nextUrl.pathname.startsWith('/learn')) {
     // no user, redirect to the learner login page
+    // (covers both /learner/** and the full-screen /learn/[courseId] player)
     const url = request.nextUrl.clone()
     url.pathname = '/auth/learner/login'
     return NextResponse.redirect(url)

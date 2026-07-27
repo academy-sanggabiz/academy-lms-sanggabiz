@@ -62,3 +62,7 @@ feedback-issue-template.md
 !.dev.vars.example
 
 !.env.example
+
+reference/
+CLAUDE.md
+erd.md
