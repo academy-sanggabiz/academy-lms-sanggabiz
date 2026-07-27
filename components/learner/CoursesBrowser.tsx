@@ -23,23 +23,36 @@ const sortOptions: { key: SortKey; label: string }[] = [
   { key: "price", label: "Price: Low to High" },
 ]
 
-export function CoursesBrowser({ courses }: { courses: Course[] }) {
+export function CoursesBrowser({
+  courses,
+  enrolledIds,
+}: {
+  courses: Course[]
+  enrolledIds: string[]
+}) {
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("newest")
+
+  const sortCourses = (list: Course[]) => {
+    const sorted = [...list]
+    if (sort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title))
+    if (sort === "price") sorted.sort((a, b) => a.price - b.price)
+    if (sort === "newest")
+      sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    return sorted
+  }
 
   const visibleCourses = useMemo(() => {
     const filtered = courses.filter((c) =>
       c.title.toLowerCase().includes(query.trim().toLowerCase())
     )
-
-    const sorted = [...filtered]
-    if (sort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title))
-    if (sort === "price") sorted.sort((a, b) => a.price - b.price)
-    if (sort === "newest")
-      sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-
-    return sorted
+    return sortCourses(filtered)
   }, [courses, query, sort])
+
+  const enrolledCourses = useMemo(
+    () => sortCourses(courses.filter((c) => enrolledIds.includes(c.id))),
+    [courses, enrolledIds, sort]
+  )
 
   const sortLabel = sortOptions.find((o) => o.key === sort)?.label ?? "Sort"
 
@@ -88,7 +101,11 @@ export function CoursesBrowser({ courses }: { courses: Course[] }) {
           {visibleCourses.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {visibleCourses.map((course) => (
-                <CourseGridCard key={course.id} course={course} />
+                <CourseGridCard
+                  key={course.id}
+                  course={course}
+                  enrolled={enrolledIds.includes(course.id)}
+                />
               ))}
             </div>
           ) : (
@@ -97,7 +114,15 @@ export function CoursesBrowser({ courses }: { courses: Course[] }) {
         </TabsContent>
 
         <TabsContent value="enrolled" className="mt-6">
-          <EmptyState message="You haven't enrolled in any courses yet." />
+          {enrolledCourses.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {enrolledCourses.map((course) => (
+                <CourseGridCard key={course.id} course={course} enrolled />
+              ))}
+            </div>
+          ) : (
+            <EmptyState message="You haven't enrolled in any courses yet." />
+          )}
         </TabsContent>
 
         <TabsContent value="completed" className="mt-6">

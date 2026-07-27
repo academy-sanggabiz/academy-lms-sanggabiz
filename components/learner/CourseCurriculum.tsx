@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { ChevronDown, CircleHelp, FileText, PlayCircle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -20,7 +21,13 @@ const typeIcon: Record<LessonContentType, typeof PlayCircle> = {
   mixed: PlayCircle,
 }
 
-export function CourseCurriculum({ sections }: { sections: CourseSection[] }) {
+export function CourseCurriculum({
+  sections,
+  courseId,
+}: {
+  sections: CourseSection[]
+  courseId: string
+}) {
   const [openId, setOpenId] = useState<string | null>(sections[0]?.id ?? null)
 
   return (
@@ -43,14 +50,19 @@ export function CourseCurriculum({ sections }: { sections: CourseSection[] }) {
                 {section.lessons.map((lesson) => {
                   const Icon = typeIcon[lesson.content_type]
                   return (
-                    <div
+                    <Link
                       key={lesson.id}
+                      href={`/learn/${courseId}?lesson=${lesson.id}`}
                       className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] text-foreground/80 hover:bg-muted"
                     >
                       <Icon className="size-4 shrink-0 text-primary" />
                       <span className="flex-1 truncate">{lesson.title}</span>
-                      <span className="text-xs text-muted-foreground">{typeLabel[lesson.content_type]}</span>
-                    </div>
+                      <span className="text-xs text-muted-foreground">
+                        {lesson.quiz
+                          ? `${lesson.quiz.questions.length} questions`
+                          : typeLabel[lesson.content_type]}
+                      </span>
+                    </Link>
                   )
                 })}
               </div>
