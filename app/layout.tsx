@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EaseLMS",
+  title: "lms-sanggabiz",
   description: "Learn and teach, made easy.",
 };
 
