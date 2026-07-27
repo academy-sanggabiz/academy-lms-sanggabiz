@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, BookOpen, Clock, FileText } from "lucide-react"
+import { ArrowLeft, FileText, Globe, Users } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -21,9 +21,6 @@ export default async function CourseDetailPage({
 
   const enrolled = await isEnrolled(course.id)
   const price = formatPrice(course.price)
-  const resourceCount = course.sections
-    .flatMap((s) => s.lessons)
-    .length
 
   return (
     <div className="space-y-6">
@@ -51,16 +48,42 @@ export default async function CourseDetailPage({
           <Card>
             <CardContent>
               <div className="mb-2 text-lg font-bold">Course Content</div>
-              <CourseCurriculum sections={course.sections} />
+              <CourseCurriculum sections={course.sections} courseId={course.id} />
             </CardContent>
           </Card>
+
+          {course.who_for.length > 0 && (
+            <Card>
+              <CardContent>
+                <div className="mb-3.5 text-lg font-bold">Who This Course Is For</div>
+                <div className="flex flex-col gap-3.5 text-sm leading-relaxed text-muted-foreground">
+                  {course.who_for.map((line, i) => (
+                    <div key={i}>{line}</div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {course.requirements.length > 0 && (
+            <Card>
+              <CardContent>
+                <div className="mb-3.5 text-lg font-bold">Requirements</div>
+                <div className="flex flex-col gap-3.5 text-sm leading-relaxed text-muted-foreground">
+                  {course.requirements.map((line, i) => (
+                    <div key={i}>{line}</div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardContent className="flex items-center gap-4">
               <div className="course-thumb-placeholder size-16 shrink-0 rounded-full" />
               <div>
-                <div className="text-[17px] font-bold">Course Instructor</div>
-                <div className="mt-0.5 text-[13px] text-muted-foreground">Sanggabiz Team</div>
+                <div className="text-[17px] font-bold">{course.instructor?.name ?? "Sanggabiz Team"}</div>
+                <div className="mt-0.5 text-[13px] text-muted-foreground">Course Instructor</div>
               </div>
             </CardContent>
           </Card>
@@ -77,13 +100,21 @@ export default async function CourseDetailPage({
             </div>
 
             {enrolled ? (
-              <Button className="w-full" variant="secondary" disabled>
-                Enrolled ✓
+              <Button
+                size="xl"
+                className="w-full bg-brand-gradient text-white hover:brightness-105"
+                render={<Link href={`/learn/${course.id}`} />}
+              >
+                Enrolled ✓ Start Learning
               </Button>
             ) : (
               <form action={enroll}>
                 <input type="hidden" name="courseId" value={course.id} />
-                <Button type="submit" className="w-full bg-brand-gradient text-white hover:brightness-105">
+                <Button
+                  type="submit"
+                  size="xl"
+                  className="w-full bg-brand-gradient text-white hover:brightness-105"
+                >
                   Enroll Now
                 </Button>
               </form>
@@ -92,15 +123,15 @@ export default async function CourseDetailPage({
             <div className="mt-4 flex flex-col gap-3 text-[13.5px] text-muted-foreground">
               <div className="flex items-center gap-2.5">
                 <FileText className="size-4" />
-                {resourceCount} lessons
+                {course.resource_count} resources
               </div>
               <div className="flex items-center gap-2.5">
-                <BookOpen className="size-4" />
-                {course.sections.length} modules
+                <Globe className="size-4" />
+                {course.language}
               </div>
               <div className="flex items-center gap-2.5">
-                <Clock className="size-4" />
-                {course.duration_hours} hours
+                <Users className="size-4" />
+                {course.enrolled_count} learners enrolled
               </div>
             </div>
           </CardContent>
