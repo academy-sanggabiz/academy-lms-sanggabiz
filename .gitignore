@@ -53,6 +53,16 @@ feedback-issue-template.md
 .agents/
 .claude/
 
+# OpenNext
+.open-next
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+
+!.env.example
+
 reference/
 CLAUDE.md
 erd.md
