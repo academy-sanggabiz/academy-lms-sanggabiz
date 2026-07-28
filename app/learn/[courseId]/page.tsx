@@ -61,6 +61,7 @@ export default async function LearnPage({
 
       <div className="flex min-h-0 flex-1">
         <LessonPane
+          key={currentLesson.id}
           courseId={courseId}
           course={course}
           lesson={currentLesson}

@@ -43,7 +43,7 @@ export function LearnSidebar({
   const [sideTab, setSideTab] = useState<"content" | "ai">("content")
 
   return (
-    <aside className="flex w-[320px] shrink-0 flex-col border-l border-border bg-card">
+    <aside className="flex w-[360px] shrink-0 flex-col border-l border-border bg-card">
       <div className="flex gap-1 border-b border-muted px-3 pt-2">
         <button
           onClick={() => setSideTab("content")}

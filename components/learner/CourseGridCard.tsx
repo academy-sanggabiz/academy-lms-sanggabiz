@@ -51,6 +51,7 @@ export function CourseGridCard({ course, enrolled }: { course: Course; enrolled:
           variant="outline"
           className="h-11 flex-1"
           render={<Link href={`/learner/courses/${course.id}`} />}
+          nativeButton={false}
         >
           <Eye className="size-3.5" />
           Preview

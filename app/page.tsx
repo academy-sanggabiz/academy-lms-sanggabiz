@@ -39,14 +39,14 @@ export default function Home() {
             variant="ghost"
             size="lg"
             className="h-10 px-5 text-sm font-semibold"
-            render={<Link href="/auth/learner/login" />}
+            render={<Link href="/auth/learner/login" />} nativeButton={false}
           >
             Login
           </Button>
           <Button
             size="lg"
             className="h-10 px-5 text-sm font-semibold bg-brand-gradient text-white hover:brightness-105"
-            render={<Link href="/auth/learner/login" />}
+            render={<Link href="/auth/learner/login" />} nativeButton={false}
           >
             Get Started
           </Button>
@@ -65,11 +65,11 @@ export default function Home() {
           <Button
             size="xl"
             className="bg-brand-gradient text-white hover:brightness-105"
-            render={<Link href="/auth/learner/login" />}
+            render={<Link href="/auth/learner/login" />} nativeButton={false}
           >
             Start Your Journey
           </Button>
-          <Button size="xl" variant="outline" render={<Link href="/auth/learner/login" />}>
+          <Button size="xl" variant="outline" render={<Link href="/auth/learner/login" />} nativeButton={false}>
             Explore Courses
           </Button>
         </div>
@@ -123,11 +123,11 @@ export default function Home() {
           <Button
             size="xl"
             className="bg-brand-gradient text-white hover:brightness-105"
-            render={<Link href="/auth/learner/login" />}
+            render={<Link href="/auth/learner/login" />} nativeButton={false}
           >
             Create Free Account
           </Button>
-          <Button size="xl" variant="outline" render={<Link href="/auth/learner/login" />}>
+          <Button size="xl" variant="outline" render={<Link href="/auth/learner/login" />} nativeButton={false}>
             Browse All Courses
           </Button>
         </div>

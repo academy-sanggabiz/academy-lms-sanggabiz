@@ -25,7 +25,7 @@ export default async function CourseDetailPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3.5">
-        <Button variant="outline" size="icon" render={<Link href="/learner/courses" />}>
+        <Button variant="outline" size="icon" render={<Link href="/learner/courses" />} nativeButton={false}>
           <ArrowLeft className="size-4" />
         </Button>
         <h1 className="text-2xl leading-tight font-bold">{course.title}</h1>
@@ -104,6 +104,7 @@ export default async function CourseDetailPage({
               variant="outline"
               className="w-full border-ring bg-secondary text-primary hover:bg-secondary/80 hover:text-primary"
               render={<Link href={`/learn/${course.id}`} />}
+              nativeButton={false}
             >
               Enrolled ✓ Start Learning
             </Button>
