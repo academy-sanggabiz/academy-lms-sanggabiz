@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -27,10 +28,12 @@ export function UserMenu({ name, email }: { name: string; email: string }) {
         <ChevronDown className="size-3.5 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="px-2 py-1.5">
-          <div className="text-sm font-semibold text-foreground">{name}</div>
-          <div className="truncate text-xs text-muted-foreground">{email}</div>
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="px-2 py-1.5">
+            <div className="text-sm font-semibold text-foreground">{name}</div>
+            <div className="truncate text-xs text-muted-foreground">{email}</div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link href="/learner/profile" />}>
           <User />
