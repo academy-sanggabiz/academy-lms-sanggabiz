@@ -19,6 +19,35 @@ export async function getEnrolledCourseIds(): Promise<string[]> {
   return data.map((row) => row.course_id)
 }
 
+export type EnrolledCourseSummary = {
+  id: string
+  title: string
+  lesson_count: number
+  duration_hours: number
+}
+
+export async function getEnrolledCoursesWithDetails(): Promise<EnrolledCourseSummary[]> {
+  const supabase = await createClient()
+  const { data: claimsData } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims?.sub
+  if (!userId) return []
+
+  const { data, error } = await supabase
+    .from("enrollments")
+    .select("courses(id, title, lesson_count, duration_hours)")
+    .eq("learner_id", userId)
+    .order("enrolled_at", { ascending: false })
+
+  if (error) {
+    console.error("getEnrolledCoursesWithDetails failed:", error.message)
+    return []
+  }
+
+  return data
+    .map((row) => (Array.isArray(row.courses) ? row.courses[0] : row.courses))
+    .filter((course): course is EnrolledCourseSummary => course !== null)
+}
+
 export async function isEnrolled(courseId: string): Promise<boolean> {
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()

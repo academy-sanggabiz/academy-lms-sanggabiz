@@ -164,6 +164,25 @@ where content_type = 'text' and content is null;
 update public.lessons set duration_seconds = 1080 where content_type = 'video' and duration_seconds is null;
 update public.lessons set duration_seconds = 360 where content_type = 'text' and duration_seconds is null;
 
+-- Real content for the no-code-ai-bot "Reading: Prompt Engineering Dasar..."
+-- lesson, matching the reference design handoff. Sections are marked with a
+-- leading "## " line so LessonPane's TextContent can render each as its own
+-- heading + paragraph, matching the reference's multi-section reading layout.
+update public.lessons
+set content = $md$## Apa itu Persona Chatbot?
+Persona adalah fondasi dari chatbot yang terasa hidup. Sebelum menulis prompt, tentukan tiga hal: siapa chatbot Anda (nama, peran, gaya bahasa), apa batasannya (topik yang boleh dan tidak boleh dijawab), dan bagaimana ia merespons ketika tidak tahu jawabannya. Tuliskan ketiganya dalam system prompt secara eksplisit.
+## Gunakan Struktur, Bukan Paragraf Panjang
+Gunakan format terstruktur — misalnya daftar aturan bernomor — karena model mengikuti instruksi terstruktur lebih konsisten daripada paragraf panjang. Pisahkan aturan perilaku, format jawaban, dan batasan topik ke dalam bagian yang berbeda. Semakin jelas strukturnya, semakin mudah Anda melakukan debugging ketika chatbot berperilaku di luar ekspektasi.
+## Menentukan Gaya Bahasa
+Gaya bahasa menentukan bagaimana chatbot Anda dipersepsikan pengguna. Chatbot customer service sebaiknya ramah dan ringkas; chatbot edukasi boleh lebih panjang dan eksploratif. Definisikan gaya ini dengan contoh konkret di dalam prompt: berikan 2-3 contoh pertanyaan beserta jawaban ideal, karena contoh bekerja jauh lebih baik daripada deskripsi abstrak.
+## Memory dan Konteks Percakapan
+Dengan Google Gemini di Make.com, Anda dapat menyimpan riwayat percakapan sebagai konteks. Simpan hanya ringkasan poin penting, bukan seluruh transkrip, agar hemat token dan respons tetap cepat. Tentukan juga kapan memory di-reset — misalnya setiap sesi baru — agar persona tidak terkontaminasi konteks lama.
+## Menguji Batasan Persona
+Terakhir, uji persona Anda dengan pertanyaan di luar topik untuk memastikan batasannya bekerja. Coba pertanyaan provokatif, pertanyaan di luar domain, dan pertanyaan ambigu. Chatbot yang baik menolak dengan sopan dan mengarahkan pengguna kembali ke topik utama, bukan memaksakan jawaban yang mengada-ada.
+## Checklist Sebelum Deploy
+Sebelum menghubungkan chatbot ke kanal produksi: (1) persona dan batasan sudah tertulis eksplisit, (2) ada contoh jawaban ideal di prompt, (3) memory sudah diuji reset-nya, (4) sudah diuji minimal 20 pertanyaan nyata dari calon pengguna. Jika keempatnya lolos, chatbot Anda siap dipakai.$md$
+where title = 'Reading: Prompt Engineering Dasar untuk Persona Chatbot';
+
 -- One downloadable resource on the no-code-ai-bot course's first video
 -- lesson, so the course-detail sidebar shows "1 resources" like the
 -- reference design handoff.
