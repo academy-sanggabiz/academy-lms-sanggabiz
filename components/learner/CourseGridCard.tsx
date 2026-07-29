@@ -3,6 +3,7 @@ import { BookOpen, Check, Clock, Eye, Tag } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { formatPrice, type Course } from "@/lib/courses"
+import { cn } from "@/lib/utils"
 import { enroll } from "@/app/learner/courses/actions"
 
 export function CourseGridCard({ course, enrolled }: { course: Course; enrolled: boolean }) {
@@ -11,8 +12,18 @@ export function CourseGridCard({ course, enrolled }: { course: Course; enrolled:
   return (
     <div className="flex h-full flex-col rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-[0_8px_24px_rgba(20,55,64,0.08)]">
       <Link href={`/learner/courses/${course.id}`} className="block">
-        <div className="course-thumb-placeholder relative mb-4 flex h-[190px] items-center justify-center rounded-md font-mono text-xs text-muted-foreground">
-          course thumbnail
+        <div
+          className={cn(
+            "relative mb-4 flex h-[190px] items-center justify-center overflow-hidden rounded-md font-mono text-xs text-muted-foreground",
+            !course.thumbnail_url && "course-thumb-placeholder"
+          )}
+        >
+          {course.thumbnail_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={course.thumbnail_url} alt="" className="absolute inset-0 size-full object-cover" />
+          ) : (
+            "course thumbnail"
+          )}
           <span className="absolute top-3 right-3 rounded-full bg-ring px-3 py-1 text-xs font-semibold text-white">
             {price}
           </span>

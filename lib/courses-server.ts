@@ -27,6 +27,7 @@ export async function getCourseDetail(id: string): Promise<CourseDetail | null> 
         *,
         lessons(
           *,
+          resources(*),
           quiz:quizzes(*, questions(*, options:question_options(id,text,position)))
         )
       ),
@@ -49,6 +50,7 @@ export async function getCourseDetail(id: string): Promise<CourseDetail | null> 
           const quiz = Array.isArray(lesson.quiz) ? lesson.quiz[0] : lesson.quiz
           return {
             ...lesson,
+            resources: [...(lesson.resources ?? [])].sort((a, b) => a.position - b.position),
             quiz: quiz
               ? {
                   ...quiz,

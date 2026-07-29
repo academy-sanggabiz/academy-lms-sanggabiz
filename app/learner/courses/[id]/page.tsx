@@ -8,6 +8,7 @@ import { CourseCurriculum } from "@/components/learner/CourseCurriculum"
 import { getCourseDetail } from "@/lib/courses-server"
 import { isEnrolled } from "@/lib/enrollments-server"
 import { formatPrice } from "@/lib/courses"
+import { cn } from "@/lib/utils"
 import { enroll } from "@/app/learner/courses/actions"
 
 export default async function CourseDetailPage({
@@ -90,8 +91,18 @@ export default async function CourseDetailPage({
         </div>
 
         <div className="sticky top-20 rounded-xl border border-border bg-card p-5 shadow-sm">
-          <div className="course-thumb-placeholder mb-4 flex h-[180px] items-center justify-center rounded-md font-mono text-xs text-muted-foreground">
-            course thumbnail
+          <div
+            className={cn(
+              "relative mb-4 flex h-[180px] items-center justify-center overflow-hidden rounded-md font-mono text-xs text-muted-foreground",
+              !course.thumbnail_url && "course-thumb-placeholder"
+            )}
+          >
+            {course.thumbnail_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={course.thumbnail_url} alt="" className="absolute inset-0 size-full object-cover" />
+            ) : (
+              "course thumbnail"
+            )}
           </div>
           <div className="mb-4 flex items-center justify-between">
             <div className="text-2xl font-bold">{price}</div>
