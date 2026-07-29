@@ -48,6 +48,8 @@
   --radius-4xl: calc(var(--radius) * 2.6);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-pill-border: var(--pill-border);
+  --color-draft-background: var(--draft-background);
 }
 
 :root {
@@ -73,6 +75,8 @@
   --border: #dfebee;
   --input: #cde2e7;
   --ring: #35b5c6;
+  --pill-border: #b5d8de;
+  --draft-background: #fdeeee;
   --brand-gradient: linear-gradient(90deg, #35b5c6, #2e7ca6);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
