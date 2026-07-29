@@ -8,14 +8,9 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("notification_email_enabled, currency")
+    .select("notification_email_enabled")
     .eq("id", userId)
     .single()
 
-  return (
-    <SettingsView
-      notificationEmailEnabled={profile?.notification_email_enabled ?? true}
-      currency={profile?.currency ?? "USD"}
-    />
-  )
+  return <SettingsView notificationEmailEnabled={profile?.notification_email_enabled ?? true} />
 }

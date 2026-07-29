@@ -31,25 +31,6 @@ export async function updateNotificationPref(enabled: boolean) {
   return { error: null }
 }
 
-export async function updateCurrency(formData: FormData) {
-  const currency = String(formData.get("currency") ?? "")
-  if (!currency) return { error: "Currency is required" }
-
-  const userId = await getUserId()
-  if (!userId) return { error: "Not authenticated" }
-
-  const supabase = await createClient()
-  const { error } = await supabase.from("profiles").update({ currency }).eq("id", userId)
-
-  if (error) {
-    console.error("updateCurrency failed:", error.message)
-    return { error: error.message }
-  }
-
-  revalidatePath("/learner/settings")
-  return { error: null }
-}
-
 export async function changePassword(formData: FormData) {
   const password = String(formData.get("password") ?? "")
   if (!password || password.length < 6) {
