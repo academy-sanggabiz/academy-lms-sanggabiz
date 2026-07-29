@@ -1,6 +1,7 @@
 "use client"
 
-import { ChevronDown, LogOut } from "lucide-react"
+import Link from "next/link"
+import { ChevronDown, LogOut, Settings, User } from "lucide-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -36,6 +37,15 @@ export function AdminUserMenu({ name, role }: { name: string; role: "admin" | "s
             <div className="text-xs text-muted-foreground">{roleLabel}</div>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem render={<Link href="/admin/profile" />}>
+          <User />
+          Profile
+        </DropdownMenuItem>
+        <DropdownMenuItem render={<Link href="/admin/settings" />}>
+          <Settings />
+          Settings
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={() => logout()}>
           <LogOut />
