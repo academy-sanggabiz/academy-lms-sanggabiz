@@ -6,15 +6,15 @@ import { ChevronDown, Plus, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -25,32 +25,48 @@ import {
   deleteOptionAction,
   deleteQuestionAction,
   setCorrectOptionAction,
+  toggleCorrectOptionAction,
   updateOptionAction,
   updateQuestionAction,
   updateQuizAction,
 } from "@/app/admin/courses/quiz-actions"
 
-const QUESTION_TYPES: { value: AuthorableQuestionType; label: string }[] = [
-  { value: "multiple_choice", label: "Multiple Choice" },
-  { value: "short_answer", label: "Short Answer" },
-  { value: "essay", label: "Essay" },
+const QUESTION_TYPES: { value: AuthorableQuestionType; label: string; description: string }[] = [
+  {
+    value: "multiple_choice",
+    label: "Multiple Choice",
+    description: "Learners pick one option, or several if you allow multiple correct answers.",
+  },
+  {
+    value: "true_false",
+    label: "True / False",
+    description: "A simple two-option question.",
+  },
+  {
+    value: "short_answer",
+    label: "Short Answer",
+    description: "Learners type a word or phrase — optionally auto-graded against keywords.",
+  },
+  {
+    value: "essay",
+    label: "Essay",
+    description: "Learners answer in free text; not auto-graded.",
+  },
 ]
 
 export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: AdminQuiz | null }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [pickerOpen, setPickerOpen] = useState(false)
 
-  function handleAddQuestion() {
+  function handleAddQuestion(type: AuthorableQuestionType) {
     startTransition(async () => {
-      const result = await createQuestionAction(lessonId, {
-        type: "multiple_choice",
-        prompt: "",
-        points: 1,
-      })
+      const result = await createQuestionAction(lessonId, { type, prompt: "", points: 1 })
       if (!result.ok) {
         toast.error(result.error)
         return
       }
+      setPickerOpen(false)
       router.refresh()
     })
   }
@@ -78,12 +94,35 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: AdminQu
         variant="outline"
         size="sm"
         className="mt-3"
-        onClick={handleAddQuestion}
+        onClick={() => setPickerOpen(true)}
         disabled={isPending}
       >
         <Plus className="size-3.5" />
         Add Question
       </Button>
+
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent className="max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Add Question</DialogTitle>
+            <DialogDescription>Choose a question type. This can&apos;t be changed later.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            {QUESTION_TYPES.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                disabled={isPending}
+                onClick={() => handleAddQuestion(t.value)}
+                className="rounded-lg border border-border p-3 text-left transition-colors hover:border-ring hover:bg-muted/40 disabled:pointer-events-none disabled:opacity-50"
+              >
+                <div className="text-sm font-semibold">{t.label}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">{t.description}</div>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -151,9 +190,10 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [expanded, setExpanded] = useState(false)
-  const [type, setType] = useState<AuthorableQuestionType>(question.type as AuthorableQuestionType)
   const [prompt, setPrompt] = useState(question.prompt)
   const [points, setPoints] = useState(String(question.points))
+  const [allowMultiple, setAllowMultiple] = useState(question.allow_multiple)
+  const [caseSensitive, setCaseSensitive] = useState(question.case_sensitive)
 
   function save(input: Parameters<typeof updateQuestionAction>[1]) {
     startTransition(async () => {
@@ -164,11 +204,6 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
       }
       router.refresh()
     })
-  }
-
-  function handleTypeChange(value: AuthorableQuestionType) {
-    setType(value)
-    save({ type: value })
   }
 
   function handleDelete() {
@@ -182,12 +217,14 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
     })
   }
 
+  const typeLabel = QUESTION_TYPES.find((t) => t.value === question.type)?.label ?? question.type
+
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <div className="flex items-center gap-2.5 bg-muted/30 px-3 py-2">
         <span className="text-sm font-semibold whitespace-nowrap">Question {index + 1}</span>
         <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-semibold text-secondary-foreground">
-          {QUESTION_TYPES.find((t) => t.value === type)?.label}
+          {typeLabel}
         </span>
         <div className="flex-1" />
         <Button type="button" variant="ghost" size="icon-sm" onClick={handleDelete} disabled={isPending}>
@@ -202,19 +239,14 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
         <div className="space-y-3.5 p-3.5">
           <div className="flex gap-3">
             <div className="flex-1 space-y-1.5">
-              <Label htmlFor={`question-type-${question.id}`}>Question Type</Label>
-              <Select value={type} onValueChange={(value) => value && handleTypeChange(value)}>
-                <SelectTrigger id={`question-type-${question.id}`} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {QUESTION_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor={`question-prompt-${question.id}`}>Prompt</Label>
+              <Textarea
+                id={`question-prompt-${question.id}`}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onBlur={() => save({ prompt })}
+                rows={2}
+              />
             </div>
             <div className="w-24 space-y-1.5">
               <Label htmlFor={`question-points-${question.id}`}>Points</Label>
@@ -229,20 +261,47 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor={`question-prompt-${question.id}`}>Prompt</Label>
-            <Textarea
-              id={`question-prompt-${question.id}`}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onBlur={() => save({ prompt })}
-              rows={2}
-            />
-          </div>
+          {question.type === "multiple_choice" && (
+            <>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id={`allow-multiple-${question.id}`}
+                  checked={allowMultiple}
+                  onCheckedChange={(checked) => {
+                    setAllowMultiple(checked)
+                    save({ allow_multiple: checked })
+                  }}
+                />
+                <Label htmlFor={`allow-multiple-${question.id}`}>Allow multiple correct answers</Label>
+              </div>
+              <OptionsEditor
+                questionId={question.id}
+                options={question.options}
+                variant={allowMultiple ? "multi" : "single"}
+              />
+            </>
+          )}
 
-          {type === "multiple_choice" ? (
-            <OptionsEditor questionId={question.id} options={question.options} />
-          ) : (
+          {question.type === "true_false" && <TrueFalseEditor questionId={question.id} options={question.options} />}
+
+          {question.type === "short_answer" && (
+            <>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id={`case-sensitive-${question.id}`}
+                  checked={caseSensitive}
+                  onCheckedChange={(checked) => {
+                    setCaseSensitive(checked)
+                    save({ case_sensitive: checked })
+                  }}
+                />
+                <Label htmlFor={`case-sensitive-${question.id}`}>Case sensitive</Label>
+              </div>
+              <OptionsEditor questionId={question.id} options={question.options} variant="keyword" />
+            </>
+          )}
+
+          {question.type === "essay" && (
             <p className="text-xs text-muted-foreground">
               Learners answer in free text; these responses aren&apos;t auto-graded.
             </p>
@@ -253,13 +312,68 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
   )
 }
 
-function OptionsEditor({ questionId, options }: { questionId: string; options: AdminQuestionOption[] }) {
+function TrueFalseEditor({ questionId, options }: { questionId: string; options: AdminQuestionOption[] }) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+
+  function handleSetCorrect(optionId: string) {
+    startTransition(async () => {
+      const result = await setCorrectOptionAction(questionId, optionId)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      router.refresh()
+    })
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>Correct Answer</Label>
+      <div className="flex gap-2.5">
+        {options.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            disabled={isPending}
+            onClick={() => handleSetCorrect(option.id)}
+            className={cn(
+              "flex flex-1 items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-left text-sm font-semibold transition-colors disabled:opacity-50",
+              option.is_correct ? "border-primary bg-primary/10" : "border-border hover:border-ring"
+            )}
+          >
+            <div
+              className={cn(
+                "size-4 shrink-0 rounded-full border-2",
+                option.is_correct ? "border-primary bg-primary/20" : "border-border"
+              )}
+            />
+            {option.text}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function OptionsEditor({
+  questionId,
+  options,
+  variant,
+}: {
+  questionId: string
+  options: AdminQuestionOption[]
+  variant: "single" | "multi" | "keyword"
+}) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
   function handleAddOption() {
     startTransition(async () => {
-      const result = await createOptionAction(questionId, { text: "" })
+      const result = await createOptionAction(questionId, {
+        text: "",
+        is_correct: variant === "keyword" ? true : false,
+      })
       if (!result.ok) {
         toast.error(result.error)
         return
@@ -271,6 +385,17 @@ function OptionsEditor({ questionId, options }: { questionId: string; options: A
   function handleSetCorrect(optionId: string) {
     startTransition(async () => {
       const result = await setCorrectOptionAction(questionId, optionId)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      router.refresh()
+    })
+  }
+
+  function handleToggleCorrect(optionId: string, isCorrect: boolean) {
+    startTransition(async () => {
+      const result = await toggleCorrectOptionAction(optionId, isCorrect)
       if (!result.ok) {
         toast.error(result.error)
         return
@@ -292,18 +417,20 @@ function OptionsEditor({ questionId, options }: { questionId: string; options: A
 
   return (
     <div className="space-y-2">
-      <Label>Options</Label>
+      <Label>{variant === "keyword" ? "Accepted Answers" : "Options"}</Label>
       {options.map((option) => (
         <OptionRow
           key={option.id}
           option={option}
+          variant={variant}
           onSetCorrect={() => handleSetCorrect(option.id)}
+          onToggleCorrect={(checked) => handleToggleCorrect(option.id, checked)}
           onRemove={() => handleRemove(option.id)}
         />
       ))}
       <Button type="button" variant="outline" size="sm" onClick={handleAddOption} disabled={isPending}>
         <Plus className="size-3.5" />
-        Add Option
+        {variant === "keyword" ? "Add Answer" : "Add Option"}
       </Button>
     </div>
   )
@@ -311,11 +438,15 @@ function OptionsEditor({ questionId, options }: { questionId: string; options: A
 
 function OptionRow({
   option,
+  variant,
   onSetCorrect,
+  onToggleCorrect,
   onRemove,
 }: {
   option: AdminQuestionOption
+  variant: "single" | "multi" | "keyword"
   onSetCorrect: () => void
+  onToggleCorrect: (checked: boolean) => void
   onRemove: () => void
 }) {
   const router = useRouter()
@@ -333,15 +464,28 @@ function OptionRow({
 
   return (
     <div className="flex items-center gap-2.5">
-      <button
-        type="button"
-        title="Mark as correct answer"
-        onClick={onSetCorrect}
-        className={cn(
-          "size-4 shrink-0 rounded-full border-2",
-          option.is_correct ? "border-primary bg-primary/20" : "border-border"
-        )}
-      />
+      {variant === "single" && (
+        <button
+          type="button"
+          title="Mark as correct answer"
+          onClick={onSetCorrect}
+          className={cn(
+            "size-4 shrink-0 rounded-full border-2",
+            option.is_correct ? "border-primary bg-primary/20" : "border-border"
+          )}
+        />
+      )}
+      {variant === "multi" && (
+        <button
+          type="button"
+          title="Mark as correct answer"
+          onClick={() => onToggleCorrect(!option.is_correct)}
+          className={cn(
+            "size-4 shrink-0 rounded-sm border-2",
+            option.is_correct ? "border-primary bg-primary/20" : "border-border"
+          )}
+        />
+      )}
       <Input value={text} onChange={(e) => setText(e.target.value)} onBlur={save} className="flex-1" />
       <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove}>
         <X className="size-3.5 text-destructive" />

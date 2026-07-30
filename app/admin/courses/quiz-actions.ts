@@ -8,6 +8,7 @@ import {
   deleteOption,
   deleteQuestion,
   setCorrectOption,
+  toggleCorrectOption,
   updateOptionText,
   updateQuestion,
   updateQuiz,
@@ -57,7 +58,13 @@ export async function updateQuizAction(
 
 export async function updateQuestionAction(
   id: string,
-  input: Partial<{ type: AuthorableQuestionType; prompt: string; points: number }>
+  input: Partial<{
+    type: AuthorableQuestionType
+    prompt: string
+    points: number
+    allow_multiple: boolean
+    case_sensitive: boolean
+  }>
 ): Promise<ActionResult<undefined>> {
   try {
     await requireAdmin()
@@ -88,7 +95,7 @@ export async function deleteQuestionAction(id: string): Promise<ActionResult<und
 
 export async function createOptionAction(
   questionId: string,
-  input: { text: string }
+  input: { text: string; is_correct?: boolean }
 ): Promise<ActionResult<{ id: string }>> {
   try {
     await requireAdmin()
@@ -128,6 +135,23 @@ export async function setCorrectOptionAction(
   }
 
   const result = await setCorrectOption(questionId, optionId)
+  if ("error" in result) return { ok: false, error: result.error }
+
+  revalidateEditPage()
+  return { ok: true, data: undefined }
+}
+
+export async function toggleCorrectOptionAction(
+  optionId: string,
+  isCorrect: boolean
+): Promise<ActionResult<undefined>> {
+  try {
+    await requireAdmin()
+  } catch {
+    return { ok: false, error: "Not authorized" }
+  }
+
+  const result = await toggleCorrectOption(optionId, isCorrect)
   if ("error" in result) return { ok: false, error: result.error }
 
   revalidateEditPage()

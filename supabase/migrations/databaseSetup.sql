@@ -23,6 +23,7 @@ create type public.user_role as enum ('learner', 'admin', 'superadmin');
 create type public.course_status as enum ('draft', 'published');
 create type public.lesson_content_type as enum ('video', 'text', 'quiz', 'mixed', 'ppt');
 create type public.enrollment_status as enum ('active', 'completed');
+create type public.transaction_status as enum ('completed', 'pending', 'refunded', 'free');
 
 -- Only multiple_choice/essay are authored/graded today; the remaining values
 -- are reserved so adding true_false/matching/fill_in_blank later doesn't need
@@ -344,6 +345,74 @@ create policy "admins delete enrollments" on public.enrollments
 
 grant select, insert, delete on public.enrollments to authenticated;
 
+-- Purchase record for an enrollment. Courses are free-only today (courses.price
+-- defaults to 0), but every enrollment still gets a transaction row (amount 0,
+-- status 'free') so Admin Purchase Management has one place to look regardless
+-- of whether commerce is live yet. enrollment_id is nullable (on delete set
+-- null) so the purchase record survives if the enrollment itself is later
+-- deleted by an admin.
+create table public.transactions (
+  id uuid primary key default gen_random_uuid(),
+  learner_id uuid not null references public.profiles (id) on delete cascade,
+  course_id uuid not null references public.courses (id) on delete cascade,
+  enrollment_id uuid references public.enrollments (id) on delete set null,
+  amount numeric not null default 0,
+  currency text not null default 'IDR',
+  status public.transaction_status not null default 'free',
+  gateway text,
+  created_at timestamptz not null default now()
+);
+
+create index transactions_course_id_idx on public.transactions (course_id);
+create index transactions_learner_id_idx on public.transactions (learner_id);
+
+alter table public.transactions enable row level security;
+
+-- Same ownership model as enrollments: a learner can read/insert only their
+-- own purchase records (for a future learner Purchase History page); admins
+-- can read every transaction for Purchase Management.
+create policy "own transactions readable" on public.transactions
+  for select
+  to authenticated
+  using ((select auth.uid()) = learner_id);
+
+create policy "own transactions insertable" on public.transactions
+  for insert
+  to authenticated
+  with check ((select auth.uid()) = learner_id);
+
+create policy "admins read all transactions" on public.transactions
+  for select to authenticated
+  using (public.is_admin());
+
+create policy "admins insert transactions" on public.transactions
+  for insert to authenticated
+  with check (public.is_admin());
+
+create policy "admins update transactions" on public.transactions
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+grant select, insert, update on public.transactions to authenticated;
+
+-- Backfill: give every enrollment that predates this table a matching
+-- transaction row, so Admin Purchase Management isn't empty on first load.
+-- Idempotent (safe to re-run) via the not-exists guard on enrollment_id.
+insert into public.transactions (learner_id, course_id, enrollment_id, amount, status, created_at)
+select
+  e.learner_id,
+  e.course_id,
+  e.id,
+  c.price,
+  case when c.price > 0 then 'completed'::public.transaction_status else 'free'::public.transaction_status end,
+  e.enrolled_at
+from public.enrollments e
+join public.courses c on c.id = e.course_id
+where not exists (
+  select 1 from public.transactions t where t.enrollment_id = e.id
+);
+
 -- Per-lesson completion, keyed by enrollment (has no learner_id column, so
 -- every policy checks ownership via an EXISTS join through enrollments).
 -- Powers the lesson player's mark-complete checkbox + progress bar.
@@ -416,7 +485,13 @@ create table public.questions (
   type public.question_type not null,
   prompt text not null,
   points int not null default 1,
-  position int not null default 0
+  position int not null default 0,
+  -- allow_multiple: multiple_choice questions accept >1 correct option (checkbox
+  -- grading, exact-set match) instead of the default single-select radio.
+  allow_multiple boolean not null default false,
+  -- case_sensitive: short_answer questions grade against question_options rows
+  -- (text = accepted keyword, is_correct = true) case-sensitively when set.
+  case_sensitive boolean not null default false
 );
 
 create table public.question_options (

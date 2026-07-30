@@ -96,7 +96,7 @@ export async function submitQuiz(
 
   const { data: questions, error: questionsError } = await supabase
     .from("questions")
-    .select("id, type, points, options:question_options(id, is_correct)")
+    .select("id, type, points, allow_multiple, case_sensitive, options:question_options(id, text, is_correct)")
     .eq("quiz_id", attempt.quiz_id)
 
   if (questionsError || !questions) return { error: "Could not load questions." }
@@ -115,33 +115,41 @@ export async function submitQuiz(
 
   for (const question of questions) {
     const answer = answers.find((a) => a.questionId === question.id)
+    const keywordOptions = question.options.filter((o) => o.is_correct)
 
-    if (question.type === "multiple_choice") {
+    let isCorrect: boolean | null
+
+    if (question.type === "multiple_choice" && question.allow_multiple) {
+      const selectedIds = new Set((answer?.response ?? "").split(",").filter(Boolean))
+      const correctIds = new Set(question.options.filter((o) => o.is_correct).map((o) => o.id))
+      isCorrect =
+        selectedIds.size === correctIds.size && [...selectedIds].every((id) => correctIds.has(id))
+    } else if (question.type === "multiple_choice" || question.type === "true_false") {
+      isCorrect = !!answer && question.options.some((o) => o.id === answer.response && o.is_correct)
+    } else if (question.type === "short_answer" && keywordOptions.length > 0) {
+      const response = (answer?.response ?? "").trim()
+      isCorrect = keywordOptions.some((o) =>
+        question.case_sensitive ? o.text.trim() === response : o.text.trim().toLowerCase() === response.toLowerCase()
+      )
+    } else {
+      isCorrect = null
+    }
+
+    if (isCorrect !== null) {
       totalGradablePoints += question.points
-      const isCorrect =
-        !!answer && question.options.some((o) => o.id === answer.response && o.is_correct)
       if (isCorrect) {
         awardedPoints += question.points
         correctCount += 1
       }
-      perQuestion[question.id] = isCorrect
-      responseRows.push({
-        attempt_id: attemptId,
-        question_id: question.id,
-        response: answer?.response ?? null,
-        is_correct: isCorrect,
-        points_awarded: isCorrect ? question.points : 0,
-      })
-    } else {
-      perQuestion[question.id] = null
-      responseRows.push({
-        attempt_id: attemptId,
-        question_id: question.id,
-        response: answer?.response ?? null,
-        is_correct: null,
-        points_awarded: null,
-      })
     }
+    perQuestion[question.id] = isCorrect
+    responseRows.push({
+      attempt_id: attemptId,
+      question_id: question.id,
+      response: answer?.response ?? null,
+      is_correct: isCorrect,
+      points_awarded: isCorrect === null ? null : isCorrect ? question.points : 0,
+    })
   }
 
   const { error: responsesError } = await supabase.from("quiz_responses").insert(responseRows)
