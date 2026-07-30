@@ -36,11 +36,15 @@ export function LearnSidebar({
   sections,
   currentLessonId,
   completedLessonIds,
+  basePath = "/learn",
+  mode = "learner",
 }: {
   courseId: string
   sections: CourseSection[]
   currentLessonId: string
   completedLessonIds: Set<string>
+  basePath?: string
+  mode?: "learner" | "admin-preview"
 }) {
   const [sideTab, setSideTab] = useState<"content" | "ai">("content")
 
@@ -78,6 +82,8 @@ export function LearnSidebar({
           sections={sections}
           currentLessonId={currentLessonId}
           completedLessonIds={completedLessonIds}
+          basePath={basePath}
+          mode={mode}
         />
       ) : (
         <AiAssistantTab />
@@ -91,11 +97,15 @@ function ContentTab({
   sections,
   currentLessonId,
   completedLessonIds,
+  basePath = "/learn",
+  mode = "learner",
 }: {
   courseId: string
   sections: CourseSection[]
   currentLessonId: string
   completedLessonIds: Set<string>
+  basePath?: string
+  mode?: "learner" | "admin-preview"
 }) {
   const [openId, setOpenId] = useState<string | null>(sections[0]?.id ?? null)
 
@@ -114,7 +124,7 @@ function ContentTab({
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold leading-tight">{section.title}</div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
-                  {doneCount} / {section.lessons.length}
+                  {mode === "admin-preview" ? `${section.lessons.length} lessons` : `${doneCount} / ${section.lessons.length}`}
                 </div>
               </div>
               <ChevronDown
@@ -137,27 +147,29 @@ function ContentTab({
                         isActive ? "border-ring bg-secondary" : "border-transparent hover:bg-muted"
                       )}
                     >
-                      <form action={toggleLessonComplete}>
-                        <input type="hidden" name="courseId" value={courseId} />
-                        <input type="hidden" name="lessonId" value={lesson.id} />
-                        <input type="hidden" name="completed" value={(!isDone).toString()} />
-                        <button
-                          type="submit"
-                          title="Mark complete"
-                          className={cn(
-                            "flex size-[18px] shrink-0 items-center justify-center rounded border",
-                            isDone ? "border-ring bg-ring" : "border-input bg-card"
-                          )}
-                        >
-                          {isDone && (
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
-                              <path d="M5 13 L10 18 L19 7" />
-                            </svg>
-                          )}
-                        </button>
-                      </form>
+                      {mode === "learner" && (
+                        <form action={toggleLessonComplete}>
+                          <input type="hidden" name="courseId" value={courseId} />
+                          <input type="hidden" name="lessonId" value={lesson.id} />
+                          <input type="hidden" name="completed" value={(!isDone).toString()} />
+                          <button
+                            type="submit"
+                            title="Mark complete"
+                            className={cn(
+                              "flex size-[18px] shrink-0 items-center justify-center rounded border",
+                              isDone ? "border-ring bg-ring" : "border-input bg-card"
+                            )}
+                          >
+                            {isDone && (
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
+                                <path d="M5 13 L10 18 L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        </form>
+                      )}
 
-                      <Link href={`/learn/${courseId}?lesson=${lesson.id}`} className="min-w-0 flex-1">
+                      <Link href={`${basePath}/${courseId}?lesson=${lesson.id}`} className="min-w-0 flex-1">
                         <div className="line-clamp-2 text-[13.5px] leading-snug">{lesson.title}</div>
                         <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Icon className="size-3" />

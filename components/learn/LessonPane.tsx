@@ -14,7 +14,9 @@ import {
   type Lesson,
 } from "@/lib/courses"
 import type { QuizAttemptInfo } from "@/lib/learn-server"
+import type { AdminQuiz } from "@/lib/courses-admin"
 import { QuizPlayer } from "@/components/learn/QuizPlayer"
+import { QuizPreview } from "@/components/learn/QuizPreview"
 
 export function LessonPane({
   courseId,
@@ -23,6 +25,8 @@ export function LessonPane({
   prevLessonId,
   nextLessonId,
   quizAttempt,
+  basePath = "/learn",
+  mode = "learner",
 }: {
   courseId: string
   course: Course
@@ -30,6 +34,8 @@ export function LessonPane({
   prevLessonId: string | null
   nextLessonId: string | null
   quizAttempt?: QuizAttemptInfo
+  basePath?: string
+  mode?: "learner" | "admin-preview"
 }) {
   const isQuiz = lesson.content_type === "quiz" || lesson.content_type === "mixed"
   const [showFinished, setShowFinished] = useState(false)
@@ -38,7 +44,7 @@ export function LessonPane({
     <div className={cn("relative flex min-w-0 flex-1 flex-col overflow-y-auto", isQuiz && "bg-[#f4f8fa]")}>
       <div className={cn("flex-1", isQuiz && "flex flex-col justify-center py-10")}>
         {showFinished ? (
-          <CourseFinishedPane courseId={courseId} prevLessonId={prevLessonId} />
+          <CourseFinishedPane courseId={courseId} prevLessonId={prevLessonId} basePath={basePath} />
         ) : (
           <>
             {lesson.content_type === "video" && (
@@ -48,6 +54,7 @@ export function LessonPane({
                 prevLessonId={prevLessonId}
                 nextLessonId={nextLessonId}
                 onReachEnd={() => setShowFinished(true)}
+                basePath={basePath}
               />
             )}
             {lesson.content_type === "text" && (
@@ -57,6 +64,7 @@ export function LessonPane({
                 prevLessonId={prevLessonId}
                 nextLessonId={nextLessonId}
                 onReachEnd={() => setShowFinished(true)}
+                basePath={basePath}
               />
             )}
             {lesson.content_type === "ppt" && (
@@ -66,17 +74,22 @@ export function LessonPane({
                 prevLessonId={prevLessonId}
                 nextLessonId={nextLessonId}
                 onReachEnd={() => setShowFinished(true)}
+                basePath={basePath}
               />
             )}
             {(lesson.content_type === "quiz" || lesson.content_type === "mixed") && (
               <div className="group relative">
                 {lesson.quiz ? (
-                  <QuizPlayer
-                    courseId={courseId}
-                    lessonId={lesson.id}
-                    quiz={lesson.quiz}
-                    attemptInfo={quizAttempt}
-                  />
+                  mode === "admin-preview" ? (
+                    <QuizPreview quiz={lesson.quiz as AdminQuiz} />
+                  ) : (
+                    <QuizPlayer
+                      courseId={courseId}
+                      lessonId={lesson.id}
+                      quiz={lesson.quiz}
+                      attemptInfo={quizAttempt}
+                    />
+                  )
                 ) : (
                   <QuizPlaceholder />
                 )}
@@ -86,6 +99,7 @@ export function LessonPane({
                   nextLessonId={nextLessonId}
                   onReachEnd={() => setShowFinished(true)}
                   revealOnHover={false}
+                  basePath={basePath}
                 />
               </div>
             )}
@@ -104,12 +118,14 @@ function LessonNavArrows({
   nextLessonId,
   onReachEnd,
   revealOnHover,
+  basePath = "/learn",
 }: {
   courseId: string
   prevLessonId: string | null
   nextLessonId: string | null
   onReachEnd: () => void
   revealOnHover: boolean
+  basePath?: string
 }) {
   const visibility = revealOnHover
     ? "opacity-0 transition-opacity duration-150 group-hover:opacity-100"
@@ -119,7 +135,7 @@ function LessonNavArrows({
     <>
       {prevLessonId ? (
         <Link
-          href={`/learn/${courseId}?lesson=${prevLessonId}`}
+          href={`${basePath}/${courseId}?lesson=${prevLessonId}`}
           title="Previous lesson"
           className={cn(
             "absolute top-1/2 left-3 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-input bg-card text-muted-foreground shadow-lg hover:bg-muted hover:text-foreground",
@@ -143,7 +159,7 @@ function LessonNavArrows({
 
       {nextLessonId ? (
         <Link
-          href={`/learn/${courseId}?lesson=${nextLessonId}`}
+          href={`${basePath}/${courseId}?lesson=${nextLessonId}`}
           title="Next lesson"
           className={cn(
             "absolute top-1/2 right-3 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-input bg-card text-muted-foreground shadow-lg hover:bg-muted hover:text-foreground",
@@ -171,15 +187,17 @@ function LessonNavArrows({
 function CourseFinishedPane({
   courseId,
   prevLessonId,
+  basePath = "/learn",
 }: {
   courseId: string
   prevLessonId: string | null
+  basePath?: string
 }) {
   return (
     <div className="relative flex flex-col items-center gap-5 p-16 text-center">
       {prevLessonId && (
         <Link
-          href={`/learn/${courseId}?lesson=${prevLessonId}`}
+          href={`${basePath}/${courseId}?lesson=${prevLessonId}`}
           title="Previous lesson"
           className="absolute top-1/2 left-3 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-input bg-card text-muted-foreground shadow-lg hover:bg-muted hover:text-foreground"
         >
@@ -200,12 +218,14 @@ function VideoContent({
   prevLessonId,
   nextLessonId,
   onReachEnd,
+  basePath = "/learn",
 }: {
   lesson: Lesson
   courseId: string
   prevLessonId: string | null
   nextLessonId: string | null
   onReachEnd: () => void
+  basePath?: string
 }) {
   const embedUrl = getYouTubeEmbedUrl(lesson.video_url)
 
@@ -221,6 +241,7 @@ function VideoContent({
           nextLessonId={nextLessonId}
           onReachEnd={onReachEnd}
           revealOnHover
+          basePath={basePath}
         />
       </div>
     )
@@ -243,6 +264,7 @@ function VideoContent({
         nextLessonId={nextLessonId}
         onReachEnd={onReachEnd}
         revealOnHover
+        basePath={basePath}
       />
     </div>
   )
@@ -254,12 +276,14 @@ function SlidesContent({
   prevLessonId,
   nextLessonId,
   onReachEnd,
+  basePath = "/learn",
 }: {
   lesson: Lesson
   courseId: string
   prevLessonId: string | null
   nextLessonId: string | null
   onReachEnd: () => void
+  basePath?: string
 }) {
   const embedUrl = getGoogleSlidesEmbedUrl(lesson.video_url)
 
@@ -275,6 +299,7 @@ function SlidesContent({
           nextLessonId={nextLessonId}
           onReachEnd={onReachEnd}
           revealOnHover
+          basePath={basePath}
         />
       </div>
     )
@@ -291,6 +316,7 @@ function SlidesContent({
         nextLessonId={nextLessonId}
         onReachEnd={onReachEnd}
         revealOnHover
+        basePath={basePath}
       />
     </div>
   )
@@ -302,12 +328,14 @@ function TextContent({
   prevLessonId,
   nextLessonId,
   onReachEnd,
+  basePath = "/learn",
 }: {
   lesson: Lesson
   courseId: string
   prevLessonId: string | null
   nextLessonId: string | null
   onReachEnd: () => void
+  basePath?: string
 }) {
   const [fullscreen, setFullscreen] = useState(false)
 
@@ -358,6 +386,7 @@ function TextContent({
           nextLessonId={nextLessonId}
           onReachEnd={onReachEnd}
           revealOnHover={false}
+          basePath={basePath}
         />
       )}
     </div>

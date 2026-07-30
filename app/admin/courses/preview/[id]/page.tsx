@@ -62,7 +62,7 @@ export default async function AdminCoursePreviewPage({
           <Card>
             <CardContent>
               <div className="mb-2 text-lg font-bold">Course Content</div>
-              <CourseCurriculum sections={course.sections} courseId={course.id} />
+              <CourseCurriculum sections={course.sections} courseId={course.id} basePath="/admin-preview" />
             </CardContent>
           </Card>
 

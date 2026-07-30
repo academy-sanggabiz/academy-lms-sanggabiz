@@ -28,7 +28,7 @@ export async function getCourseDetail(id: string): Promise<CourseDetail | null> 
         lessons(
           *,
           resources(*),
-          quiz:quizzes(*, questions(*, options:question_options(id,text,position)))
+          quiz:quizzes(*, questions(id,type,prompt,points,position,allow_multiple,case_sensitive,options:question_options(id,text,position)))
         )
       ),
       course_instructors(instructor:instructors(*))`
@@ -57,7 +57,12 @@ export async function getCourseDetail(id: string): Promise<CourseDetail | null> 
                   questions: [...quiz.questions]
                     .map((q) => ({
                       ...q,
-                      options: [...q.options].sort((a, b) => a.position - b.position),
+                      // short_answer options hold the accepted keywords (the answer
+                      // itself) -- never send them to the learner-facing player.
+                      options:
+                        q.type === "short_answer"
+                          ? []
+                          : [...q.options].sort((a, b) => a.position - b.position),
                     }))
                     .sort((a, b) => a.position - b.position),
                 }

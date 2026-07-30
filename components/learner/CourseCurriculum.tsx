@@ -26,9 +26,11 @@ const typeIcon: Record<LessonContentType, typeof PlayCircle> = {
 export function CourseCurriculum({
   sections,
   courseId,
+  basePath = "/learn",
 }: {
   sections: CourseSection[]
   courseId: string
+  basePath?: string
 }) {
   const [openId, setOpenId] = useState<string | null>(sections[0]?.id ?? null)
 
@@ -54,7 +56,7 @@ export function CourseCurriculum({
                   return (
                     <Link
                       key={lesson.id}
-                      href={`/learn/${courseId}?lesson=${lesson.id}`}
+                      href={`${basePath}/${courseId}?lesson=${lesson.id}`}
                       className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] text-foreground/80 hover:bg-muted"
                     >
                       <Icon className="size-4 shrink-0 text-primary" />

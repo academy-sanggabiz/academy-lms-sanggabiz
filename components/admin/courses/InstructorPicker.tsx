@@ -1,9 +1,20 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Plus } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -20,6 +31,7 @@ import type { Instructor } from "@/lib/courses"
 import {
   assignInstructorAction,
   createInstructorAction,
+  deleteInstructorAction,
   unassignInstructorAction,
 } from "@/app/admin/courses/actions"
 
@@ -72,6 +84,17 @@ export function InstructorPicker({
     })
   }
 
+  function handleDelete(instructorId: string) {
+    startTransition(async () => {
+      const result = await deleteInstructorAction(instructorId)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      toast.success("Instructor deleted")
+    })
+  }
+
   return (
     <div className="space-y-3">
       {instructors.length === 0 ? (
@@ -83,26 +106,62 @@ export function InstructorPicker({
           {instructors.map((instructor) => {
             const selected = instructor.id === currentInstructorId
             return (
-              <button
-                key={instructor.id}
-                type="button"
-                disabled={isPending}
-                onClick={() => handleSelect(instructor.id)}
-                className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
-                  selected ? "border-primary bg-secondary" : "border-border hover:bg-muted"
-                }`}
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                  {instructor.name.charAt(0).toUpperCase()}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{instructor.name}</span>
-                  {instructor.bio && (
-                    <span className="block truncate text-xs text-muted-foreground">{instructor.bio}</span>
-                  )}
-                </span>
-                {selected && <span className="text-xs font-semibold text-primary">Selected ✓</span>}
-              </button>
+              <div key={instructor.id} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => handleSelect(instructor.id)}
+                  className={`flex flex-1 items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                    selected ? "border-primary bg-secondary" : "border-border hover:bg-muted"
+                  }`}
+                >
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                    {instructor.name.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{instructor.name}</span>
+                    {instructor.bio && (
+                      <span className="block truncate text-xs text-muted-foreground">{instructor.bio}</span>
+                    )}
+                  </span>
+                  {selected && <span className="text-xs font-semibold text-primary">Selected ✓</span>}
+                </button>
+                <AlertDialog>
+                  <AlertDialogTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={isPending}
+                        aria-label={`Delete ${instructor.name}`}
+                        className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      />
+                    }
+                  >
+                    <Trash2 className="size-3.5" />
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete &quot;{instructor.name}&quot;?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This removes them from any course they&apos;re currently assigned to. This cannot
+                        be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive/10 text-destructive hover:bg-destructive/20"
+                        onClick={() => handleDelete(instructor.id)}
+                        disabled={isPending}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             )
           })}
         </div>

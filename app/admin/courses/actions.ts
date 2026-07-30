@@ -9,6 +9,7 @@ import {
   createDraftCourse,
   createInstructor,
   deleteCourse,
+  deleteInstructor,
   setCourseStatus,
   unassignInstructor,
   updateCourse,
@@ -144,4 +145,18 @@ export async function createInstructorAction(input: {
   if ("error" in result) return { ok: false, error: result.error }
 
   return { ok: true, data: result }
+}
+
+export async function deleteInstructorAction(id: string): Promise<ActionResult<undefined>> {
+  try {
+    await requireAdmin()
+  } catch {
+    return { ok: false, error: "Not authorized" }
+  }
+
+  const result = await deleteInstructor(id)
+  if ("error" in result) return { ok: false, error: result.error }
+
+  revalidatePath("/admin/courses/[id]/edit", "page")
+  return { ok: true, data: undefined }
 }

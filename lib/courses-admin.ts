@@ -22,7 +22,7 @@ export type AdminQuestionOption = QuestionOption & { is_correct: boolean }
 export type AdminQuestion = Omit<Question, "options"> & { options: AdminQuestionOption[] }
 export type AdminQuiz = Omit<Quiz, "questions"> & { questions: AdminQuestion[] }
 
-export type AuthorableQuestionType = "multiple_choice" | "short_answer" | "essay"
+export type AuthorableQuestionType = "multiple_choice" | "true_false" | "short_answer" | "essay"
 
 export type CoursePrerequisite = { id: string; title: string }
 
@@ -351,6 +351,13 @@ export async function unassignInstructor(
   return { ok: true }
 }
 
+export async function deleteInstructor(id: string): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase.from("instructors").delete().eq("id", id)
+  if (error) return { error: error.message }
+  return { ok: true }
+}
+
 /**
  * The reference "Lessons" tab has no section/module concept -- lessons hang
  * directly off a course. The DB still requires a course_sections row per
@@ -622,6 +629,17 @@ export async function createQuestion(
     .single()
 
   if (error || !data) return { error: error?.message ?? "Failed to create question" }
+
+  // true_false questions are always exactly two fixed options; seed them so
+  // the editor never needs an add/remove option UI for this type.
+  if (input.type === "true_false") {
+    const { error: optionsError } = await supabase.from("question_options").insert([
+      { question_id: data.id, text: "True", is_correct: true, position: 0 },
+      { question_id: data.id, text: "False", is_correct: false, position: 1 },
+    ])
+    if (optionsError) return { error: optionsError.message }
+  }
+
   return { id: data.id }
 }
 
@@ -637,7 +655,13 @@ export async function updateQuiz(
 
 export async function updateQuestion(
   id: string,
-  input: Partial<{ type: AuthorableQuestionType; prompt: string; points: number }>
+  input: Partial<{
+    type: AuthorableQuestionType
+    prompt: string
+    points: number
+    allow_multiple: boolean
+    case_sensitive: boolean
+  }>
 ): Promise<{ ok: true } | { error: string }> {
   const supabase = await createClient()
   const { error } = await supabase.from("questions").update(input).eq("id", id)
@@ -654,14 +678,14 @@ export async function deleteQuestion(id: string): Promise<{ ok: true } | { error
 
 export async function createOption(
   questionId: string,
-  input: { text: string }
+  input: { text: string; is_correct?: boolean }
 ): Promise<{ id: string } | { error: string }> {
   const supabase = await createClient()
   const position = await nextPosition("question_options", "question_id", questionId)
 
   const { data, error } = await supabase
     .from("question_options")
-    .insert({ question_id: questionId, text: input.text, is_correct: false, position })
+    .insert({ question_id: questionId, text: input.text, is_correct: input.is_correct ?? false, position })
     .select("id")
     .single()
 
@@ -695,6 +719,19 @@ export async function setCorrectOption(
   )
   const failed = results.find((r) => r.error)
   if (failed?.error) return { error: failed.error.message }
+  return { ok: true }
+}
+
+// Unlike setCorrectOption (single-select radio: exactly one correct option),
+// this flips one option's is_correct independently — for multi-correct
+// multiple_choice checkboxes and for short_answer keyword rows (always true).
+export async function toggleCorrectOption(
+  optionId: string,
+  isCorrect: boolean
+): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase.from("question_options").update({ is_correct: isCorrect }).eq("id", optionId)
+  if (error) return { error: error.message }
   return { ok: true }
 }
 

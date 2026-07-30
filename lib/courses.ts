@@ -52,6 +52,8 @@ export type Question = {
   prompt: string
   points: number
   position: number
+  allow_multiple: boolean
+  case_sensitive: boolean
   options: QuestionOption[]
 }
 
