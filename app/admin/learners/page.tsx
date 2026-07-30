@@ -3,6 +3,7 @@ import { BookOpen, Trophy, Users } from "lucide-react"
 import { getAdminCourseList } from "@/lib/courses-admin"
 import { getAdminLearnerList, getAdminLearnerStats } from "@/lib/learners-admin"
 import { LearnerManagementClient } from "@/components/admin/learners/LearnerManagementClient"
+import { StatCard } from "@/components/admin/StatCard"
 
 export default async function AdminLearnersPage() {
   const [learners, stats, courses] = await Promise.all([
@@ -27,26 +28,6 @@ export default async function AdminLearnersPage() {
       </div>
 
       <LearnerManagementClient learners={learners} courses={courses} />
-    </div>
-  )
-}
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Users
-  label: string
-  value: number
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-        <Icon className="size-4" />
-        {label}
-      </div>
-      <div className="text-[28px] font-bold">{value}</div>
     </div>
   )
 }
