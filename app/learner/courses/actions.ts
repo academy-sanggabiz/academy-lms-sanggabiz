@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 
 import { createClient } from "@/lib/supabase/server"
+import { recordEnrollmentTransaction } from "@/lib/transactions-server"
 
 export async function enroll(formData: FormData) {
   const courseId = String(formData.get("courseId") ?? "")
@@ -24,6 +25,8 @@ export async function enroll(formData: FormData) {
     console.error("enroll failed:", error.message)
     return
   }
+
+  await recordEnrollmentTransaction(supabase, userId, courseId)
 
   revalidatePath("/learner/courses")
   revalidatePath("/learner/courses/[id]", "page")

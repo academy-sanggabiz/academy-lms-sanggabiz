@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { recordEnrollmentTransaction } from "@/lib/transactions-server"
 
 /** Server-only admin data access for Learner Management -- never import from a Client Component. */
 
@@ -214,6 +215,9 @@ export async function enrollLearnerInCourse(
     console.error("enrollLearnerInCourse failed:", error.message)
     return { error: error.message }
   }
+
+  await recordEnrollmentTransaction(supabase, learnerId, courseId)
+
   return { ok: true }
 }
 

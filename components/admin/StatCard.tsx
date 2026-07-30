@@ -8,7 +8,7 @@ export function StatCard({
 }: {
   icon: LucideIcon
   label: string
-  value: number
+  value: number | string
   hint?: string
 }) {
   return (
