@@ -37,12 +37,12 @@ export function CourseListToolbar({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="Search by course title..."
-          className="h-9 pl-8"
+          className="h-9 bg-card pl-8"
         />
       </div>
 
       <Select value={status} onValueChange={(value) => onStatusChange(value as StatusFilter)}>
-        <SelectTrigger className="h-9 w-[160px]">
+        <SelectTrigger className="h-9 w-[160px] bg-card">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
@@ -53,7 +53,7 @@ export function CourseListToolbar({
       </Select>
 
       <Select value={price} onValueChange={(value) => onPriceChange(value as PriceFilter)}>
-        <SelectTrigger className="h-9 w-[160px]">
+        <SelectTrigger className="h-9 w-[160px] bg-card">
           <SelectValue placeholder="Price" />
         </SelectTrigger>
         <SelectContent>

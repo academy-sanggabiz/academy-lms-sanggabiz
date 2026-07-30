@@ -83,6 +83,25 @@ export async function getAdminCourseList(): Promise<Course[]> {
   return data
 }
 
+export type AdminCourseStats = {
+  totalCourses: number
+  publishedCourses: number
+}
+
+export async function getAdminCourseStats(): Promise<AdminCourseStats> {
+  const supabase = await createClient()
+
+  const [{ count: totalCourses }, { count: publishedCourses }] = await Promise.all([
+    supabase.from("courses").select("*", { count: "exact", head: true }),
+    supabase.from("courses").select("*", { count: "exact", head: true }).eq("status", "published"),
+  ])
+
+  return {
+    totalCourses: totalCourses ?? 0,
+    publishedCourses: publishedCourses ?? 0,
+  }
+}
+
 export async function getCourseDetailForAdmin(id: string): Promise<AdminCourseDetail | null> {
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -361,8 +380,39 @@ async function ensureDefaultSection(courseId: string): Promise<{ id: string } | 
   return { id: created.id }
 }
 
+export async function createSection(
+  courseId: string,
+  title: string
+): Promise<{ id: string } | { error: string }> {
+  const supabase = await createClient()
+  const position = await nextPosition("course_sections", "course_id", courseId)
+
+  const { data, error } = await supabase
+    .from("course_sections")
+    .insert({ course_id: courseId, title, position })
+    .select("id")
+    .single()
+
+  if (error || !data) return { error: error?.message ?? "Failed to create module" }
+  return { id: data.id }
+}
+
+export async function renameSection(id: string, title: string): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase.from("course_sections").update({ title }).eq("id", id)
+  if (error) return { error: error.message }
+  return { ok: true }
+}
+
+export async function deleteSection(id: string): Promise<{ ok: true } | { error: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase.from("course_sections").delete().eq("id", id)
+  if (error) return { error: error.message }
+  return { ok: true }
+}
+
 async function nextPosition(
-  table: "lessons" | "resources" | "questions" | "question_options" | "course_prerequisites",
+  table: "lessons" | "resources" | "questions" | "question_options" | "course_prerequisites" | "course_sections",
   column: "section_id" | "lesson_id" | "quiz_id" | "question_id" | "course_id",
   id: string
 ) {
@@ -379,18 +429,23 @@ async function nextPosition(
 
 export async function createLesson(
   courseId: string,
+  sectionId: string | null,
   input: { title: string; content_type: LessonContentType; duration_seconds: number | null }
 ): Promise<{ id: string } | { error: string }> {
-  const section = await ensureDefaultSection(courseId)
-  if ("error" in section) return section
+  let resolvedSectionId = sectionId
+  if (!resolvedSectionId) {
+    const section = await ensureDefaultSection(courseId)
+    if ("error" in section) return section
+    resolvedSectionId = section.id
+  }
 
   const supabase = await createClient()
-  const position = await nextPosition("lessons", "section_id", section.id)
+  const position = await nextPosition("lessons", "section_id", resolvedSectionId)
 
   const { data, error } = await supabase
     .from("lessons")
     .insert({
-      section_id: section.id,
+      section_id: resolvedSectionId,
       title: input.title,
       content_type: input.content_type,
       duration_seconds: input.duration_seconds,
@@ -471,10 +526,16 @@ export async function duplicateLesson(id: string): Promise<{ id: string } | { er
   return { id: copy.id }
 }
 
-export async function reorderLessons(orderedIds: string[]): Promise<{ ok: true } | { error: string }> {
+export async function reorderLessons(
+  sections: { id: string; lessonIds: string[] }[]
+): Promise<{ ok: true } | { error: string }> {
   const supabase = await createClient()
   const results = await Promise.all(
-    orderedIds.map((id, position) => supabase.from("lessons").update({ position }).eq("id", id))
+    sections.flatMap(({ id: sectionId, lessonIds }) =>
+      lessonIds.map((lessonId, position) =>
+        supabase.from("lessons").update({ position, section_id: sectionId }).eq("id", lessonId)
+      )
+    )
   )
   const failed = results.find((r) => r.error)
   if (failed?.error) return { error: failed.error.message }

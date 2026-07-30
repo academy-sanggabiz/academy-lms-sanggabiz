@@ -3,6 +3,21 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -25,7 +40,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import type { CourseSection, Lesson, LessonContentType, Resource } from "@/lib/courses"
 import type { AdminQuiz } from "@/lib/courses-admin"
@@ -38,6 +52,7 @@ import {
   HelpCircle,
   Link2,
   Plus,
+  Presentation,
   Trash2,
   Video,
   X,
@@ -47,17 +62,23 @@ import { toast } from "sonner"
 import {
   createLessonAction,
   createResourceAction,
+  createSectionAction,
   deleteLessonAction,
   deleteResourceAction,
+  deleteSectionAction,
   duplicateLessonAction,
+  renameSectionAction,
+  reorderLessonsAction,
   updateLessonAction,
   updateResourceAction,
 } from "@/app/admin/courses/lessons-actions"
 import { QuizEditor } from "./QuizEditor"
+import { RichTextEditor } from "../RichTextEditor"
 
 const LESSON_TYPES: { value: LessonContentType; label: string; description: string }[] = [
   { value: "video", label: "Video Lesson", description: "Lesson content is primarily video-based" },
   { value: "text", label: "Text Lesson", description: "Lesson content is primarily text-based" },
+  { value: "ppt", label: "Slides Lesson", description: "Lesson content is a Google Slides presentation" },
   { value: "quiz", label: "Quiz Lesson", description: "Lesson is a quiz that tests earlier content" },
 ]
 
@@ -66,18 +87,40 @@ const TYPE_ICON: Record<LessonContentType, React.ComponentType<{ className?: str
   text: FileText,
   quiz: HelpCircle,
   mixed: FileText,
+  ppt: Presentation,
 }
 
 export function LessonsTab({ courseId, initialSections }: { courseId: string; initialSections: CourseSection[] }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedSectionId, setExpandedSectionId] = useState<string | null>(initialSections[0]?.id ?? null)
+  const [sections, setSections] = useState(initialSections)
+  const [prevInitialSections, setPrevInitialSections] = useState(initialSections)
+  const [activeId, setActiveId] = useState<string | null>(null)
 
-  const lessons = initialSections[0]?.lessons ?? []
+  if (initialSections !== prevInitialSections) {
+    setPrevInitialSections(initialSections)
+    setSections(initialSections)
+  }
 
-  function handleAddLesson() {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+
+  function handleAddSection() {
     startTransition(async () => {
-      const result = await createLessonAction(courseId, {
+      const result = await createSectionAction(courseId, `Module ${sections.length + 1}`)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      setExpandedSectionId(result.data.id)
+      router.refresh()
+    })
+  }
+
+  function handleAddLesson(sectionId: string) {
+    startTransition(async () => {
+      const result = await createLessonAction(courseId, sectionId, {
         title: "Untitled Lesson",
         content_type: "video",
         duration_seconds: null,
@@ -91,31 +134,248 @@ export function LessonsTab({ courseId, initialSections }: { courseId: string; in
     })
   }
 
+  function findSectionIdForLesson(lessonId: string) {
+    return sections.find((s) => s.lessons.some((l) => l.id === lessonId))?.id ?? null
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    setActiveId(null)
+    if (!over) return
+
+    const fromSectionId = findSectionIdForLesson(active.id as string)
+    const toSectionId = sections.some((s) => s.id === over.id)
+      ? (over.id as string)
+      : findSectionIdForLesson(over.id as string)
+
+    if (!fromSectionId || !toSectionId) return
+    if (fromSectionId === toSectionId && active.id === over.id) return
+
+    const next = sections.map((s) => ({ ...s, lessons: [...s.lessons] }))
+    const from = next.find((s) => s.id === fromSectionId)!
+    const to = next.find((s) => s.id === toSectionId)!
+    const fromIndex = from.lessons.findIndex((l) => l.id === active.id)
+    const [moved] = from.lessons.splice(fromIndex, 1)
+
+    const overIndex = to.lessons.findIndex((l) => l.id === over.id)
+    const toIndex = overIndex >= 0 ? overIndex : to.lessons.length
+    to.lessons.splice(toIndex, 0, moved)
+
+    setSections(next)
+
+    startTransition(async () => {
+      const result = await reorderLessonsAction(
+        next.map((s) => ({ id: s.id, lessonIds: s.lessons.map((l) => l.id) }))
+      )
+      if (!result.ok) {
+        toast.error(result.error)
+        setSections(sections)
+        return
+      }
+      router.refresh()
+    })
+  }
+
+  const activeLesson = activeId
+    ? sections.flatMap((s) => s.lessons).find((l) => l.id === activeId)
+    : null
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-base font-bold">Course Lessons</h3>
-        <Button onClick={handleAddLesson} disabled={isPending}>
+        <h3 className="text-[17px] font-bold">Course Lessons</h3>
+        <Button
+          onClick={handleAddSection}
+          disabled={isPending}
+          className="bg-brand-gradient text-white hover:brightness-105"
+        >
           <Plus className="size-3.5" />
-          Add Lesson
+          Add Module
         </Button>
       </div>
 
-      {lessons.length === 0 ? (
+      {sections.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-          No lessons yet — click Add Lesson to build the course.
+          No modules yet — click Add Module to start building the course.
         </p>
       ) : (
-        <div className="flex flex-col gap-3">
-          {lessons.map((lesson, index) => (
-            <LessonCard
-              key={lesson.id}
-              lesson={lesson}
-              index={index}
-              expanded={expandedId === lesson.id}
-              onToggleExpand={() => setExpandedId(expandedId === lesson.id ? null : lesson.id)}
-            />
-          ))}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={(event) => setActiveId(event.active.id as string)}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setActiveId(null)}
+        >
+          <div className="flex flex-col gap-4">
+            {sections.map((section) => (
+              <SectionCard
+                key={section.id}
+                section={section}
+                expanded={expandedSectionId === section.id}
+                onToggleExpand={() =>
+                  setExpandedSectionId(expandedSectionId === section.id ? null : section.id)
+                }
+                onAddLesson={() => handleAddLesson(section.id)}
+                expandedLessonId={expandedId}
+                onToggleLessonExpand={(id) => setExpandedId(expandedId === id ? null : id)}
+                isPending={isPending}
+              />
+            ))}
+          </div>
+          <DragOverlay>
+            {activeLesson && (
+              <div className="rounded-xl border border-ring bg-card px-3.5 py-3 text-sm font-bold shadow-lg">
+                {activeLesson.title || "Untitled Lesson"}
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
+      )}
+    </div>
+  )
+}
+
+function SectionCard({
+  section,
+  expanded,
+  onToggleExpand,
+  onAddLesson,
+  expandedLessonId,
+  onToggleLessonExpand,
+  isPending,
+}: {
+  section: CourseSection
+  expanded: boolean
+  onToggleExpand: () => void
+  onAddLesson: () => void
+  expandedLessonId: string | null
+  onToggleLessonExpand: (id: string) => void
+  isPending: boolean
+}) {
+  const router = useRouter()
+  const [, startTransition] = useTransition()
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [title, setTitle] = useState(section.title)
+
+  function saveTitle() {
+    setEditingTitle(false)
+    if (title.trim() === section.title || !title.trim()) {
+      setTitle(section.title)
+      return
+    }
+    startTransition(async () => {
+      const result = await renameSectionAction(section.id, title.trim())
+      if (!result.ok) {
+        toast.error(result.error)
+        setTitle(section.title)
+        return
+      }
+      router.refresh()
+    })
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      const result = await deleteSectionAction(section.id)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      toast.success("Module deleted")
+      router.refresh()
+    })
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border">
+      <div className="flex items-center gap-2.5 bg-secondary/40 px-4 py-3">
+        {editingTitle ? (
+          <Input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={saveTitle}
+            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+            className="h-8 max-w-xs"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setEditingTitle(true)}
+            className="min-w-0 flex-1 truncate text-left text-sm font-bold hover:underline"
+            title="Click to rename"
+          >
+            {section.title}
+          </button>
+        )}
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {section.lessons.length} {section.lessons.length === 1 ? "lesson" : "lessons"}
+        </span>
+        <div className="flex-1" />
+        <AlertDialog>
+          <AlertDialogTrigger
+            render={<Button type="button" variant="ghost" size="icon-sm" title="Delete module" />}
+          >
+            <Trash2 className="size-3.5 text-destructive" />
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete &quot;{section.title}&quot;?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently deletes the module and its {section.lessons.length}{" "}
+                {section.lessons.length === 1 ? "lesson" : "lessons"} (including their resources and quizzes).
+                This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive/10 text-destructive hover:bg-destructive/20"
+                onClick={handleDelete}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <Button type="button" variant="ghost" size="icon-sm" title="Expand" onClick={onToggleExpand}>
+          <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
+        </Button>
+      </div>
+
+      {expanded && (
+        <div className="flex flex-col gap-3 border-t border-border p-4">
+          {section.lessons.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+              No lessons in this module yet.
+            </p>
+          ) : (
+            <SortableContext
+              items={section.lessons.map((l) => l.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {section.lessons.map((lesson, index) => (
+                <LessonCard
+                  key={lesson.id}
+                  lesson={lesson}
+                  index={index}
+                  expanded={expandedLessonId === lesson.id}
+                  onToggleExpand={() => onToggleLessonExpand(lesson.id)}
+                />
+              ))}
+            </SortableContext>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onAddLesson}
+            disabled={isPending}
+            className="self-start"
+          >
+            <Plus className="size-3.5" />
+            Add Lesson
+          </Button>
         </div>
       )}
     </div>
@@ -146,16 +406,18 @@ function LessonCard({
 
   const [contentOpen, setContentOpen] = useState(true)
   const [resourcesOpen, setResourcesOpen] = useState(false)
-  const [quizOpen, setQuizOpen] = useState(false)
+  const [quizOpen, setQuizOpen] = useState(lesson.content_type === "quiz")
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   const isComplete =
     title.trim().length > 0 &&
-    (contentType === "video"
+    (contentType === "video" || contentType === "ppt"
       ? videoUrl.trim().length > 0
       : contentType === "text"
-        ? content.trim().length > 0
-        : true)
+        ? content.replace(/<[^>]*>/g, "").trim().length > 0
+        : contentType === "quiz"
+          ? (lesson.quiz?.questions.length ?? 0) > 0
+          : true)
 
   function save(input: Parameters<typeof updateLessonAction>[1]) {
     startTransition(async () => {
@@ -199,10 +461,29 @@ function LessonCard({
 
   const Icon = TYPE_ICON[contentType]
 
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: lesson.id,
+  })
+
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        "overflow-hidden rounded-xl border border-border bg-card",
+        isDragging && "opacity-50"
+      )}
+    >
       <div className="flex items-center gap-2.5 bg-muted/40 px-3.5 py-3">
-        <GripVertical className="size-4 shrink-0 text-muted-foreground/50" />
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          title="Drag to reorder"
+          className="cursor-grab touch-none active:cursor-grabbing"
+        >
+          <GripVertical className="size-4 shrink-0 text-muted-foreground/50" />
+        </button>
         <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
           <Icon className="size-3.5" />
         </span>
@@ -311,6 +592,7 @@ function LessonCard({
             />
           </div>
 
+          {contentType !== "quiz" && (
           <SubSection title="Content" open={contentOpen} onToggle={() => setContentOpen((v) => !v)}>
             {contentType === "video" && (
               <div className="space-y-1.5">
@@ -328,15 +610,31 @@ function LessonCard({
               </div>
             )}
             {contentType === "text" && (
-              <Textarea
-                placeholder="Write the lesson content..."
+              <RichTextEditor
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
-                onBlur={() => save({ content: content.trim() || null })}
-                rows={5}
+                onBlur={(html) => {
+                  setContent(html)
+                  save({ content: html.replace(/<[^>]*>/g, "").trim() ? html : null })
+                }}
               />
             )}
+            {contentType === "ppt" && (
+              <div className="space-y-1.5">
+                <Label htmlFor={`lesson-slides-${lesson.id}`}>Google Slides Link</Label>
+                <Input
+                  id={`lesson-slides-${lesson.id}`}
+                  placeholder="https://docs.google.com/presentation/d/.../edit"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  onBlur={() => save({ video_url: videoUrl.trim() || null })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Paste the Google Slides share or &quot;Publish to web&quot; link
+                </p>
+              </div>
+            )}
           </SubSection>
+          )}
 
           <SubSection
             title={`Resources (${lesson.resources.length})`}
@@ -346,6 +644,7 @@ function LessonCard({
             <ResourcesEditor lessonId={lesson.id} resources={lesson.resources} />
           </SubSection>
 
+          {contentType === "quiz" && (
           <SubSection
             title={`Quiz (${lesson.quiz?.questions.length ?? 0} questions)`}
             open={quizOpen}
@@ -353,6 +652,7 @@ function LessonCard({
           >
             <QuizEditor lessonId={lesson.id} quiz={lesson.quiz as AdminQuiz | null} />
           </SubSection>
+          )}
 
           <SubSection title="Settings" open={settingsOpen} onToggle={() => setSettingsOpen((v) => !v)}>
             <div className="flex items-center justify-between gap-4 opacity-60">

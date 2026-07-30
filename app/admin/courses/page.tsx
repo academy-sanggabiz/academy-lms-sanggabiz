@@ -18,7 +18,7 @@ export default async function AdminCoursesPage() {
           </p>
         </div>
         <form action={createDraftCourseAction}>
-          <Button type="submit">
+          <Button type="submit" className="bg-brand-gradient text-white hover:brightness-105">
             <Plus className="size-4" />
             Create Course
           </Button>

@@ -77,7 +77,7 @@ export function PrerequisitesSettings({
 
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-semibold">Prerequisites Settings</h3>
+      <h3 className="text-[17px] font-bold">Prerequisites Settings</h3>
       <div className="flex items-start justify-between gap-5">
         <div>
           <div className="text-sm font-medium">Require Prerequisites</div>

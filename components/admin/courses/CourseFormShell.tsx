@@ -15,6 +15,7 @@ import { updateCourseAction } from "@/app/admin/courses/actions"
 
 import { BasicInfoTab } from "./tabs/BasicInfoTab"
 import { LessonsTab } from "./tabs/LessonsTab"
+import { PreviewTab } from "./tabs/PreviewTab"
 import { SettingsTab } from "./tabs/SettingsTab"
 import { arrayToLines, courseFormSchema, linesToArray, type CourseFormValues } from "./schema"
 
@@ -71,7 +72,7 @@ export function CourseFormShell({
 
   return (
     <FormProvider {...form}>
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-[900px]">
         <div className="mb-6 flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={() => router.push("/admin/courses")}>
             <ArrowLeft className="size-4" />
@@ -88,6 +89,7 @@ export function CourseFormShell({
             </Button>
             <Button
               disabled={isPending}
+              className="bg-brand-gradient text-white hover:brightness-105"
               onClick={form.handleSubmit((values) => onSubmit(values, "published"))}
             >
               {course.status === "published" ? "Save" : "Publish"}
@@ -95,12 +97,13 @@ export function CourseFormShell({
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6">
+        <div className="rounded-2xl border border-border bg-card p-6">
           <Tabs defaultValue="basic">
             <TabsList className="mb-6">
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
               <TabsTrigger value="lessons">Lessons</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabsTrigger value="preview">Preview</TabsTrigger>
             </TabsList>
 
             <TabsContent value="basic">
@@ -121,6 +124,10 @@ export function CourseFormShell({
                 availableCoursesForPrerequisites={availableCoursesForPrerequisites}
                 certificateSettings={course.certificate_settings}
               />
+            </TabsContent>
+
+            <TabsContent value="preview">
+              <PreviewTab lessonCount={course.lesson_count} durationHours={course.duration_hours} />
             </TabsContent>
           </Tabs>
         </div>

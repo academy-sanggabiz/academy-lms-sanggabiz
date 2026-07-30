@@ -5,9 +5,12 @@ import { revalidatePath } from "next/cache"
 import {
   createLesson,
   createResource,
+  createSection,
   deleteLesson,
   deleteResource,
+  deleteSection,
   duplicateLesson,
+  renameSection,
   reorderLessons,
   updateLesson,
   updateResource,
@@ -23,6 +26,7 @@ function revalidateEditPage() {
 
 export async function createLessonAction(
   courseId: string,
+  sectionId: string | null,
   input: { title: string; content_type: LessonContentType; duration_seconds: number | null }
 ): Promise<ActionResult<{ id: string }>> {
   try {
@@ -31,11 +35,56 @@ export async function createLessonAction(
     return { ok: false, error: "Not authorized" }
   }
 
-  const result = await createLesson(courseId, input)
+  const result = await createLesson(courseId, sectionId, input)
   if ("error" in result) return { ok: false, error: result.error }
 
   revalidateEditPage()
   return { ok: true, data: result }
+}
+
+export async function createSectionAction(
+  courseId: string,
+  title: string
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    await requireAdmin()
+  } catch {
+    return { ok: false, error: "Not authorized" }
+  }
+
+  const result = await createSection(courseId, title)
+  if ("error" in result) return { ok: false, error: result.error }
+
+  revalidateEditPage()
+  return { ok: true, data: result }
+}
+
+export async function renameSectionAction(id: string, title: string): Promise<ActionResult<undefined>> {
+  try {
+    await requireAdmin()
+  } catch {
+    return { ok: false, error: "Not authorized" }
+  }
+
+  const result = await renameSection(id, title)
+  if ("error" in result) return { ok: false, error: result.error }
+
+  revalidateEditPage()
+  return { ok: true, data: undefined }
+}
+
+export async function deleteSectionAction(id: string): Promise<ActionResult<undefined>> {
+  try {
+    await requireAdmin()
+  } catch {
+    return { ok: false, error: "Not authorized" }
+  }
+
+  const result = await deleteSection(id)
+  if ("error" in result) return { ok: false, error: result.error }
+
+  revalidateEditPage()
+  return { ok: true, data: undefined }
 }
 
 export async function updateLessonAction(
@@ -89,14 +138,16 @@ export async function duplicateLessonAction(id: string): Promise<ActionResult<{ 
   return { ok: true, data: result }
 }
 
-export async function reorderLessonsAction(orderedIds: string[]): Promise<ActionResult<undefined>> {
+export async function reorderLessonsAction(
+  sections: { id: string; lessonIds: string[] }[]
+): Promise<ActionResult<undefined>> {
   try {
     await requireAdmin()
   } catch {
     return { ok: false, error: "Not authorized" }
   }
 
-  const result = await reorderLessons(orderedIds)
+  const result = await reorderLessons(sections)
   if ("error" in result) return { ok: false, error: result.error }
 
   revalidateEditPage()

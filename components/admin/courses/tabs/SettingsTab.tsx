@@ -50,7 +50,7 @@ export function SettingsTab({
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Basic Settings</h3>
+        <h3 className="text-[17px] font-bold">Basic Settings</h3>
         <div className="space-y-1.5">
           <Label htmlFor="level">Level</Label>
           <Controller
@@ -75,7 +75,7 @@ export function SettingsTab({
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Enrollment Settings</h3>
+        <h3 className="text-[17px] font-bold">Enrollment Settings</h3>
         <Controller
           control={control}
           name="enrollmentMode"
@@ -128,7 +128,7 @@ export function SettingsTab({
       <CertificateSettings courseId={courseId} settings={certificateSettings} />
 
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Instructor Settings</h3>
+        <h3 className="text-[17px] font-bold">Instructor Settings</h3>
         <InstructorPicker
           courseId={courseId}
           instructors={instructors}

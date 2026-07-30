@@ -34,3 +34,7 @@ export function uploadCertificateTemplate(file: File) {
 export function uploadSignatureImage(file: File) {
   return uploadToBucket("certificate-assets", file, 1 * 1024 * 1024)
 }
+
+export function uploadLessonImage(file: File) {
+  return uploadToBucket("lesson-content", file, 5 * 1024 * 1024)
+}
