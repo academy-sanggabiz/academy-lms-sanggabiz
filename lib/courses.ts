@@ -30,7 +30,7 @@ export function formatPrice(price: number): string {
   return `Rp ${price.toLocaleString("id-ID")}`
 }
 
-export type LessonContentType = "video" | "text" | "quiz" | "mixed"
+export type LessonContentType = "video" | "text" | "quiz" | "mixed" | "ppt"
 
 export type QuestionType =
   | "multiple_choice"
@@ -121,6 +121,24 @@ export function getYouTubeEmbedUrl(url: string | null): string | null {
   }
 
   return videoId ? `https://www.youtube.com/embed/${videoId}` : null
+}
+
+export function getGoogleSlidesEmbedUrl(url: string | null): string | null {
+  if (!url) return null
+
+  try {
+    const parsed = new URL(url)
+    if (!parsed.hostname.includes("docs.google.com")) return null
+    if (!parsed.pathname.startsWith("/presentation/")) return null
+
+    const match = parsed.pathname.match(/^\/presentation\/d\/(e\/)?([^/]+)/)
+    if (!match) return null
+
+    const [, publishedPrefix, id] = match
+    return `https://docs.google.com/presentation/d/${publishedPrefix ?? ""}${id}/embed`
+  } catch {
+    return null
+  }
 }
 
 export function formatDuration(seconds: number | null): string {

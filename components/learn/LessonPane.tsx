@@ -6,7 +6,13 @@ import { ChevronLeft, ChevronRight, Maximize2, MessageCircleQuestion, Minimize2 
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { formatDuration, getYouTubeEmbedUrl, type Course, type Lesson } from "@/lib/courses"
+import {
+  formatDuration,
+  getGoogleSlidesEmbedUrl,
+  getYouTubeEmbedUrl,
+  type Course,
+  type Lesson,
+} from "@/lib/courses"
 import type { QuizAttemptInfo } from "@/lib/learn-server"
 import { QuizPlayer } from "@/components/learn/QuizPlayer"
 
@@ -46,6 +52,15 @@ export function LessonPane({
             )}
             {lesson.content_type === "text" && (
               <TextContent
+                lesson={lesson}
+                courseId={courseId}
+                prevLessonId={prevLessonId}
+                nextLessonId={nextLessonId}
+                onReachEnd={() => setShowFinished(true)}
+              />
+            )}
+            {lesson.content_type === "ppt" && (
+              <SlidesContent
                 lesson={lesson}
                 courseId={courseId}
                 prevLessonId={prevLessonId}
@@ -233,6 +248,54 @@ function VideoContent({
   )
 }
 
+function SlidesContent({
+  lesson,
+  courseId,
+  prevLessonId,
+  nextLessonId,
+  onReachEnd,
+}: {
+  lesson: Lesson
+  courseId: string
+  prevLessonId: string | null
+  nextLessonId: string | null
+  onReachEnd: () => void
+}) {
+  const embedUrl = getGoogleSlidesEmbedUrl(lesson.video_url)
+
+  if (!embedUrl) {
+    return (
+      <div className="group relative flex justify-center">
+        <div className="flex aspect-video h-[62vh] items-center justify-center bg-foreground/90 text-sm text-background/70">
+          No slides available for this lesson.
+        </div>
+        <LessonNavArrows
+          courseId={courseId}
+          prevLessonId={prevLessonId}
+          nextLessonId={nextLessonId}
+          onReachEnd={onReachEnd}
+          revealOnHover
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="group relative flex justify-center">
+      <div className="aspect-video h-[62vh] bg-black">
+        <iframe src={embedUrl} title={lesson.title} className="size-full" allowFullScreen />
+      </div>
+      <LessonNavArrows
+        courseId={courseId}
+        prevLessonId={prevLessonId}
+        nextLessonId={nextLessonId}
+        onReachEnd={onReachEnd}
+        revealOnHover
+      />
+    </div>
+  )
+}
+
 function TextContent({
   lesson,
   courseId,
@@ -280,16 +343,7 @@ function TextContent({
           </div>
           <h2 className="mb-7 text-[28px] leading-tight font-bold">{lesson.title}</h2>
           {lesson.content ? (
-            parseTextSections(lesson.content).map((section, i) => (
-              <div key={i} className="mb-7 last:mb-0">
-                {section.heading && (
-                  <h3 className="mb-2.5 text-[19px] font-bold">{section.heading}</h3>
-                )}
-                <p className="text-[15px] leading-[1.85] text-muted-foreground text-pretty">
-                  {section.body}
-                </p>
-              </div>
-            ))
+            <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: lesson.content }} />
           ) : (
             <p className="text-[15px] leading-[1.85] text-muted-foreground">
               No content available for this lesson.
@@ -308,26 +362,6 @@ function TextContent({
       )}
     </div>
   )
-}
-
-function parseTextSections(content: string): { heading: string | null; body: string }[] {
-  const lines = content.split("\n")
-  const sections: { heading: string | null; body: string }[] = []
-  let current: { heading: string | null; body: string } | null = null
-
-  for (const line of lines) {
-    if (line.startsWith("## ")) {
-      current = { heading: line.slice(3).trim(), body: "" }
-      sections.push(current)
-    } else if (current) {
-      current.body = current.body ? `${current.body} ${line}` : line
-    } else {
-      current = { heading: null, body: line }
-      sections.push(current)
-    }
-  }
-
-  return sections
 }
 
 function QuizPlaceholder() {

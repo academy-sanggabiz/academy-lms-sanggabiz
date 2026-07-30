@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ChevronDown, FileText, HelpCircle, Send, Sparkles, Video } from "lucide-react"
+import { ChevronDown, FileText, HelpCircle, Presentation, Send, Sparkles, Video } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { formatDuration, type CourseSection, type LessonContentType } from "@/lib/courses"
@@ -13,6 +13,7 @@ const typeIcon: Record<LessonContentType, typeof Video> = {
   text: FileText,
   quiz: HelpCircle,
   mixed: Video,
+  ppt: Presentation,
 }
 
 const typeLabel: Record<LessonContentType, string> = {
@@ -20,6 +21,7 @@ const typeLabel: Record<LessonContentType, string> = {
   text: "Reading",
   quiz: "Quiz",
   mixed: "Mixed",
+  ppt: "Slides",
 }
 
 const suggestedQuestions = [
