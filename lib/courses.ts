@@ -64,6 +64,15 @@ export type Quiz = {
   questions: Question[]
 }
 
+export type Resource = {
+  id: string
+  lesson_id: string
+  title: string
+  file_url: string
+  type: string | null
+  position: number
+}
+
 export type Lesson = {
   id: string
   section_id: string
@@ -74,6 +83,7 @@ export type Lesson = {
   content: string | null
   duration_seconds: number | null
   quiz: Quiz | null
+  resources: Resource[]
 }
 
 export type CourseSection = {
