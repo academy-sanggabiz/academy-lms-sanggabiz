@@ -107,7 +107,20 @@ export function QuizPlayer({
   if (stage === "active") {
     const question = quiz.questions[questionIndex]
     const isLast = questionIndex === quiz.questions.length - 1
-    const hasAnswer = !!answers[question.id]?.trim()
+    const isChoice = question.type === "multiple_choice" || question.type === "true_false"
+    const selectedIds = isChoice ? (answers[question.id] ?? "").split(",").filter(Boolean) : []
+    const hasAnswer = isChoice ? selectedIds.length > 0 : !!answers[question.id]?.trim()
+
+    function toggleOption(optionId: string) {
+      if (question.type === "multiple_choice" && question.allow_multiple) {
+        const next = selectedIds.includes(optionId)
+          ? selectedIds.filter((id) => id !== optionId)
+          : [...selectedIds, optionId]
+        setAnswers((a) => ({ ...a, [question.id]: next.join(",") }))
+      } else {
+        setAnswers((a) => ({ ...a, [question.id]: optionId }))
+      }
+    }
 
     return (
       <div className="mx-auto flex max-w-3xl flex-col gap-5 p-10">
@@ -125,14 +138,15 @@ export function QuizPlayer({
           <div className="mt-4 text-[17px]">{question.prompt}</div>
         </div>
 
-        {question.type === "multiple_choice" ? (
+        {isChoice ? (
           <div className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-6">
             {question.options.map((option) => {
-              const selected = answers[question.id] === option.id
+              const selected = selectedIds.includes(option.id)
+              const multi = question.type === "multiple_choice" && question.allow_multiple
               return (
                 <button
                   key={option.id}
-                  onClick={() => setAnswers((a) => ({ ...a, [question.id]: option.id }))}
+                  onClick={() => toggleOption(option.id)}
                   className={cn(
                     "flex items-center gap-3 rounded-xl border px-5 py-4 text-left hover:border-ring",
                     selected ? "border-ring" : "border-input"
@@ -140,11 +154,12 @@ export function QuizPlayer({
                 >
                   <div
                     className={cn(
-                      "flex size-4 shrink-0 items-center justify-center rounded-full border-2",
+                      "flex size-4 shrink-0 items-center justify-center border-2",
+                      multi ? "rounded-sm" : "rounded-full",
                       selected ? "border-ring" : "border-input"
                     )}
                   >
-                    {selected && <div className="size-2 rounded-full bg-ring" />}
+                    {selected && <div className={cn("size-2 bg-ring", multi ? "rounded-xs" : "rounded-full")} />}
                   </div>
                   <div className="text-[15px] font-semibold">{option.text}</div>
                 </button>
@@ -201,8 +216,12 @@ export function QuizPlayer({
             const isCorrect = result.perQuestion[question.id]
             const answer = answers[question.id] ?? ""
             const answerText =
-              question.type === "multiple_choice"
-                ? (question.options.find((o) => o.id === answer)?.text ?? "—")
+              question.type === "multiple_choice" || question.type === "true_false"
+                ? answer
+                    .split(",")
+                    .filter(Boolean)
+                    .map((id) => question.options.find((o) => o.id === id)?.text ?? "—")
+                    .join(", ") || "—"
                 : answer || "—"
 
             return (

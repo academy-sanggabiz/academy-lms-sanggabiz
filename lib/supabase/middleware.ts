@@ -46,6 +46,26 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/admin/login'
+      return NextResponse.redirect(url)
+    }
+
+    // Fast-path role check from the JWT claim (populated only once the
+    // custom access-token hook is enabled in Auth -> Hooks). If the claim
+    // is absent, defer to app/admin/layout.tsx's authoritative DB check
+    // rather than locking admins out here.
+    const role = user.app_metadata?.role as string | undefined
+    if (role && role !== 'admin' && role !== 'superadmin') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/admin/login'
+      url.searchParams.set('error', 'Not authorized for the admin area')
+      return NextResponse.redirect(url)
+    }
+  }
+
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   // If you're creating a new response object with NextResponse.next() make sure to:
   // 1. Pass the request in it, like so:

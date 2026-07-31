@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ChevronDown, CircleHelp, FileText, PlayCircle } from "lucide-react"
+import { ChevronDown, CircleHelp, FileText, PlayCircle, Presentation } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import type { CourseSection, LessonContentType } from "@/lib/courses"
@@ -12,6 +12,7 @@ const typeLabel: Record<LessonContentType, string> = {
   text: "Reading",
   quiz: "Quiz",
   mixed: "Mixed",
+  ppt: "Slides",
 }
 
 const typeIcon: Record<LessonContentType, typeof PlayCircle> = {
@@ -19,14 +20,17 @@ const typeIcon: Record<LessonContentType, typeof PlayCircle> = {
   text: FileText,
   quiz: CircleHelp,
   mixed: PlayCircle,
+  ppt: Presentation,
 }
 
 export function CourseCurriculum({
   sections,
   courseId,
+  basePath = "/learn",
 }: {
   sections: CourseSection[]
   courseId: string
+  basePath?: string
 }) {
   const [openId, setOpenId] = useState<string | null>(sections[0]?.id ?? null)
 
@@ -52,13 +56,13 @@ export function CourseCurriculum({
                   return (
                     <Link
                       key={lesson.id}
-                      href={`/learn/${courseId}?lesson=${lesson.id}`}
+                      href={`${basePath}/${courseId}?lesson=${lesson.id}`}
                       className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] text-foreground/80 hover:bg-muted"
                     >
                       <Icon className="size-4 shrink-0 text-primary" />
                       <span className="flex-1 truncate">{lesson.title}</span>
                       <span className="text-xs text-muted-foreground">
-                        {lesson.quiz
+                        {lesson.content_type === "quiz" && lesson.quiz
                           ? `${lesson.quiz.questions.length} questions`
                           : typeLabel[lesson.content_type]}
                       </span>

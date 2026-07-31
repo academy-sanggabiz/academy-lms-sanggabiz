@@ -1,37 +1,17 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Bell, Globe, Shield } from "lucide-react"
+import { Bell, Shield } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  changePassword,
-  deleteAccount,
-  updateCurrency,
-  updateNotificationPref,
-} from "@/app/learner/settings/actions"
-
-const CURRENCIES = [
-  { value: "USD", label: "USD - US Dollar" },
-  { value: "IDR", label: "IDR - Indonesian Rupiah" },
-  { value: "EUR", label: "EUR - Euro" },
-]
+import { changePassword, deleteAccount, updateNotificationPref } from "@/app/learner/settings/actions"
 
 export function SettingsView({
   notificationEmailEnabled,
-  currency,
 }: {
   notificationEmailEnabled: boolean
-  currency: string
 }) {
   return (
     <div>
@@ -42,7 +22,6 @@ export function SettingsView({
           <SecurityCard />
         </div>
         <div className="flex flex-col gap-6">
-          <CurrencyCard initialCurrency={currency} />
           <DeleteAccountCard />
         </div>
       </div>
@@ -126,46 +105,6 @@ function SecurityCard() {
           {status.message}
         </p>
       )}
-    </div>
-  )
-}
-
-function CurrencyCard({ initialCurrency }: { initialCurrency: string }) {
-  const [currency, setCurrency] = useState(initialCurrency)
-  const [isPending, startTransition] = useTransition()
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-7">
-      <div className="mb-5 flex items-center gap-2.5 text-lg font-bold">
-        <Globe className="size-[18px]" />
-        Display Currency
-      </div>
-      <Select
-        value={currency}
-        onValueChange={(value) => {
-          setCurrency(value as string)
-          startTransition(async () => {
-            const formData = new FormData()
-            formData.set("currency", value as string)
-            await updateCurrency(formData)
-          })
-        }}
-        disabled={isPending}
-      >
-        <SelectTrigger className="w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {CURRENCIES.map((c) => (
-            <SelectItem key={c.value} value={c.value}>
-              {c.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <div className="mt-2.5 text-[13px] text-muted-foreground">
-        This currency will be used to display prices for courses.
-      </div>
     </div>
   )
 }
