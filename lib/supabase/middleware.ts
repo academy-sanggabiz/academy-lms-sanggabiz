@@ -39,17 +39,17 @@ export async function updateSession(request: NextRequest) {
   const user = data?.claims
 
   if (!user && request.nextUrl.pathname.startsWith('/learn')) {
-    // no user, redirect to the learner login page
+    // no user, redirect to the unified login page
     // (covers both /learner/** and the full-screen /learn/[courseId] player)
     const url = request.nextUrl.clone()
-    url.pathname = '/auth/learner/login'
+    url.pathname = '/auth/login'
     return NextResponse.redirect(url)
   }
 
   if (request.nextUrl.pathname.startsWith('/admin')) {
     if (!user) {
       const url = request.nextUrl.clone()
-      url.pathname = '/auth/admin/login'
+      url.pathname = '/auth/login'
       return NextResponse.redirect(url)
     }
 
@@ -60,7 +60,7 @@ export async function updateSession(request: NextRequest) {
     const role = user.app_metadata?.role as string | undefined
     if (role && role !== 'admin' && role !== 'superadmin') {
       const url = request.nextUrl.clone()
-      url.pathname = '/auth/admin/login'
+      url.pathname = '/auth/login'
       url.searchParams.set('error', 'Not authorized for the admin area')
       return NextResponse.redirect(url)
     }
