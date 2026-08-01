@@ -4,12 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import type { MockCourse } from "@/lib/mock-courses"
+import type { Course } from "@/lib/courses"
 import { CourseCard } from "@/components/CourseCard"
 
 const AUTO_ADVANCE_MS = 5000
 
-export function FeaturedCoursesCarousel({ courses }: { courses: MockCourse[] }) {
+export function FeaturedCoursesCarousel({ courses }: { courses: Course[] }) {
   const trackRef = useRef<HTMLDivElement>(null)
   const [activeIndex, setActiveIndex] = useState(0)
 

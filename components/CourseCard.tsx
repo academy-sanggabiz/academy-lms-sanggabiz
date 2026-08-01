@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils"
-import type { MockCourse } from "@/lib/mock-courses"
+import { formatPrice, type Course } from "@/lib/courses"
 
 export function CourseCard({
   course,
   className,
 }: {
-  course: MockCourse
+  course: Course
   className?: string
 }) {
   return (
@@ -15,17 +15,26 @@ export function CourseCard({
         className
       )}
     >
-      <div className="course-thumb-placeholder relative mb-4 flex h-[180px] items-center justify-center rounded-md font-mono text-xs text-muted-foreground">
-        course thumbnail
+      <div className="course-thumb-placeholder relative mb-4 flex h-[180px] items-center justify-center overflow-hidden rounded-md font-mono text-xs text-muted-foreground">
+        {course.thumbnail_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={course.thumbnail_url}
+            alt={course.title}
+            className="size-full object-cover"
+          />
+        ) : (
+          "course thumbnail"
+        )}
         <span className="absolute top-3 right-3 rounded-full bg-ring px-3 py-1 text-xs font-semibold text-white">
-          {course.price}
+          {formatPrice(course.price)}
         </span>
       </div>
       <div className="mb-2.5 min-h-[46px] text-base leading-snug font-bold">
         {course.title}
       </div>
       <div className="text-[13px] text-muted-foreground">
-        {course.lessons} lessons · {course.hours} hours
+        {course.lesson_count} lessons · {course.duration_hours} hours
       </div>
     </div>
   )

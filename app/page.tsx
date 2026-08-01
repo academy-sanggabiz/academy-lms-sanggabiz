@@ -1,11 +1,11 @@
 import Link from "next/link"
 import { Award, GraduationCap, Layers, type LucideIcon } from "lucide-react"
-import { getPayload } from "payload"
 
-import config from "@payload-config"
 import { Button } from "@/components/ui/button"
 import { FeaturedCoursesCarousel } from "@/components/FeaturedCoursesCarousel"
-import { mockCourses } from "@/lib/mock-courses"
+import type { Course } from "@/lib/courses"
+import { getPublishedCourses } from "@/lib/courses-server"
+import { getLandingContent } from "@/lib/landing-server"
 
 const ICON_MAP: Record<string, LucideIcon> = {
   "graduation-cap": GraduationCap,
@@ -13,67 +13,18 @@ const ICON_MAP: Record<string, LucideIcon> = {
   award: Award,
 }
 
-type Hero = {
-  heading: string
-  highlightWord: string
-  subheading: string
-  primaryCtaText: string
-  primaryCtaHref: string
-}
-
-type Feature = {
-  icon: string
-  title: string
-  description: string
-}
-
-const defaultHero: Hero = {
-  heading: "Learn. Grow.",
-  highlightWord: "Succeed.",
-  subheading:
-    "Transform your life through knowledge with Sanggabiz. Access world-class courses designed to help you achieve your goals and unlock your potential.",
-  primaryCtaText: "Start Your Journey",
-  primaryCtaHref: "/auth/login",
-}
-
-const defaultFeatures: Feature[] = [
-  {
-    icon: "graduation-cap",
-    title: "Expert-Led Courses",
-    description:
-      "Learn from industry professionals and academic experts with years of experience.",
-  },
-  {
-    icon: "layers",
-    title: "Flexible Learning",
-    description:
-      "Study at your own pace with lifetime access to course materials and updates.",
-  },
-  {
-    icon: "award",
-    title: "Certified Learning",
-    description:
-      "Earn recognized certificates upon course completion to showcase your achievements.",
-  },
-]
-
-async function getLandingContent(): Promise<{ hero: Hero; features: Feature[] }> {
-  try {
-    const payload = await getPayload({ config })
-    const landing = await payload.findGlobal({ slug: "landing" })
-    const hero: Hero = landing?.hero?.heading ? (landing.hero as Hero) : defaultHero
-    const features: Feature[] =
-      landing?.features && landing.features.length > 0
-        ? (landing.features as Feature[])
-        : defaultFeatures
-    return { hero, features }
-  } catch {
-    return { hero: defaultHero, features: defaultFeatures }
-  }
-}
-
 export default async function Home() {
-  const { hero, features } = await getLandingContent()
+  const [{ hero, features, featuredCourseIds }, courses] = await Promise.all([
+    getLandingContent(),
+    getPublishedCourses(),
+  ])
+
+  const featured =
+    featuredCourseIds.length > 0
+      ? featuredCourseIds
+          .map((id) => courses.find((c) => c.id === id))
+          .filter((c): c is Course => !!c)
+      : courses.slice(0, 4)
 
   return (
     <div className="min-h-screen bg-card">
@@ -105,7 +56,10 @@ export default async function Home() {
         <h1 className="max-w-4xl text-4xl leading-tight font-bold tracking-tight sm:text-6xl">
           {hero.heading} <span className="text-ring">{hero.highlightWord}</span>
         </h1>
-        <p className="mt-7 max-w-xl text-lg text-muted-foreground">{hero.subheading}</p>
+        <div
+          className="lesson-prose mt-7 max-w-xl text-lg text-muted-foreground"
+          dangerouslySetInnerHTML={{ __html: hero.subheading }}
+        />
         <div className="mt-10 flex gap-3.5">
           <Button
             size="xl"
@@ -127,7 +81,7 @@ export default async function Home() {
         <p className="mt-3 mb-11 text-center text-muted-foreground">
           Start with our most popular course — free to enroll.
         </p>
-        <FeaturedCoursesCarousel courses={mockCourses} />
+        <FeaturedCoursesCarousel courses={featured} />
       </section>
 
       <section className="bg-card px-6 py-24 sm:px-10">
@@ -150,9 +104,10 @@ export default async function Home() {
                   <Icon className="size-6 text-primary" />
                 </div>
                 <div className="mb-2.5 text-lg font-bold">{title}</div>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {description}
-                </p>
+                <div
+                  className="lesson-prose text-sm leading-relaxed text-muted-foreground"
+                  dangerouslySetInnerHTML={{ __html: description }}
+                />
               </div>
             )
           })}
