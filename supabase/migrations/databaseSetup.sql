@@ -298,6 +298,75 @@ create policy "resources readable for published courses" on public.resources
 
 grant select on public.course_sections, public.lessons, public.resources to anon, authenticated;
 
+-- courses.lesson_count/duration_hours are denormalized for cheap list-view
+-- reads, but nothing in the app writes them after course creation -- keep
+-- them correct automatically via a trigger on lessons instead of relying on
+-- every lesson-CRUD call site to remember to update the parent course.
+create or replace function public.recalculate_course_lesson_stats(target_course_id uuid)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update public.courses c
+  set lesson_count = (
+        select count(*) from public.lessons l
+        join public.course_sections s on s.id = l.section_id
+        where s.course_id = c.id
+      ),
+      duration_hours = (
+        select coalesce(round(sum(l.duration_seconds) / 3600.0, 1), 0) from public.lessons l
+        join public.course_sections s on s.id = l.section_id
+        where s.course_id = c.id
+      )
+  where c.id = target_course_id;
+$$;
+
+create or replace function public.handle_lesson_stats_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  new_course_id uuid;
+  old_course_id uuid;
+begin
+  if tg_op in ('INSERT', 'UPDATE') then
+    select course_id into new_course_id from public.course_sections where id = new.section_id;
+    perform public.recalculate_course_lesson_stats(new_course_id);
+  end if;
+
+  if tg_op in ('UPDATE', 'DELETE') then
+    select course_id into old_course_id from public.course_sections where id = old.section_id;
+    if tg_op = 'DELETE' or old_course_id is distinct from new_course_id then
+      perform public.recalculate_course_lesson_stats(old_course_id);
+    end if;
+  end if;
+
+  return null;
+end;
+$$;
+
+drop trigger if exists on_lesson_stats_change on public.lessons;
+
+create trigger on_lesson_stats_change
+after insert or update of duration_seconds, section_id or delete on public.lessons
+for each row execute function public.handle_lesson_stats_change();
+
+-- One-time backfill so already-existing courses reflect their real curriculum.
+update public.courses c
+set lesson_count = (
+      select count(*) from public.lessons l
+      join public.course_sections s on s.id = l.section_id
+      where s.course_id = c.id
+    ),
+    duration_hours = (
+      select coalesce(round(sum(l.duration_seconds) / 3600.0, 1), 0) from public.lessons l
+      join public.course_sections s on s.id = l.section_id
+      where s.course_id = c.id
+    );
+
 -- =============================================================================
 -- 6. enrollments / lesson_progress
 -- =============================================================================
