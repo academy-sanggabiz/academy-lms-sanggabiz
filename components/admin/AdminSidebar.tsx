@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { LayoutDashboard, BookOpen, Users, ShoppingCart, PanelLeftClose } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useNavigationBlocker } from "@/components/admin/NavigationBlockerContext"
 
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -60,10 +61,16 @@ function NavLink({
 }) {
   const pathname = usePathname()
   const active = pathname === href || pathname?.startsWith(`${href}/`)
+  const { isBlocked } = useNavigationBlocker()
 
   return (
     <Link
       href={href}
+      onNavigate={(e) => {
+        if (isBlocked && !window.confirm("You have unsaved changes. Leave without saving?")) {
+          e.preventDefault()
+        }
+      }}
       className={cn(
         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
         active

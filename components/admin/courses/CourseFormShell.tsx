@@ -1,14 +1,25 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { FormProvider, useForm } from "react-hook-form"
 import { ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useNavigationBlocker } from "@/components/admin/NavigationBlockerContext"
 import type { Instructor } from "@/lib/courses"
 import type { AdminCourseDetail, CoursePrerequisite } from "@/lib/courses-admin"
 import { updateCourseAction } from "@/app/admin/courses/actions"
@@ -32,6 +43,8 @@ export function CourseFormShell({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false)
+  const { setIsBlocked } = useNavigationBlocker()
 
   const form = useForm<CourseFormValues>({
     resolver: zodResolver(courseFormSchema),
@@ -46,6 +59,33 @@ export function CourseFormShell({
       price: course.price ?? 0,
     },
   })
+
+  const isDirty = form.formState.isDirty
+
+  useEffect(() => {
+    setIsBlocked(isDirty)
+    return () => setIsBlocked(false)
+  }, [isDirty, setIsBlocked])
+
+  useEffect(() => {
+    if (!isDirty) return
+
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [isDirty])
+
+  function handleBack() {
+    if (isDirty) {
+      setShowLeaveDialog(true)
+      return
+    }
+    router.push("/admin/courses")
+  }
 
   function onSubmit(values: CourseFormValues, status: "draft" | "published") {
     startTransition(async () => {
@@ -66,6 +106,7 @@ export function CourseFormShell({
         return
       }
       toast.success(status === "published" ? "Course published" : "Saved as draft")
+      form.reset(values)
       router.refresh()
     })
   }
@@ -74,10 +115,26 @@ export function CourseFormShell({
     <FormProvider {...form}>
       <div className="mx-auto max-w-[900px]">
         <div className="mb-6 flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => router.push("/admin/courses")}>
+          <Button variant="ghost" size="sm" onClick={handleBack}>
             <ArrowLeft className="size-4" />
             Back
           </Button>
+          <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+                <AlertDialogDescription>
+                  You have unsaved changes. Leave without saving?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => router.push("/admin/courses")}>
+                  Leave
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <div className="flex items-center gap-2">
             <h1 className="mr-3 text-xl font-bold">{isNew ? "New Course" : "Edit Course"}</h1>
             <Button
