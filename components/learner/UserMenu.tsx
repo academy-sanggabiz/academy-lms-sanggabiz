@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { logout } from "@/app/auth/learner/actions"
+import { logout } from "@/app/auth/login/actions"
 
 export function UserMenu({ name, email }: { name: string; email: string }) {
   const initial = name.charAt(0).toUpperCase()

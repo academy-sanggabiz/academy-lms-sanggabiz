@@ -21,7 +21,7 @@ export default async function AdminPreviewPage({
   try {
     await requireAdmin()
   } catch {
-    redirect("/auth/admin/login")
+    redirect("/auth/login")
   }
 
   const course = await getCourseDetailForAdmin(courseId)

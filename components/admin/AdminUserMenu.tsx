@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { logout } from "@/app/auth/admin/actions"
+import { logout } from "@/app/auth/login/actions"
 
 export function AdminUserMenu({ name, role }: { name: string; role: "admin" | "superadmin" }) {
   const initial = name.charAt(0).toUpperCase()

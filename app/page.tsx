@@ -33,7 +33,7 @@ const defaultHero: Hero = {
   subheading:
     "Transform your life through knowledge with Sanggabiz. Access world-class courses designed to help you achieve your goals and unlock your potential.",
   primaryCtaText: "Start Your Journey",
-  primaryCtaHref: "/auth/learner/login",
+  primaryCtaHref: "/auth/login",
 }
 
 const defaultFeatures: Feature[] = [
@@ -87,14 +87,14 @@ export default async function Home() {
             variant="ghost"
             size="lg"
             className="h-10 px-5 text-sm font-semibold"
-            render={<Link href="/auth/learner/login" />} nativeButton={false}
+            render={<Link href="/auth/login" />} nativeButton={false}
           >
             Login
           </Button>
           <Button
             size="lg"
             className="h-10 px-5 text-sm font-semibold bg-brand-gradient text-white hover:brightness-105"
-            render={<Link href="/auth/learner/login" />} nativeButton={false}
+            render={<Link href="/auth/login" />} nativeButton={false}
           >
             Get Started
           </Button>
@@ -114,7 +114,7 @@ export default async function Home() {
           >
             {hero.primaryCtaText}
           </Button>
-          <Button size="xl" variant="outline" render={<Link href="/auth/learner/login" />} nativeButton={false}>
+          <Button size="xl" variant="outline" render={<Link href="/auth/login" />} nativeButton={false}>
             Explore Courses
           </Button>
         </div>
@@ -171,11 +171,11 @@ export default async function Home() {
           <Button
             size="xl"
             className="bg-brand-gradient text-white hover:brightness-105"
-            render={<Link href="/auth/learner/login" />} nativeButton={false}
+            render={<Link href="/auth/login" />} nativeButton={false}
           >
             Create Free Account
           </Button>
-          <Button size="xl" variant="outline" render={<Link href="/auth/learner/login" />} nativeButton={false}>
+          <Button size="xl" variant="outline" render={<Link href="/auth/login" />} nativeButton={false}>
             Browse All Courses
           </Button>
         </div>
