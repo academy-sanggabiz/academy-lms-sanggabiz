@@ -19,9 +19,14 @@ export function AdminShell({
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   return (
+<<<<<<< HEAD
     <NavigationBlockerProvider>
       <div className="flex min-h-screen">
         <AdminSidebar open={sidebarOpen} onToggle={() => setSidebarOpen((v) => !v)} />
+=======
+    <div className="flex min-h-screen">
+      <AdminSidebar open={sidebarOpen} onToggle={() => setSidebarOpen((v) => !v)} role={role} />
+>>>>>>> d8328ec (feat(superadmin): add CMS navigation links to admin shell and sidebar)
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-10 flex h-14 items-center border-b border-border bg-card px-4">

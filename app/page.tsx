@@ -1,32 +1,80 @@
 import Link from "next/link"
-import { Award, GraduationCap, Layers } from "lucide-react"
+import { Award, GraduationCap, Layers, type LucideIcon } from "lucide-react"
+import { getPayload } from "payload"
 
+import config from "@payload-config"
 import { Button } from "@/components/ui/button"
 import { FeaturedCoursesCarousel } from "@/components/FeaturedCoursesCarousel"
 import { mockCourses } from "@/lib/mock-courses"
 
-const features = [
+const ICON_MAP: Record<string, LucideIcon> = {
+  "graduation-cap": GraduationCap,
+  layers: Layers,
+  award: Award,
+}
+
+type Hero = {
+  heading: string
+  highlightWord: string
+  subheading: string
+  primaryCtaText: string
+  primaryCtaHref: string
+}
+
+type Feature = {
+  icon: string
+  title: string
+  description: string
+}
+
+const defaultHero: Hero = {
+  heading: "Learn. Grow.",
+  highlightWord: "Succeed.",
+  subheading:
+    "Transform your life through knowledge with Sanggabiz. Access world-class courses designed to help you achieve your goals and unlock your potential.",
+  primaryCtaText: "Start Your Journey",
+  primaryCtaHref: "/auth/learner/login",
+}
+
+const defaultFeatures: Feature[] = [
   {
-    icon: GraduationCap,
+    icon: "graduation-cap",
     title: "Expert-Led Courses",
     description:
       "Learn from industry professionals and academic experts with years of experience.",
   },
   {
-    icon: Layers,
+    icon: "layers",
     title: "Flexible Learning",
     description:
       "Study at your own pace with lifetime access to course materials and updates.",
   },
   {
-    icon: Award,
+    icon: "award",
     title: "Certified Learning",
     description:
       "Earn recognized certificates upon course completion to showcase your achievements.",
   },
 ]
 
-export default function Home() {
+async function getLandingContent(): Promise<{ hero: Hero; features: Feature[] }> {
+  try {
+    const payload = await getPayload({ config })
+    const landing = await payload.findGlobal({ slug: "landing" })
+    const hero: Hero = landing?.hero?.heading ? (landing.hero as Hero) : defaultHero
+    const features: Feature[] =
+      landing?.features && landing.features.length > 0
+        ? (landing.features as Feature[])
+        : defaultFeatures
+    return { hero, features }
+  } catch {
+    return { hero: defaultHero, features: defaultFeatures }
+  }
+}
+
+export default async function Home() {
+  const { hero, features } = await getLandingContent()
+
   return (
     <div className="min-h-screen bg-card">
       <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border bg-card/90 px-6 backdrop-blur-sm sm:px-10">
@@ -55,19 +103,16 @@ export default function Home() {
 
       <section className="flex flex-col items-center bg-gradient-to-b from-card to-background px-6 py-28 text-center sm:py-32">
         <h1 className="max-w-4xl text-4xl leading-tight font-bold tracking-tight sm:text-6xl">
-          Learn. Grow. <span className="text-ring">Succeed.</span>
+          {hero.heading} <span className="text-ring">{hero.highlightWord}</span>
         </h1>
-        <p className="mt-7 max-w-xl text-lg text-muted-foreground">
-          Transform your life through knowledge with Sanggabiz. Access world-class
-          courses designed to help you achieve your goals and unlock your potential.
-        </p>
+        <p className="mt-7 max-w-xl text-lg text-muted-foreground">{hero.subheading}</p>
         <div className="mt-10 flex gap-3.5">
           <Button
             size="xl"
             className="bg-brand-gradient text-white hover:brightness-105"
-            render={<Link href="/auth/learner/login" />} nativeButton={false}
+            render={<Link href={hero.primaryCtaHref} />} nativeButton={false}
           >
-            Start Your Journey
+            {hero.primaryCtaText}
           </Button>
           <Button size="xl" variant="outline" render={<Link href="/auth/learner/login" />} nativeButton={false}>
             Explore Courses
@@ -94,20 +139,23 @@ export default function Home() {
           drive real results.
         </p>
         <div className="mx-auto grid max-w-4xl grid-cols-1 justify-center gap-6 sm:grid-cols-3">
-          {features.map(({ icon: Icon, title, description }) => (
-            <div
-              key={title}
-              className="rounded-xl border border-border bg-card p-9 text-center transition-shadow hover:shadow-[0_8px_24px_rgba(20,55,64,0.08)]"
-            >
-              <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-full bg-secondary">
-                <Icon className="size-6 text-primary" />
+          {features.map(({ icon, title, description }) => {
+            const Icon = ICON_MAP[icon ?? "graduation-cap"] ?? GraduationCap
+            return (
+              <div
+                key={title}
+                className="rounded-xl border border-border bg-card p-9 text-center transition-shadow hover:shadow-[0_8px_24px_rgba(20,55,64,0.08)]"
+              >
+                <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-full bg-secondary">
+                  <Icon className="size-6 text-primary" />
+                </div>
+                <div className="mb-2.5 text-lg font-bold">{title}</div>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {description}
+                </p>
               </div>
-              <div className="mb-2.5 text-lg font-bold">{title}</div>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {description}
-              </p>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </section>
 

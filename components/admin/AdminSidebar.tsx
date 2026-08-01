@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, BookOpen, Users, ShoppingCart, PanelLeftClose } from "lucide-react"
+import { LayoutDashboard, BookOpen, Users, ShoppingCart, PanelLeftClose, Layout } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { useNavigationBlocker } from "@/components/admin/NavigationBlockerContext"
@@ -14,7 +14,15 @@ const navItems = [
   { href: "/admin/purchases", label: "Purchase", icon: ShoppingCart },
 ]
 
-export function AdminSidebar({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+export function AdminSidebar({
+  open,
+  onToggle,
+  role,
+}: {
+  open: boolean
+  onToggle: () => void
+  role: "admin" | "superadmin"
+}) {
   return (
     <aside
       className={cn(
@@ -39,6 +47,16 @@ export function AdminSidebar({ open, onToggle }: { open: boolean; onToggle: () =
         {navItems.map(({ href, label, icon: Icon }) => (
           <NavLink key={href} href={href} label={label} icon={Icon} />
         ))}
+        {role === "superadmin" && (
+          // eslint-disable-next-line @next/next/no-html-link-for-pages -- Payload's admin is a separate RSC app, not part of this router
+          <a
+            href="/superadmin/cms"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Layout className="size-[18px]" />
+            Landing Page
+          </a>
+        )}
       </nav>
 
       <div className="flex-1" />
