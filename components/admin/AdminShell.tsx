@@ -21,7 +21,7 @@ export function AdminShell({
   return (
     <NavigationBlockerProvider>
       <div className="flex min-h-screen">
-        <AdminSidebar open={sidebarOpen} onToggle={() => setSidebarOpen((v) => !v)} />
+        <AdminSidebar open={sidebarOpen} onToggle={() => setSidebarOpen((v) => !v)} role={role} />
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-10 flex h-14 items-center border-b border-border bg-card px-4">

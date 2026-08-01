@@ -8,10 +8,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const result = await resolveAdminProfile()
 
   if (result.status === "unauthenticated") {
-    redirect("/auth/admin/login")
+    redirect("/auth/login")
   }
   if (result.status === "unauthorized") {
-    redirect("/auth/admin/login?error=Not authorized for the admin area")
+    redirect("/auth/login?error=Not authorized for the admin area")
   }
 
   const supabase = await createClient()

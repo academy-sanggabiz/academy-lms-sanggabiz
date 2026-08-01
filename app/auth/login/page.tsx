@@ -3,9 +3,9 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
-import { signup } from "../actions"
+import { login } from "./actions"
 
-export default async function LearnerSignupPage({
+export default async function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>
@@ -20,8 +20,8 @@ export default async function LearnerSignupPage({
       </div>
       <div className="w-full max-w-sm space-y-5 rounded-xl border border-border bg-card p-8">
         <div className="space-y-1 text-center">
-          <h1 className="text-xl font-bold">Create your account</h1>
-          <p className="text-sm text-muted-foreground">Start learning with Sanggabiz.</p>
+          <h1 className="text-xl font-bold">Sign in</h1>
+          <p className="text-sm text-muted-foreground">Sign in to Sanggabiz to continue.</p>
         </div>
 
         {error && (
@@ -30,19 +30,18 @@ export default async function LearnerSignupPage({
           </p>
         )}
 
-        <form action={signup} className="space-y-3">
-          <Input type="text" name="fullName" placeholder="Full name" required />
+        <form action={login} className="space-y-3">
           <Input type="email" name="email" placeholder="Email" required />
-          <Input type="password" name="password" placeholder="Password" required minLength={6} />
+          <Input type="password" name="password" placeholder="Password" required />
           <Button type="submit" className="w-full">
-            Sign up
+            Log in
           </Button>
         </form>
 
         <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link href="/auth/login" className="text-ring hover:underline">
-            Log in
+          Don&apos;t have an account?{" "}
+          <Link href="/auth/learner/signup" className="text-ring hover:underline">
+            Sign up
           </Link>
         </p>
       </div>

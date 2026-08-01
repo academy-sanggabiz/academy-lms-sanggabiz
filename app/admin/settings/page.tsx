@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 
 export default async function AdminSettingsPage() {
   const result = await resolveAdminProfile()
-  if (result.status !== "ok") redirect("/auth/admin/login")
+  if (result.status !== "ok") redirect("/auth/login")
 
   const supabase = await createClient()
   const { data: profile } = await supabase

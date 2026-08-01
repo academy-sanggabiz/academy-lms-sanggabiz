@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation"
 
-import { resolveAdminProfile } from "@/lib/auth/require-admin"
+import { resolveUserRole, roleHomePath } from "@/lib/auth/require-admin"
 import { createClient } from "@/lib/supabase/server"
 
 export async function login(formData: FormData) {
@@ -13,22 +13,21 @@ export async function login(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    redirect(`/auth/admin/login?error=${encodeURIComponent(error.message)}`)
+    redirect(`/auth/login?error=${encodeURIComponent(error.message)}`)
   }
 
-  const result = await resolveAdminProfile()
-  if (result.status !== "ok") {
+  const resolved = await resolveUserRole()
+  if (!resolved) {
+    // Signed in but no resolvable session — bail out safely.
     await supabase.auth.signOut()
-    redirect(
-      `/auth/admin/login?error=${encodeURIComponent("Not authorized for the admin area")}`
-    )
+    redirect(`/auth/login?error=${encodeURIComponent("Could not resolve your account")}`)
   }
 
-  redirect("/admin/dashboard")
+  redirect(roleHomePath(resolved.role))
 }
 
 export async function logout() {
   const supabase = await createClient()
   await supabase.auth.signOut()
-  redirect("/auth/admin/login")
+  redirect("/auth/login")
 }

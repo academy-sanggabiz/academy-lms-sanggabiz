@@ -10,7 +10,7 @@ export default function AuthCodeErrorPage() {
       <p className="text-muted-foreground">
         We couldn&apos;t complete your sign-in. The link may have expired or already been used.
       </p>
-      <Link href="/auth/learner/login" className="text-ring hover:underline">
+      <Link href="/auth/login" className="text-ring hover:underline">
         Back to login
       </Link>
     </div>
