@@ -37,7 +37,7 @@ export function roleHomePath(role: UserRole): string {
     case "admin":
     case "superadmin":
       // Superadmin is a superset of admin and the admin area grants full
-      // access; the Payload CMS at /superadmin/cms keeps its own login.
+      // access, including the superadmin-only landing-page editor.
       return "/admin/dashboard"
     case "learner":
     default:
@@ -94,4 +94,29 @@ export async function requireAdmin(): Promise<AdminProfile> {
   const admin = await getAdminProfile()
   if (!admin) throw new Error("Not authorized for the admin area")
   return admin
+}
+
+export type SuperAdminProfile = {
+  userId: string
+  role: "superadmin"
+}
+
+export type SuperAdminProfileResult =
+  | { status: "ok"; profile: SuperAdminProfile }
+  | { status: "unauthenticated" }
+  | { status: "unauthorized" }
+
+/** Same resolution as resolveAdminProfile, but only "superadmin" passes. */
+export async function resolveSuperAdminProfile(): Promise<SuperAdminProfileResult> {
+  const result = await resolveAdminProfile()
+  if (result.status !== "ok") return result
+  if (result.profile.role !== "superadmin") return { status: "unauthorized" }
+  return { status: "ok", profile: { userId: result.profile.userId, role: "superadmin" } }
+}
+
+/** Throws if the current session isn't superadmin (admin alone is not enough). */
+export async function requireSuperAdmin(): Promise<SuperAdminProfile> {
+  const result = await resolveSuperAdminProfile()
+  if (result.status !== "ok") throw new Error("Not authorized for the superadmin area")
+  return result.profile
 }

@@ -969,3 +969,81 @@ create policy "admins can delete certificate assets" on storage.objects
 -- lesson editor) is NOT created here — like the two buckets above it needs
 -- public read, but it must be created manually in the Supabase Dashboard
 -- (see CLAUDE.md), not via SQL.
+
+-- =============================================================================
+-- 11. Public landing page content (superadmin-authored)
+-- =============================================================================
+--
+-- Replaces the earlier PayloadCMS-backed landing global: the public "/"
+-- page's hero + feature cards are now editable in-app at /admin/landing,
+-- superadmin-only, and stored here as a single-row table (there is only ever
+-- one landing page).
+
+-- Stricter than is_admin() above — some settings (like site-wide public
+-- content) are reserved for superadmin, not every admin.
+create function public.is_superadmin()
+returns boolean
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = (select auth.uid()) and role = 'superadmin'
+  );
+$$;
+
+grant execute on function public.is_superadmin() to authenticated;
+
+-- `id` is fixed to `true` so the check constraint enforces a single row.
+create table public.landing_content (
+  id boolean primary key default true check (id),
+  heading text not null,
+  highlight_word text not null,
+  subheading text not null,
+  primary_cta_text text not null,
+  primary_cta_href text not null,
+  features jsonb not null default '[]',
+  featured_course_ids uuid[] not null default '{}',
+  updated_at timestamptz not null default now()
+);
+
+alter table public.landing_content enable row level security;
+
+-- Public read — the "/" page renders this with the anon key, same as
+-- published courses.
+create policy "public can read landing content" on public.landing_content
+  for select to anon, authenticated
+  using (true);
+
+create policy "superadmins can insert landing content" on public.landing_content
+  for insert to authenticated
+  with check (public.is_superadmin());
+
+create policy "superadmins can update landing content" on public.landing_content
+  for update to authenticated
+  using (public.is_superadmin())
+  with check (public.is_superadmin());
+
+grant select, insert, update on public.landing_content to anon, authenticated;
+
+-- Seed the single row with the same copy app/page.tsx previously used as its
+-- hardcoded fallback, so the public page has real content from the start.
+insert into public.landing_content (
+  id, heading, highlight_word, subheading, primary_cta_text, primary_cta_href, features
+)
+values (
+  true,
+  'Learn. Grow.',
+  'Succeed.',
+  'Transform your life through knowledge with Sanggabiz. Access world-class courses designed to help you achieve your goals and unlock your potential.',
+  'Start Your Journey',
+  '/auth/login',
+  '[
+    {"icon": "graduation-cap", "title": "Expert-Led Courses", "description": "Learn from industry professionals and academic experts with years of experience."},
+    {"icon": "layers", "title": "Flexible Learning", "description": "Study at your own pace with lifetime access to course materials and updates."},
+    {"icon": "award", "title": "Certified Learning", "description": "Earn recognized certificates upon course completion to showcase your achievements."}
+  ]'::jsonb
+)
+on conflict (id) do nothing;
