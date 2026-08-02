@@ -155,7 +155,7 @@
     );
   }
   .lesson-prose {
-    @apply prose max-w-none text-[15px] leading-[1.85] text-muted-foreground;
+    @apply prose max-w-none text-[15px] leading-[1.6] text-muted-foreground;
     --tw-prose-body: var(--muted-foreground);
     --tw-prose-headings: var(--foreground);
     --tw-prose-bold: var(--foreground);
