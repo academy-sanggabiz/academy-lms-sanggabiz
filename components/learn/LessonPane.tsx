@@ -83,12 +83,7 @@ export function LessonPane({
                   mode === "admin-preview" ? (
                     <QuizPreview quiz={lesson.quiz as AdminQuiz} />
                   ) : (
-                    <QuizPlayer
-                      courseId={courseId}
-                      lessonId={lesson.id}
-                      quiz={lesson.quiz}
-                      attemptInfo={quizAttempt}
-                    />
+                    <QuizPlayer quiz={lesson.quiz} attemptInfo={quizAttempt} />
                   )
                 ) : (
                   <QuizPlaceholder />
@@ -104,7 +99,9 @@ export function LessonPane({
               </div>
             )}
 
-            {lesson.content_type !== "quiz" && <LessonTabs course={course} />}
+            {lesson.content_type !== "quiz" && lesson.content_type !== "text" && (
+              <LessonTabs course={course} />
+            )}
           </>
         )}
       </div>
@@ -340,11 +337,11 @@ function TextContent({
   const [fullscreen, setFullscreen] = useState(false)
 
   return (
-    <div className="group relative">
+    <div className="group relative flex h-full flex-col">
       <div
         className={cn(
           "border-b border-border bg-card",
-          fullscreen ? "fixed inset-0 z-50 overflow-y-auto" : "mx-14 h-[62vh] overflow-y-auto"
+          fullscreen ? "fixed inset-0 z-50 overflow-y-auto" : "flex-1 overflow-y-auto"
         )}
       >
         {!fullscreen && (
@@ -365,7 +362,7 @@ function TextContent({
             <Minimize2 className="size-4.5" />
           </button>
         )}
-        <div className="p-8">
+        <div className="px-14 py-8">
           <div className="mb-2.5 text-xs font-semibold tracking-wider text-ring uppercase">
             Reading{lesson.duration_seconds ? ` · ${formatDuration(lesson.duration_seconds)}` : ""}
           </div>

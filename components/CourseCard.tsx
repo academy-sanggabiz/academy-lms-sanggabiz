@@ -15,13 +15,18 @@ export function CourseCard({
         className
       )}
     >
-      <div className="course-thumb-placeholder relative mb-4 flex h-[180px] items-center justify-center overflow-hidden rounded-md font-mono text-xs text-muted-foreground">
+      <div
+        className={cn(
+          "relative mb-4 flex h-[180px] items-center justify-center overflow-hidden rounded-md font-mono text-xs text-muted-foreground",
+          !course.thumbnail_url && "course-thumb-placeholder"
+        )}
+      >
         {course.thumbnail_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={course.thumbnail_url}
             alt={course.title}
-            className="size-full object-cover"
+            className="absolute inset-0 size-full object-cover"
           />
         ) : (
           "course thumbnail"

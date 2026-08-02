@@ -6,9 +6,10 @@ export type QuizAttemptInfo = {
   attemptsUsed: number
   lastScore: number | null
   lastPassed: boolean | null
+  pendingReview: boolean
 }
 
-export type LearnData = {
+type LearnData = {
   course: CourseDetail | null
   enrollmentId: string | null
   completedLessonIds: Set<string>
@@ -60,7 +61,7 @@ export async function getLearnData(courseId: string): Promise<LearnData> {
   if (quizIds.length > 0) {
     const { data: attempts, error: attemptsError } = await supabase
       .from("quiz_attempts")
-      .select("quiz_id, attempt_number, score, passed")
+      .select("quiz_id, attempt_number, score, passed, status")
       .eq("learner_id", userId)
       .in("quiz_id", quizIds)
       .order("attempt_number", { ascending: true })
@@ -74,6 +75,7 @@ export async function getLearnData(courseId: string): Promise<LearnData> {
           attemptsUsed: Math.max(existing?.attemptsUsed ?? 0, attempt.attempt_number),
           lastScore: attempt.score,
           lastPassed: attempt.passed,
+          pendingReview: attempt.status === "pending_review",
         })
       }
     }

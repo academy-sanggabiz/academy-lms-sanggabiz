@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 
 import { getLearnData } from "@/lib/learn-server"
+import { resolveUserRole, roleHomePath } from "@/lib/auth/require-admin"
 import { LearnSidebar } from "@/components/learn/LearnSidebar"
 import { LessonPane } from "@/components/learn/LessonPane"
 
@@ -15,6 +16,13 @@ export default async function LearnPage({
 }) {
   const { courseId } = await params
   const { lesson: lessonParam } = await searchParams
+
+  const userRole = await resolveUserRole()
+  if (userRole && userRole.role !== "learner") {
+    // This route lives outside app/learner/layout.tsx's tree (see
+    // CLAUDE.md), so it needs its own admin/superadmin guard.
+    redirect(roleHomePath(userRole.role))
+  }
 
   const { course, enrollmentId, completedLessonIds, quizAttempts } = await getLearnData(courseId)
   if (!course) notFound()

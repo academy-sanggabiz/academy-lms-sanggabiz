@@ -38,12 +38,29 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims()
   const user = data?.claims
 
-  if (!user && request.nextUrl.pathname.startsWith('/learn')) {
-    // no user, redirect to the unified login page
-    // (covers both /learner/** and the full-screen /learn/[courseId] player)
-    const url = request.nextUrl.clone()
-    url.pathname = '/auth/login'
-    return NextResponse.redirect(url)
+  if (request.nextUrl.pathname.startsWith('/learn')) {
+    // (covers both /learner/** and the full-screen /learn/[courseId] player
+    // -- same prefix check, deliberately not two separate conditions)
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/login'
+      return NextResponse.redirect(url)
+    }
+
+    // Fast-path role check from the JWT claim (populated only once the
+    // custom access-token hook is enabled in Auth -> Hooks). Admins/
+    // superadmins are kept out of the learner-facing areas entirely --
+    // an admin account is not also a learner account. If the claim is
+    // absent, this is deliberately permissive (rather than locking
+    // learners out) since there's no learner-layout equivalent of
+    // app/admin/layout.tsx's authoritative DB check to fall back on.
+    const role = user.app_metadata?.role as string | undefined
+    if (role === 'admin' || role === 'superadmin') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin/dashboard'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
   }
 
   if (request.nextUrl.pathname.startsWith('/admin')) {

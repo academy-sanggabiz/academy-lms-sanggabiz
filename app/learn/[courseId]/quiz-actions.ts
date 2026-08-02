@@ -4,14 +4,10 @@ import { revalidatePath } from "next/cache"
 
 import { createClient } from "@/lib/supabase/server"
 
-export type QuizAnswer = {
-  questionId: string
-  response: string
-}
-
 export type SubmitQuizResult = {
-  score: number
-  passed: boolean
+  pending: boolean
+  score: number | null
+  passed: boolean | null
   correctCount: number
   total: number
   perQuestion: Record<string, boolean | null>
@@ -27,11 +23,36 @@ export async function startQuiz(
 
   const { data: quiz, error: quizError } = await supabase
     .from("quizzes")
-    .select("max_attempts")
+    .select("max_attempts, lesson_id")
     .eq("id", quizId)
     .single()
 
   if (quizError || !quiz) return { error: "Quiz not found." }
+
+  // grade_attempt() (called from submitQuiz) also enforces enrollment before
+  // it will score anything, but that check only runs at submit time -- an
+  // unenrolled learner shouldn't even be able to open the attempt, so it's
+  // checked here too.
+  const { data: lesson, error: lessonError } = await supabase
+    .from("lessons")
+    .select("section:course_sections(course_id)")
+    .eq("id", quiz.lesson_id)
+    .single()
+
+  if (lessonError || !lesson) return { error: "Quiz not found." }
+  const section = Array.isArray(lesson.section) ? lesson.section[0] : lesson.section
+  const courseId = section?.course_id
+  if (!courseId) return { error: "Quiz not found." }
+
+  const { data: enrollment, error: enrollmentError } = await supabase
+    .from("enrollments")
+    .select("id")
+    .eq("learner_id", userId)
+    .eq("course_id", courseId)
+    .maybeSingle()
+
+  if (enrollmentError) return { error: enrollmentError.message }
+  if (!enrollment) return { error: "Not enrolled." }
 
   const { data: existing, error: existingError } = await supabase
     .from("quiz_attempts")
@@ -66,127 +87,30 @@ export async function startQuiz(
   return { attemptId: attempt.id, attemptNumber }
 }
 
+/**
+ * Scoring itself runs inside the public.grade_attempt() Postgres function
+ * (SECURITY DEFINER) -- it's the only place question_options.is_correct is
+ * ever read on a learner's behalf, and it re-derives the course/lesson from
+ * the attempt's quiz server-side rather than trusting client-supplied ids.
+ * See supabase/migrations/databaseSetup.sql.
+ */
 export async function submitQuiz(
   attemptId: string,
-  courseId: string,
-  lessonId: string,
-  answers: QuizAnswer[]
+  answers: Record<string, string>
 ): Promise<SubmitQuizResult | { error: string }> {
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims?.sub
   if (!userId) return { error: "Not signed in." }
 
-  const { data: attempt, error: attemptError } = await supabase
-    .from("quiz_attempts")
-    .select("id, quiz_id, learner_id")
-    .eq("id", attemptId)
-    .eq("learner_id", userId)
-    .single()
+  const { data, error } = await supabase.rpc("grade_attempt", {
+    p_attempt_id: attemptId,
+    p_answers: answers,
+  })
 
-  if (attemptError || !attempt) return { error: "Attempt not found." }
-
-  const { data: quiz, error: quizError } = await supabase
-    .from("quizzes")
-    .select("pass_score")
-    .eq("id", attempt.quiz_id)
-    .single()
-
-  if (quizError || !quiz) return { error: "Quiz not found." }
-
-  const { data: questions, error: questionsError } = await supabase
-    .from("questions")
-    .select("id, type, points, allow_multiple, case_sensitive, options:question_options(id, text, is_correct)")
-    .eq("quiz_id", attempt.quiz_id)
-
-  if (questionsError || !questions) return { error: "Could not load questions." }
-
-  let awardedPoints = 0
-  let totalGradablePoints = 0
-  let correctCount = 0
-  const perQuestion: Record<string, boolean | null> = {}
-  const responseRows: {
-    attempt_id: string
-    question_id: string
-    response: unknown
-    is_correct: boolean | null
-    points_awarded: number | null
-  }[] = []
-
-  for (const question of questions) {
-    const answer = answers.find((a) => a.questionId === question.id)
-    const keywordOptions = question.options.filter((o) => o.is_correct)
-
-    let isCorrect: boolean | null
-
-    if (question.type === "multiple_choice" && question.allow_multiple) {
-      const selectedIds = new Set((answer?.response ?? "").split(",").filter(Boolean))
-      const correctIds = new Set(question.options.filter((o) => o.is_correct).map((o) => o.id))
-      isCorrect =
-        selectedIds.size === correctIds.size && [...selectedIds].every((id) => correctIds.has(id))
-    } else if (question.type === "multiple_choice" || question.type === "true_false") {
-      isCorrect = !!answer && question.options.some((o) => o.id === answer.response && o.is_correct)
-    } else if (question.type === "short_answer" && keywordOptions.length > 0) {
-      const response = (answer?.response ?? "").trim()
-      isCorrect = keywordOptions.some((o) =>
-        question.case_sensitive ? o.text.trim() === response : o.text.trim().toLowerCase() === response.toLowerCase()
-      )
-    } else {
-      isCorrect = null
-    }
-
-    if (isCorrect !== null) {
-      totalGradablePoints += question.points
-      if (isCorrect) {
-        awardedPoints += question.points
-        correctCount += 1
-      }
-    }
-    perQuestion[question.id] = isCorrect
-    responseRows.push({
-      attempt_id: attemptId,
-      question_id: question.id,
-      response: answer?.response ?? null,
-      is_correct: isCorrect,
-      points_awarded: isCorrect === null ? null : isCorrect ? question.points : 0,
-    })
-  }
-
-  const { error: responsesError } = await supabase.from("quiz_responses").insert(responseRows)
-  if (responsesError) return { error: responsesError.message }
-
-  const score = totalGradablePoints > 0 ? Math.round((awardedPoints / totalGradablePoints) * 100) : 100
-  const passed = score >= quiz.pass_score
-
-  const { error: updateError } = await supabase
-    .from("quiz_attempts")
-    .update({ submitted_at: new Date().toISOString(), score, passed })
-    .eq("id", attemptId)
-
-  if (updateError) return { error: updateError.message }
-
-  if (passed) {
-    const { data: enrollment } = await supabase
-      .from("enrollments")
-      .select("id")
-      .eq("learner_id", userId)
-      .eq("course_id", courseId)
-      .maybeSingle()
-
-    if (enrollment) {
-      await supabase.from("lesson_progress").upsert(
-        {
-          enrollment_id: enrollment.id,
-          lesson_id: lessonId,
-          completed: true,
-          completed_at: new Date().toISOString(),
-        },
-        { onConflict: "enrollment_id,lesson_id" }
-      )
-    }
-  }
+  if (error) return { error: error.message }
 
   revalidatePath("/learn/[courseId]", "page")
 
-  return { score, passed, correctCount, total: questions.length, perQuestion }
+  return data as SubmitQuizResult
 }
