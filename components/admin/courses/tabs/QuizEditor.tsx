@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import { RichTextEditor } from "../RichTextEditor"
 import type { AdminQuestion, AdminQuestionOption, AdminQuiz, AuthorableQuestionType } from "@/lib/courses-admin"
 import {
   createOptionAction,
@@ -133,6 +134,7 @@ function QuizSettings({ quiz }: { quiz: AdminQuiz }) {
   const [passScore, setPassScore] = useState(String(quiz.pass_score))
   const [maxAttempts, setMaxAttempts] = useState(quiz.max_attempts ? String(quiz.max_attempts) : "")
   const [shuffle, setShuffle] = useState(quiz.shuffle)
+  const [isAssessment, setIsAssessment] = useState(quiz.is_assessment)
 
   function save(input: Parameters<typeof updateQuizAction>[1]) {
     startTransition(async () => {
@@ -181,6 +183,23 @@ function QuizSettings({ quiz }: { quiz: AdminQuiz }) {
           }}
         />
         <Label htmlFor={`shuffle-${quiz.id}`}>Shuffle Questions</Label>
+      </div>
+      <div className="flex w-full items-start gap-2 border-t border-border pt-3">
+        <Switch
+          id={`assessment-${quiz.id}`}
+          checked={isAssessment}
+          onCheckedChange={(checked) => {
+            setIsAssessment(checked)
+            save({ is_assessment: checked })
+          }}
+        />
+        <div className="space-y-0.5">
+          <Label htmlFor={`assessment-${quiz.id}`}>Study-case assessment</Label>
+          <p className="text-xs text-muted-foreground">
+            No start gate or timer; learners save drafts and submit when done. Grade manually in
+            Admin › Grading.
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -237,29 +256,56 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
 
       {expanded && (
         <div className="space-y-3.5 p-3.5">
-          <div className="flex gap-3">
-            <div className="flex-1 space-y-1.5">
-              <Label htmlFor={`question-prompt-${question.id}`}>Prompt</Label>
-              <Textarea
-                id={`question-prompt-${question.id}`}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onBlur={() => save({ prompt })}
-                rows={2}
-              />
+          {question.type === "essay" ? (
+            <>
+              <div className="space-y-1.5">
+                <Label>Prompt</Label>
+                <RichTextEditor
+                  value={prompt}
+                  onBlur={(html) => {
+                    const next = html.replace(/<[^>]*>/g, "").trim() ? html : ""
+                    setPrompt(next)
+                    save({ prompt: next })
+                  }}
+                />
+              </div>
+              <div className="w-24 space-y-1.5">
+                <Label htmlFor={`question-points-${question.id}`}>Points</Label>
+                <Input
+                  id={`question-points-${question.id}`}
+                  type="number"
+                  min={0}
+                  value={points}
+                  onChange={(e) => setPoints(e.target.value)}
+                  onBlur={() => save({ points: Number(points) || 0 })}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="flex gap-3">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor={`question-prompt-${question.id}`}>Prompt</Label>
+                <Textarea
+                  id={`question-prompt-${question.id}`}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onBlur={() => save({ prompt })}
+                  rows={2}
+                />
+              </div>
+              <div className="w-24 space-y-1.5">
+                <Label htmlFor={`question-points-${question.id}`}>Points</Label>
+                <Input
+                  id={`question-points-${question.id}`}
+                  type="number"
+                  min={0}
+                  value={points}
+                  onChange={(e) => setPoints(e.target.value)}
+                  onBlur={() => save({ points: Number(points) || 0 })}
+                />
+              </div>
             </div>
-            <div className="w-24 space-y-1.5">
-              <Label htmlFor={`question-points-${question.id}`}>Points</Label>
-              <Input
-                id={`question-points-${question.id}`}
-                type="number"
-                min={0}
-                value={points}
-                onChange={(e) => setPoints(e.target.value)}
-                onBlur={() => save({ points: Number(points) || 0 })}
-              />
-            </div>
-          </div>
+          )}
 
           {question.type === "multiple_choice" && (
             <>

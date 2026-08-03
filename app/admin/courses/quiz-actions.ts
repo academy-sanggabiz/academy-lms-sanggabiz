@@ -41,7 +41,13 @@ export async function createQuestionAction(
 
 export async function updateQuizAction(
   id: string,
-  input: Partial<{ title: string; pass_score: number; max_attempts: number | null; shuffle: boolean }>
+  input: Partial<{
+    title: string
+    pass_score: number
+    max_attempts: number | null
+    shuffle: boolean
+    is_assessment: boolean
+  }>
 ): Promise<ActionResult<undefined>> {
   try {
     await requireAdmin()

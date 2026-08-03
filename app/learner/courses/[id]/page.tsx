@@ -37,7 +37,7 @@ export default async function CourseDetailPage({
           <Card>
             <CardContent>
               <div className="mb-3.5 text-lg font-bold">Course Overview</div>
-              <p className="text-sm leading-relaxed text-muted-foreground">{course.description}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{course.description}</p>
               <div className="mt-4 flex gap-2 border-t border-muted pt-4 text-[13px] text-muted-foreground">
                 <span>{course.lesson_count} lessons</span>
                 <span>·</span>

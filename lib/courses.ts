@@ -63,6 +63,7 @@ export type Quiz = {
   pass_score: number
   max_attempts: number | null
   shuffle: boolean
+  is_assessment: boolean
   questions: Question[]
 }
 

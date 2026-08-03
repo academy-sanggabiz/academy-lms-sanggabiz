@@ -47,15 +47,29 @@ export function AttemptGradingForm({ detail }: { detail: AttemptGradingDetail })
         return (
           <div key={question.id} className="rounded-2xl border border-border bg-card p-6">
             <div className="mb-2 flex items-start justify-between gap-3">
-              <div className="text-[15px] font-semibold">{question.prompt}</div>
+              {isEssay ? (
+                <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: question.prompt }} />
+              ) : (
+                <div className="text-[15px] font-semibold">{question.prompt}</div>
+              )}
               <div className="shrink-0 text-xs font-medium text-muted-foreground">
                 {isEssay ? "Essay" : question.isCorrect ? "Correct" : "Incorrect"} · {question.points} pt
                 {question.points === 1 ? "" : "s"}
               </div>
             </div>
-            <div className="rounded-lg bg-muted p-3.5 text-[14px] whitespace-pre-wrap">
-              {question.response || "—"}
-            </div>
+            {isEssay ? (
+              <div className="rounded-lg bg-muted p-3.5 text-[14px]">
+                {question.response ? (
+                  <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: question.response }} />
+                ) : (
+                  "—"
+                )}
+              </div>
+            ) : (
+              <div className="rounded-lg bg-muted p-3.5 text-[14px] whitespace-pre-wrap">
+                {question.response || "—"}
+              </div>
+            )}
             {isEssay && (
               <div className="mt-3 flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Score</span>

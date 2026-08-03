@@ -17,6 +17,7 @@ import type { QuizAttemptInfo } from "@/lib/learn-server"
 import type { AdminQuiz } from "@/lib/courses-admin"
 import { QuizPlayer } from "@/components/learn/QuizPlayer"
 import { QuizPreview } from "@/components/learn/QuizPreview"
+import { EssayAssessmentPlayer } from "@/components/learn/EssayAssessmentPlayer"
 
 export function LessonPane({
   courseId,
@@ -38,11 +39,14 @@ export function LessonPane({
   mode?: "learner" | "admin-preview"
 }) {
   const isQuiz = lesson.content_type === "quiz" || lesson.content_type === "mixed"
+  // Assessments are long, multi-question study cases -- scroll them from the top
+  // instead of vertically centering the (short) quiz card.
+  const isAssessment = isQuiz && mode !== "admin-preview" && !!lesson.quiz?.is_assessment
   const [showFinished, setShowFinished] = useState(false)
 
   return (
     <div className={cn("relative flex min-w-0 flex-1 flex-col overflow-y-auto", isQuiz && "bg-[#f4f8fa]")}>
-      <div className={cn("flex-1", isQuiz && "flex flex-col justify-center py-10")}>
+      <div className={cn("flex-1", isQuiz && !isAssessment && "flex flex-col justify-center py-10")}>
         {showFinished ? (
           <CourseFinishedPane courseId={courseId} prevLessonId={prevLessonId} basePath={basePath} />
         ) : (
@@ -82,6 +86,8 @@ export function LessonPane({
                 {lesson.quiz ? (
                   mode === "admin-preview" ? (
                     <QuizPreview quiz={lesson.quiz as AdminQuiz} />
+                  ) : lesson.quiz.is_assessment ? (
+                    <EssayAssessmentPlayer quiz={lesson.quiz} attemptInfo={quizAttempt} />
                   ) : (
                     <QuizPlayer quiz={lesson.quiz} attemptInfo={quizAttempt} />
                   )
@@ -424,7 +430,7 @@ function LessonTabs({ course }: { course: Course }) {
         {tab === "overview" && (
           <>
             <div className="mb-3 text-lg font-bold">About this course</div>
-            <p className="text-sm leading-relaxed text-muted-foreground">{course.description}</p>
+            <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{course.description}</p>
             <div className="mt-4 flex gap-2 text-[13px] text-muted-foreground">
               <span>{course.lesson_count} lessons</span>
               <span>·</span>

@@ -133,7 +133,11 @@ export function QuizPlayer({
               </div>
             )}
           </div>
-          <div className="mt-4 text-[17px]">{question.prompt}</div>
+          {question.type === "essay" ? (
+            <div className="lesson-prose mt-4" dangerouslySetInnerHTML={{ __html: question.prompt }} />
+          ) : (
+            <div className="mt-4 text-[17px]">{question.prompt}</div>
+          )}
         </div>
 
         {isChoice ? (
@@ -249,7 +253,11 @@ export function QuizPlayer({
                   <CircleHelp className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="text-[14.5px] font-semibold">{question.prompt}</div>
+                  {question.type === "essay" ? (
+                    <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: question.prompt }} />
+                  ) : (
+                    <div className="text-[14.5px] font-semibold">{question.prompt}</div>
+                  )}
                   <div className="mt-1 text-[13px] text-muted-foreground">Your answer: {answerText}</div>
                   {isCorrect === null && (
                     <div className="mt-1 text-[13px] font-medium text-muted-foreground">Pending review</div>
