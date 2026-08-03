@@ -1,15 +1,22 @@
 import { ProfileView } from "@/components/learner/ProfileView"
 import { getEnrolledCoursesWithDetails } from "@/lib/enrollments-server"
+import { getLearnerCertificates } from "@/lib/certificates-server"
 import { createClient } from "@/lib/supabase/server"
 
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>
+}) {
+  const { tab } = await searchParams
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims?.sub ?? ""
 
-  const [{ data: profile }, enrolledCourses] = await Promise.all([
+  const [{ data: profile }, enrolledCourses, certificates] = await Promise.all([
     supabase.from("profiles").select("full_name, email, created_at").eq("id", userId).single(),
     getEnrolledCoursesWithDetails(),
+    getLearnerCertificates(),
   ])
 
   const name = profile?.full_name || profile?.email || "there"
@@ -24,6 +31,8 @@ export default async function ProfilePage() {
       email={email}
       joinedYear={joinedYear}
       enrolledCourses={enrolledCourses}
+      certificates={certificates}
+      initialTab={tab === "certificates" ? "certificates" : "enrolled"}
     />
   )
 }
