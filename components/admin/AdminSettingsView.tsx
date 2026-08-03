@@ -4,8 +4,8 @@ import { useState, useTransition } from "react"
 import { Bell, Shield } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { PasswordInput } from "@/components/auth/PasswordInput"
 import { changePassword, deleteAccount, updateNotificationPref } from "@/app/admin/settings/actions"
 
 export function AdminSettingsView({
@@ -89,8 +89,7 @@ function SecurityCard() {
         id="admin-password-form"
         className="flex gap-3"
       >
-        <Input
-          type="password"
+        <PasswordInput
           name="password"
           placeholder="Enter new password"
           className="flex-1"

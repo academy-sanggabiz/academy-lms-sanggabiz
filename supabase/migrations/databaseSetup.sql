@@ -147,6 +147,44 @@ $$;
 
 grant execute on function public.is_admin() to authenticated;
 
+-- Stricter than is_admin() — some settings (like site-wide public content,
+-- and cross-admin course oversight) are reserved for superadmin, not every
+-- admin. Defined here (rather than near landing_content further down) so
+-- owns_course() below can reference it.
+create function public.is_superadmin()
+returns boolean
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = (select auth.uid()) and role = 'superadmin'
+  );
+$$;
+
+grant execute on function public.is_superadmin() to authenticated;
+
+-- Per-admin course ownership: an admin only "owns" a course they created
+-- (courses.created_by); superadmin is a superset and owns every course.
+-- security definer for the same recursion-avoidance reason as is_admin().
+create function public.owns_course(cid uuid)
+returns boolean
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select exists (
+    select 1 from public.courses c
+    where c.id = cid
+      and (c.created_by = (select auth.uid()) or public.is_superadmin())
+  );
+$$;
+
+grant execute on function public.owns_course(uuid) to authenticated;
+
 create policy "admins read all profiles" on public.profiles
   for select to authenticated
   using (public.is_admin());
@@ -403,19 +441,19 @@ create policy "own enrollments insertable" on public.enrollments
   to authenticated
   with check ((select auth.uid()) = learner_id);
 
--- Admin Learner Management: admins can read every learner's enrollments and
--- enroll/unenroll them from the admin screen.
+-- Admin Learner Management: admins can read/enroll/unenroll learners only
+-- for courses they own (superadmin: every course) — see owns_course().
 create policy "admins read all enrollments" on public.enrollments
   for select to authenticated
-  using (public.is_admin());
+  using (public.owns_course(course_id));
 
 create policy "admins insert enrollments" on public.enrollments
   for insert to authenticated
-  with check (public.is_admin());
+  with check (public.owns_course(course_id));
 
 create policy "admins delete enrollments" on public.enrollments
   for delete to authenticated
-  using (public.is_admin());
+  using (public.owns_course(course_id));
 
 grant select, insert, delete on public.enrollments to authenticated;
 
@@ -457,16 +495,16 @@ create policy "own transactions insertable" on public.transactions
 
 create policy "admins read all transactions" on public.transactions
   for select to authenticated
-  using (public.is_admin());
+  using (public.owns_course(course_id));
 
 create policy "admins insert transactions" on public.transactions
   for insert to authenticated
-  with check (public.is_admin());
+  with check (public.owns_course(course_id));
 
 create policy "admins update transactions" on public.transactions
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (public.owns_course(course_id))
+  with check (public.owns_course(course_id));
 
 grant select, insert, update on public.transactions to authenticated;
 
@@ -535,19 +573,31 @@ create policy "own progress updatable" on public.lesson_progress
 
 create policy "admins read all lesson_progress" on public.lesson_progress
   for select to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.enrollments e
+    where e.id = lesson_progress.enrollment_id and public.owns_course(e.course_id)
+  ));
 
 -- finalizeAttempt (Admin > Grading) completes a lesson on the learner's
 -- behalf when a manually-graded quiz attempt passes, same as submitQuiz does
 -- for auto-graded attempts — needs an admin write path here too.
 create policy "admins insert lesson_progress" on public.lesson_progress
   for insert to authenticated
-  with check (public.is_admin());
+  with check (exists (
+    select 1 from public.enrollments e
+    where e.id = lesson_progress.enrollment_id and public.owns_course(e.course_id)
+  ));
 
 create policy "admins update lesson_progress" on public.lesson_progress
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (exists (
+    select 1 from public.enrollments e
+    where e.id = lesson_progress.enrollment_id and public.owns_course(e.course_id)
+  ))
+  with check (exists (
+    select 1 from public.enrollments e
+    where e.id = lesson_progress.enrollment_id and public.owns_course(e.course_id)
+  ));
 
 grant select, insert, update on public.lesson_progress to authenticated;
 
@@ -897,24 +947,58 @@ create policy "own quiz responses insertable" on public.quiz_responses
 
 -- Admin > Grading needs to see every attempt/response awaiting review and
 -- write the manual essay grade (quiz_responses) plus the recomputed
--- score/passed/status (quiz_attempts) once finalizeAttempt runs.
+-- score/passed/status (quiz_attempts) once finalizeAttempt runs. Scoped to
+-- the admin's own courses via owns_course() (superadmin: every course).
 create policy "admins read all quiz attempts" on public.quiz_attempts
   for select to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.quizzes q
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where q.id = quiz_attempts.quiz_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins update quiz attempts" on public.quiz_attempts
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (exists (
+    select 1 from public.quizzes q
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where q.id = quiz_attempts.quiz_id and public.owns_course(s.course_id)
+  ))
+  with check (exists (
+    select 1 from public.quizzes q
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where q.id = quiz_attempts.quiz_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins read all quiz responses" on public.quiz_responses
   for select to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.quiz_attempts a
+    join public.quizzes q on q.id = a.quiz_id
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where a.id = quiz_responses.attempt_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins update quiz responses" on public.quiz_responses
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (exists (
+    select 1 from public.quiz_attempts a
+    join public.quizzes q on q.id = a.quiz_id
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where a.id = quiz_responses.attempt_id and public.owns_course(s.course_id)
+  ))
+  with check (exists (
+    select 1 from public.quiz_attempts a
+    join public.quizzes q on q.id = a.quiz_id
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where a.id = quiz_responses.attempt_id and public.owns_course(s.course_id)
+  ));
 
 -- question_options is deliberately not granted here -- anon/authenticated
 -- read option text only via question_options_public (granted above); the
@@ -960,34 +1044,37 @@ alter table public.course_prerequisites enable row level security;
 alter table public.course_certificate_settings enable row level security;
 
 -- Admin/superadmin only — not exposed to anon/authenticated learners yet.
+-- Scoped by owns_course(course_id): the course the prerequisite is being
+-- attached to must be owned by the acting admin (the prerequisite_course_id
+-- being referenced can belong to any admin — it's just a pointer).
 create policy "admins can select course_prerequisites" on public.course_prerequisites
   for select to authenticated
-  using (public.is_admin());
+  using (public.owns_course(course_id));
 
 create policy "admins can insert course_prerequisites" on public.course_prerequisites
   for insert to authenticated
-  with check (public.is_admin());
+  with check (public.owns_course(course_id));
 
 create policy "admins can delete course_prerequisites" on public.course_prerequisites
   for delete to authenticated
-  using (public.is_admin());
+  using (public.owns_course(course_id));
 
 create policy "admins can select course_certificate_settings" on public.course_certificate_settings
   for select to authenticated
-  using (public.is_admin());
+  using (public.owns_course(course_id));
 
 create policy "admins can insert course_certificate_settings" on public.course_certificate_settings
   for insert to authenticated
-  with check (public.is_admin());
+  with check (public.owns_course(course_id));
 
 create policy "admins can update course_certificate_settings" on public.course_certificate_settings
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (public.owns_course(course_id))
+  with check (public.owns_course(course_id));
 
 create policy "admins can delete course_certificate_settings" on public.course_certificate_settings
   for delete to authenticated
-  using (public.is_admin());
+  using (public.owns_course(course_id));
 
 grant select, insert, delete on public.course_prerequisites to authenticated;
 grant select, insert, update, delete on public.course_certificate_settings to authenticated;
@@ -1056,16 +1143,28 @@ create policy "own certificates updatable" on public.certificates
 
 create policy "admins read all certificates" on public.certificates
   for select to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.enrollments e
+    where e.id = certificates.enrollment_id and public.owns_course(e.course_id)
+  ));
 
 create policy "admins insert certificates" on public.certificates
   for insert to authenticated
-  with check (public.is_admin());
+  with check (exists (
+    select 1 from public.enrollments e
+    where e.id = certificates.enrollment_id and public.owns_course(e.course_id)
+  ));
 
 create policy "admins update certificates" on public.certificates
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (exists (
+    select 1 from public.enrollments e
+    where e.id = certificates.enrollment_id and public.owns_course(e.course_id)
+  ))
+  with check (exists (
+    select 1 from public.enrollments e
+    where e.id = certificates.enrollment_id and public.owns_course(e.course_id)
+  ));
 
 grant select, insert, update on public.certificates to authenticated;
 
@@ -1082,8 +1181,8 @@ create policy "own enrollments updatable" on public.enrollments
 
 create policy "admins update enrollments" on public.enrollments
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (public.owns_course(course_id))
+  with check (public.owns_course(course_id));
 
 grant update on public.enrollments to authenticated;
 
@@ -1093,78 +1192,123 @@ grant update on public.enrollments to authenticated;
 --
 -- Every table above only had a select-where-published-style read policy (or,
 -- for join tables, no write policy at all) — nobody, including an admin,
--- could write a course through the app without these. Gated by is_admin()
--- rather than the JWT app_metadata.role claim (unverified whether the custom
--- access token hook is enabled in a given environment) or a service-role
--- client (none configured in this project).
+-- could write a course through the app without these. Gated by owns_course()
+-- (courses/course_sections/lessons/resources/quizzes/questions/
+-- question_options/course_instructors/course_prerequisites/
+-- course_certificate_settings) rather than a flat is_admin() check, so each
+-- admin only sees/edits courses they created; superadmin owns every course
+-- (see owns_course() definition in section 2). instructors itself (the
+-- shared bio directory, not course-specific) stays is_admin()-gated —
+-- multiple admins' courses can reference the same instructor.
+-- Also rather than the JWT app_metadata.role claim (unverified whether the
+-- custom access token hook is enabled in a given environment) or a
+-- service-role client (none configured in this project).
 
 create policy "admins can select courses" on public.courses
   for select to authenticated
-  using (public.is_admin());
+  using (created_by = (select auth.uid()) or public.is_superadmin());
 
 create policy "admins can insert courses" on public.courses
   for insert to authenticated
-  with check (public.is_admin());
+  with check (
+    public.is_admin()
+    and (created_by = (select auth.uid()) or public.is_superadmin())
+  );
 
 create policy "admins can update courses" on public.courses
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (created_by = (select auth.uid()) or public.is_superadmin())
+  with check (created_by = (select auth.uid()) or public.is_superadmin());
 
 create policy "admins can delete courses" on public.courses
   for delete to authenticated
-  using (public.is_admin());
+  using (created_by = (select auth.uid()) or public.is_superadmin());
 
 create policy "admins can select course_sections" on public.course_sections
   for select to authenticated
-  using (public.is_admin());
+  using (public.owns_course(course_id));
 
 create policy "admins can insert course_sections" on public.course_sections
   for insert to authenticated
-  with check (public.is_admin());
+  with check (public.owns_course(course_id));
 
 create policy "admins can update course_sections" on public.course_sections
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (public.owns_course(course_id))
+  with check (public.owns_course(course_id));
 
 create policy "admins can delete course_sections" on public.course_sections
   for delete to authenticated
-  using (public.is_admin());
+  using (public.owns_course(course_id));
 
 create policy "admins can select lessons" on public.lessons
   for select to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.course_sections s
+    where s.id = lessons.section_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can insert lessons" on public.lessons
   for insert to authenticated
-  with check (public.is_admin());
+  with check (exists (
+    select 1 from public.course_sections s
+    where s.id = lessons.section_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can update lessons" on public.lessons
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (exists (
+    select 1 from public.course_sections s
+    where s.id = lessons.section_id and public.owns_course(s.course_id)
+  ))
+  with check (exists (
+    select 1 from public.course_sections s
+    where s.id = lessons.section_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can delete lessons" on public.lessons
   for delete to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.course_sections s
+    where s.id = lessons.section_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can select resources" on public.resources
   for select to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.lessons l
+    join public.course_sections s on s.id = l.section_id
+    where l.id = resources.lesson_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can insert resources" on public.resources
   for insert to authenticated
-  with check (public.is_admin());
+  with check (exists (
+    select 1 from public.lessons l
+    join public.course_sections s on s.id = l.section_id
+    where l.id = resources.lesson_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can update resources" on public.resources
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (exists (
+    select 1 from public.lessons l
+    join public.course_sections s on s.id = l.section_id
+    where l.id = resources.lesson_id and public.owns_course(s.course_id)
+  ))
+  with check (exists (
+    select 1 from public.lessons l
+    join public.course_sections s on s.id = l.section_id
+    where l.id = resources.lesson_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can delete resources" on public.resources
   for delete to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.lessons l
+    join public.course_sections s on s.id = l.section_id
+    where l.id = resources.lesson_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can select instructors" on public.instructors
   for select to authenticated
@@ -1187,66 +1331,141 @@ create policy "admins can delete instructors" on public.instructors
 -- delete + insert.
 create policy "admins can select course_instructors" on public.course_instructors
   for select to authenticated
-  using (public.is_admin());
+  using (public.owns_course(course_id));
 
 create policy "admins can insert course_instructors" on public.course_instructors
   for insert to authenticated
-  with check (public.is_admin());
+  with check (public.owns_course(course_id));
 
 create policy "admins can delete course_instructors" on public.course_instructors
   for delete to authenticated
-  using (public.is_admin());
+  using (public.owns_course(course_id));
 
 create policy "admins can select quizzes" on public.quizzes
   for select to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.lessons l
+    join public.course_sections s on s.id = l.section_id
+    where l.id = quizzes.lesson_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can insert quizzes" on public.quizzes
   for insert to authenticated
-  with check (public.is_admin());
+  with check (exists (
+    select 1 from public.lessons l
+    join public.course_sections s on s.id = l.section_id
+    where l.id = quizzes.lesson_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can update quizzes" on public.quizzes
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (exists (
+    select 1 from public.lessons l
+    join public.course_sections s on s.id = l.section_id
+    where l.id = quizzes.lesson_id and public.owns_course(s.course_id)
+  ))
+  with check (exists (
+    select 1 from public.lessons l
+    join public.course_sections s on s.id = l.section_id
+    where l.id = quizzes.lesson_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can delete quizzes" on public.quizzes
   for delete to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.lessons l
+    join public.course_sections s on s.id = l.section_id
+    where l.id = quizzes.lesson_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can select questions" on public.questions
   for select to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.quizzes q
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where q.id = questions.quiz_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can insert questions" on public.questions
   for insert to authenticated
-  with check (public.is_admin());
+  with check (exists (
+    select 1 from public.quizzes q
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where q.id = questions.quiz_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can update questions" on public.questions
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (exists (
+    select 1 from public.quizzes q
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where q.id = questions.quiz_id and public.owns_course(s.course_id)
+  ))
+  with check (exists (
+    select 1 from public.quizzes q
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where q.id = questions.quiz_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can delete questions" on public.questions
   for delete to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.quizzes q
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where q.id = questions.quiz_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can select question_options" on public.question_options
   for select to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.questions qn
+    join public.quizzes q on q.id = qn.quiz_id
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where qn.id = question_options.question_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can insert question_options" on public.question_options
   for insert to authenticated
-  with check (public.is_admin());
+  with check (exists (
+    select 1 from public.questions qn
+    join public.quizzes q on q.id = qn.quiz_id
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where qn.id = question_options.question_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can update question_options" on public.question_options
   for update to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (exists (
+    select 1 from public.questions qn
+    join public.quizzes q on q.id = qn.quiz_id
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where qn.id = question_options.question_id and public.owns_course(s.course_id)
+  ))
+  with check (exists (
+    select 1 from public.questions qn
+    join public.quizzes q on q.id = qn.quiz_id
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where qn.id = question_options.question_id and public.owns_course(s.course_id)
+  ));
 
 create policy "admins can delete question_options" on public.question_options
   for delete to authenticated
-  using (public.is_admin());
+  using (exists (
+    select 1 from public.questions qn
+    join public.quizzes q on q.id = qn.quiz_id
+    join public.lessons l on l.id = q.lesson_id
+    join public.course_sections s on s.id = l.section_id
+    where qn.id = question_options.question_id and public.owns_course(s.course_id)
+  ));
 
 grant insert, update, delete on public.courses, public.course_sections, public.lessons,
   public.resources, public.instructors, public.course_instructors, public.quizzes,
@@ -1360,23 +1579,9 @@ create policy "admins can delete lesson content" on storage.objects
 -- page's hero + feature cards are now editable in-app at /admin/landing,
 -- superadmin-only, and stored here as a single-row table (there is only ever
 -- one landing page).
-
--- Stricter than is_admin() above — some settings (like site-wide public
--- content) are reserved for superadmin, not every admin.
-create function public.is_superadmin()
-returns boolean
-language sql
-security definer
-set search_path = ''
-stable
-as $$
-  select exists (
-    select 1 from public.profiles
-    where id = (select auth.uid()) and role = 'superadmin'
-  );
-$$;
-
-grant execute on function public.is_superadmin() to authenticated;
+--
+-- is_superadmin() is defined in section 2 (near is_admin()), not here, since
+-- owns_course() in section 3 needs it before this section is reached.
 
 -- `id` is fixed to `true` so the check constraint enforces a single row.
 create table public.landing_content (

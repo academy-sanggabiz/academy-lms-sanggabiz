@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { getAdminProfile } from "@/lib/auth/require-admin"
 import type {
   Course,
   CourseDetail,
@@ -68,12 +69,24 @@ function slugify(title: string): string {
     .replace(/^-+|-+$/g, "")
 }
 
+/**
+ * RLS alone isn't enough to scope this to the admin's own courses: every
+ * authenticated user (learners included) also matches the separate
+ * "published courses are readable" policy, so a non-superadmin here would
+ * still see every OTHER admin's published courses via that policy union.
+ * created_by narrows the view below what RLS permits -- RLS still fully
+ * blocks cross-admin writes regardless.
+ */
 export async function getAdminCourseList(): Promise<Course[]> {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from("courses")
-    .select("*")
-    .order("created_at", { ascending: false })
+  const admin = await getAdminProfile()
+
+  let query = supabase.from("courses").select("*").order("created_at", { ascending: false })
+  if (admin && admin.role !== "superadmin") {
+    query = query.eq("created_by", admin.userId)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     console.error("getAdminCourseList failed:", error.message)
@@ -90,10 +103,22 @@ export type AdminCourseStats = {
 
 export async function getAdminCourseStats(): Promise<AdminCourseStats> {
   const supabase = await createClient()
+  const admin = await getAdminProfile()
+  const scoped = admin && admin.role !== "superadmin"
+
+  let totalQuery = supabase.from("courses").select("*", { count: "exact", head: true })
+  let publishedQuery = supabase
+    .from("courses")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "published")
+  if (scoped) {
+    totalQuery = totalQuery.eq("created_by", admin.userId)
+    publishedQuery = publishedQuery.eq("created_by", admin.userId)
+  }
 
   const [{ count: totalCourses }, { count: publishedCourses }] = await Promise.all([
-    supabase.from("courses").select("*", { count: "exact", head: true }),
-    supabase.from("courses").select("*", { count: "exact", head: true }).eq("status", "published"),
+    totalQuery,
+    publishedQuery,
   ])
 
   return {
@@ -128,6 +153,15 @@ export async function getCourseDetailForAdmin(id: string): Promise<AdminCourseDe
 
   if (error || !data) {
     if (error) console.error("getCourseDetailForAdmin failed:", error.message)
+    return null
+  }
+
+  // Same RLS-union caveat as getAdminCourseList: a published course is
+  // readable by any authenticated user via a separate policy, so this must
+  // be checked explicitly rather than relying on the .eq("id", id) fetch
+  // above to have already excluded courses the admin doesn't own.
+  const admin = await getAdminProfile()
+  if (admin && admin.role !== "superadmin" && data.created_by !== admin.userId) {
     return null
   }
 
@@ -750,17 +784,43 @@ export async function deleteOption(id: string): Promise<{ ok: true } | { error: 
 
 export async function listCoursesForPrerequisitePicker(excludeCourseId: string): Promise<CoursePrerequisite[]> {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from("courses")
-    .select("id, title")
-    .neq("id", excludeCourseId)
-    .order("title")
+  const admin = await getAdminProfile()
+
+  let query = supabase.from("courses").select("id, title").neq("id", excludeCourseId).order("title")
+  if (admin && admin.role !== "superadmin") {
+    query = query.eq("created_by", admin.userId)
+  }
+
+  const { data, error } = await query
 
   if (error) {
     console.error("listCoursesForPrerequisitePicker failed:", error.message)
     return []
   }
   return data
+}
+
+/**
+ * Shared ownership-scoping helper for admin lib files that read data derived
+ * from courses (enrollments, transactions, quiz_attempts, ...) but have no
+ * direct RLS-only guarantee of isolation -- see lib/purchases-admin.ts,
+ * lib/learners-admin.ts, lib/grading-server.ts. Returns null to mean "no
+ * restriction" (superadmin), or the list of course ids this admin owns
+ * (possibly empty) otherwise.
+ */
+export async function getOwnedCourseIdsOrNull(): Promise<string[] | null> {
+  const admin = await getAdminProfile()
+  if (!admin || admin.role === "superadmin") return null
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.from("courses").select("id").eq("created_by", admin.userId)
+
+  if (error) {
+    console.error("getOwnedCourseIdsOrNull failed:", error.message)
+    return []
+  }
+
+  return (data ?? []).map((c) => c.id)
 }
 
 export async function setRequirePrerequisites(
