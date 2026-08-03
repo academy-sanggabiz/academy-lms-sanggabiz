@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { recordEnrollmentTransaction } from "@/lib/transactions-server"
+import { getOwnedCourseIdsOrNull } from "@/lib/courses-admin"
 
 /** Server-only admin data access for Learner Management -- never import from a Client Component. */
 
@@ -40,25 +41,30 @@ function initialOf(name: string): string {
   return name.trim().charAt(0).toUpperCase() || "?"
 }
 
+/**
+ * enrollments should already be RLS-scoped to courses the acting admin owns
+ * (superadmin: every course), so deriving the learner set from enrollments
+ * -- rather than starting from the global `profiles` table -- is what keeps
+ * Learner Management isolated per admin. The explicit .in("course_id", ...)
+ * filter below is a belt-and-suspenders app-layer guard on top of that RLS
+ * (see getOwnedCourseIdsOrNull, lib/courses-admin.ts) -- it keeps this list
+ * correct even if the owns_course() RLS migration hasn't actually landed.
+ */
 export async function getAdminLearnerList(): Promise<AdminLearner[]> {
   const supabase = await createClient()
+  const ownedCourseIds = await getOwnedCourseIdsOrNull()
+  if (ownedCourseIds !== null && ownedCourseIds.length === 0) return []
 
-  const [{ data: profiles, error: profilesError }, { data: enrollments, error: enrollmentsError }] =
-    await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, full_name, email")
-        .eq("role", "learner")
-        .order("created_at", { ascending: false }),
-      supabase.from("enrollments").select("learner_id, course_id, status"),
-    ])
-
-  if (profilesError || !profiles) {
-    console.error("getAdminLearnerList failed:", profilesError?.message)
-    return []
+  let query = supabase.from("enrollments").select("learner_id, course_id, status")
+  if (ownedCourseIds !== null) {
+    query = query.in("course_id", ownedCourseIds)
   }
+
+  const { data: enrollments, error: enrollmentsError } = await query
+
   if (enrollmentsError) {
     console.error("getAdminLearnerList (enrollments) failed:", enrollmentsError.message)
+    return []
   }
 
   const counts = new Map<string, { enrolled: number; completed: number; courseIds: string[] }>()
@@ -68,6 +74,19 @@ export async function getAdminLearnerList(): Promise<AdminLearner[]> {
     entry.courseIds.push(e.course_id)
     if (e.status === "completed") entry.completed += 1
     counts.set(e.learner_id, entry)
+  }
+
+  const learnerIds = [...counts.keys()]
+  if (learnerIds.length === 0) return []
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .in("id", learnerIds)
+
+  if (profilesError || !profiles) {
+    console.error("getAdminLearnerList failed:", profilesError?.message)
+    return []
   }
 
   return profiles.map((p) => {
@@ -85,23 +104,34 @@ export async function getAdminLearnerList(): Promise<AdminLearner[]> {
   })
 }
 
+/** Same owner-scoping rationale as getAdminLearnerList -- totalLearners counts distinct learners across scoped enrollments, not the global learner count. */
 export async function getAdminLearnerStats(): Promise<AdminLearnerStats> {
   const supabase = await createClient()
+  const ownedCourseIds = await getOwnedCourseIdsOrNull()
+  if (ownedCourseIds !== null && ownedCourseIds.length === 0) {
+    return { totalLearners: 0, totalEnrollments: 0, totalCompleted: 0 }
+  }
 
-  const [{ count: totalLearners }, { count: totalEnrollments }, { count: totalCompleted }] =
-    await Promise.all([
-      supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "learner"),
-      supabase.from("enrollments").select("*", { count: "exact", head: true }),
-      supabase
-        .from("enrollments")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "completed"),
-    ])
+  let query = supabase.from("enrollments").select("learner_id, status")
+  if (ownedCourseIds !== null) {
+    query = query.in("course_id", ownedCourseIds)
+  }
+
+  const { data: enrollments, error } = await query
+
+  if (error) {
+    console.error("getAdminLearnerStats failed:", error.message)
+    return { totalLearners: 0, totalEnrollments: 0, totalCompleted: 0 }
+  }
+
+  const rows = enrollments ?? []
+  const distinctLearners = new Set(rows.map((e) => e.learner_id))
+  const totalCompleted = rows.filter((e) => e.status === "completed").length
 
   return {
-    totalLearners: totalLearners ?? 0,
-    totalEnrollments: totalEnrollments ?? 0,
-    totalCompleted: totalCompleted ?? 0,
+    totalLearners: distinctLearners.size,
+    totalEnrollments: rows.length,
+    totalCompleted,
   }
 }
 
@@ -133,12 +163,19 @@ export async function getAdminLearnerCourseProgress(
   learnerId: string
 ): Promise<AdminLearnerCourseProgress[]> {
   const supabase = await createClient()
+  const ownedCourseIds = await getOwnedCourseIdsOrNull()
+  if (ownedCourseIds !== null && ownedCourseIds.length === 0) return []
 
-  const { data: rows, error } = await supabase
+  let query = supabase
     .from("enrollments")
     .select("id, status, enrolled_at, course:courses(id, title, thumbnail_url)")
     .eq("learner_id", learnerId)
     .order("enrolled_at", { ascending: false })
+  if (ownedCourseIds !== null) {
+    query = query.in("course_id", ownedCourseIds)
+  }
+
+  const { data: rows, error } = await query
 
   if (error || !rows) {
     if (error) console.error("getAdminLearnerCourseProgress failed:", error.message)

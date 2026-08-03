@@ -20,8 +20,9 @@ function csvRow(values: string[]): string {
 }
 
 export async function GET(request: Request) {
+  let admin
   try {
-    await requireAdmin()
+    admin = await requireAdmin()
   } catch {
     return new NextResponse("Not authorized", { status: 403 })
   }
@@ -31,8 +32,24 @@ export async function GET(request: Request) {
 
   const supabase = await createClient()
 
-  const { data: quiz } = await supabase.from("quizzes").select("title").eq("id", quizId).single()
+  const { data: quiz } = await supabase
+    .from("quizzes")
+    .select("title, lesson:lessons(section:course_sections(course:courses(created_by)))")
+    .eq("id", quizId)
+    .single()
   if (!quiz) return new NextResponse("Quiz not found", { status: 404 })
+
+  // quizzes has no direct course_id -- ownership is checked by joining up to
+  // the course, same app-layer guard as lib/grading-server.ts (RLS alone
+  // can't be fully trusted here, see getOwnedCourseIdsOrNull in
+  // lib/courses-admin.ts for why).
+  const lesson = Array.isArray(quiz.lesson) ? quiz.lesson[0] : quiz.lesson
+  const section = lesson ? (Array.isArray(lesson.section) ? lesson.section[0] : lesson.section) : null
+  const course = section ? (Array.isArray(section.course) ? section.course[0] : section.course) : null
+
+  if (admin.role !== "superadmin" && course?.created_by !== admin.userId) {
+    return new NextResponse("Quiz not found", { status: 404 })
+  }
 
   const { data: allQuestions, error: questionsError } = await supabase
     .from("questions")

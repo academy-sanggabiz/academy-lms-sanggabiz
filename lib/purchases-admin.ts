@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { getOwnedCourseIdsOrNull } from "@/lib/courses-admin"
 
 /** Server-only admin data access for Purchase Management -- never import from a Client Component. */
 
@@ -26,15 +27,28 @@ function initialOf(name: string): string {
   return name.trim().charAt(0).toUpperCase() || "?"
 }
 
+/**
+ * RLS scoping on transactions depends entirely on owns_course() being live --
+ * unlike courses, there's no separate public-read policy to worry about, but
+ * this app-layer filter also protects against the RLS migration simply not
+ * having been applied yet. See getOwnedCourseIdsOrNull (lib/courses-admin.ts).
+ */
 export async function getAdminPurchaseList(): Promise<AdminPurchase[]> {
   const supabase = await createClient()
+  const ownedCourseIds = await getOwnedCourseIdsOrNull()
+  if (ownedCourseIds !== null && ownedCourseIds.length === 0) return []
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("transactions")
     .select(
       "id, amount, currency, status, created_at, learner:profiles(full_name, email), course:courses(title)"
     )
     .order("created_at", { ascending: false })
+  if (ownedCourseIds !== null) {
+    query = query.in("course_id", ownedCourseIds)
+  }
+
+  const { data, error } = await query
 
   if (error || !data) {
     console.error("getAdminPurchaseList failed:", error?.message)
@@ -61,11 +75,19 @@ export async function getAdminPurchaseList(): Promise<AdminPurchase[]> {
 
 export async function getAdminPurchaseStats(): Promise<AdminPurchaseStats> {
   const supabase = await createClient()
+  const ownedCourseIds = await getOwnedCourseIdsOrNull()
+  if (ownedCourseIds !== null && ownedCourseIds.length === 0) {
+    return { totalRevenue: 0, totalPurchases: 0, paidPurchases: 0 }
+  }
 
-  const [{ count: totalPurchases }, { data: completed }] = await Promise.all([
-    supabase.from("transactions").select("*", { count: "exact", head: true }),
-    supabase.from("transactions").select("amount").eq("status", "completed"),
-  ])
+  let totalQuery = supabase.from("transactions").select("*", { count: "exact", head: true })
+  let completedQuery = supabase.from("transactions").select("amount").eq("status", "completed")
+  if (ownedCourseIds !== null) {
+    totalQuery = totalQuery.in("course_id", ownedCourseIds)
+    completedQuery = completedQuery.in("course_id", ownedCourseIds)
+  }
+
+  const [{ count: totalPurchases }, { data: completed }] = await Promise.all([totalQuery, completedQuery])
 
   const totalRevenue = (completed ?? []).reduce((sum, t) => sum + t.amount, 0)
 

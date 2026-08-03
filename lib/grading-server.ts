@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { getAdminProfile } from "@/lib/auth/require-admin"
 
 export type PendingAttemptSummary = {
   attemptId: string
@@ -16,9 +17,18 @@ export type PendingAttemptSummary = {
   pendingCount: number
 }
 
-/** Every quiz_attempts row still awaiting manual grading, newest submission first. */
+/**
+ * Every quiz_attempts row still awaiting manual grading, newest submission
+ * first. quiz_attempts has no direct course_id, so ownership is checked by
+ * embedding created_by through quiz -> lesson -> section -> course and
+ * post-filtering -- an app-layer guard on top of the owns_course() RLS (see
+ * getOwnedCourseIdsOrNull, lib/courses-admin.ts, for why this belt-and-
+ * suspenders filtering is needed even when RLS is correct).
+ */
 export async function listPendingAttempts(): Promise<PendingAttemptSummary[]> {
   const supabase = await createClient()
+  const admin = await getAdminProfile()
+  const scoped = admin && admin.role !== "superadmin"
 
   const { data, error } = await supabase
     .from("quiz_attempts")
@@ -29,7 +39,7 @@ export async function listPendingAttempts(): Promise<PendingAttemptSummary[]> {
          id, title,
          lesson:lessons(
            id, title,
-           section:course_sections(course:courses(id, title))
+           section:course_sections(course:courses(id, title, created_by))
          )
        ),
        responses:quiz_responses(is_correct)`
@@ -39,14 +49,17 @@ export async function listPendingAttempts(): Promise<PendingAttemptSummary[]> {
 
   if (error || !data) return []
 
-  return data.map((attempt) => {
+  const summaries: PendingAttemptSummary[] = []
+  for (const attempt of data) {
     const quiz = Array.isArray(attempt.quiz) ? attempt.quiz[0] : attempt.quiz
     const lesson = quiz ? (Array.isArray(quiz.lesson) ? quiz.lesson[0] : quiz.lesson) : null
     const section = lesson ? (Array.isArray(lesson.section) ? lesson.section[0] : lesson.section) : null
     const course = section ? (Array.isArray(section.course) ? section.course[0] : section.course) : null
     const learner = Array.isArray(attempt.learner) ? attempt.learner[0] : attempt.learner
 
-    return {
+    if (scoped && course?.created_by !== admin.userId) continue
+
+    summaries.push({
       attemptId: attempt.id,
       quizId: quiz?.id ?? "",
       quizTitle: quiz?.title ?? "Untitled quiz",
@@ -59,8 +72,9 @@ export async function listPendingAttempts(): Promise<PendingAttemptSummary[]> {
       learnerEmail: learner?.email ?? "",
       submittedAt: attempt.submitted_at,
       pendingCount: (attempt.responses ?? []).filter((r) => r.is_correct === null).length,
-    }
-  })
+    })
+  }
+  return summaries
 }
 
 export type GradingQuestion = {
@@ -84,9 +98,14 @@ export type AttemptGradingDetail = {
   questions: GradingQuestion[]
 }
 
-/** Full detail for a single pending attempt, for the per-attempt grading form. */
+/**
+ * Full detail for a single pending attempt, for the per-attempt grading form.
+ * Same app-layer ownership guard as listPendingAttempts -- returns null (as
+ * if not found) when the attempt's course belongs to a different admin.
+ */
 export async function getAttemptGradingDetail(attemptId: string): Promise<AttemptGradingDetail | null> {
   const supabase = await createClient()
+  const admin = await getAdminProfile()
 
   const { data: attempt, error: attemptError } = await supabase
     .from("quiz_attempts")
@@ -97,7 +116,7 @@ export async function getAttemptGradingDetail(attemptId: string): Promise<Attemp
          title,
          lesson:lessons(
            title,
-           section:course_sections(course:courses(title))
+           section:course_sections(course:courses(title, created_by))
          )
        )`
     )
@@ -111,6 +130,10 @@ export async function getAttemptGradingDetail(attemptId: string): Promise<Attemp
   const section = lesson ? (Array.isArray(lesson.section) ? lesson.section[0] : lesson.section) : null
   const course = section ? (Array.isArray(section.course) ? section.course[0] : section.course) : null
   const learner = Array.isArray(attempt.learner) ? attempt.learner[0] : attempt.learner
+
+  if (admin && admin.role !== "superadmin" && course?.created_by !== admin.userId) {
+    return null
+  }
 
   const { data: questions, error: questionsError } = await supabase
     .from("questions")
