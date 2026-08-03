@@ -58,7 +58,7 @@ export function PreviewTab({
         </span>
       </div>
 
-      <p className="text-sm leading-relaxed text-muted-foreground">
+      <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
         {description || "No description yet."}
       </p>
     </div>

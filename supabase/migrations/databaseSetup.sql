@@ -10,10 +10,9 @@
 --
 -- After running this, also complete the dashboard-only steps: enable the
 -- custom access token hook (Auth → Hooks) so `custom_access_token_hook` below
--- actually mirrors profiles.role into the JWT, configure Email/Google auth
--- providers and redirect URLs, and manually create the `lesson-content`
--- Storage bucket (public read) — like `course-thumbnails`/`certificate-assets`
--- below, it holds admin-authored content but was never scripted here either.
+-- actually mirrors profiles.role into the JWT, and configure Email/Google auth
+-- providers and redirect URLs. Storage buckets (including `lesson-content`) are
+-- created by §10 below, so no manual bucket setup is required.
 
 -- =============================================================================
 -- 1. Enums
@@ -563,7 +562,12 @@ create table public.quizzes (
   pass_score int not null default 70,
   time_limit_seconds int,
   max_attempts int,
-  shuffle boolean not null default false
+  shuffle boolean not null default false,
+  -- is_assessment: renders this quiz as an essay/study-case assessment instead
+  -- of the normal timed quiz -- no "Start Quiz" gate, a wide multi-question
+  -- layout, server-side drafts (quiz_attempts.draft_answers), and no timer.
+  -- Grading stays manual (Admin > Grading), same as any essay question.
+  is_assessment boolean not null default false
 );
 
 create table public.questions (
@@ -600,6 +604,11 @@ create table public.quiz_attempts (
   score numeric,
   passed boolean,
   status public.quiz_attempt_status not null default 'in_progress',
+  -- draft_answers: in-progress assessment responses ({ [question_id]: text }),
+  -- saved via the saveDraft action so a learner can resume a study case across
+  -- days before submitting. Only meaningful while status = 'in_progress';
+  -- grade_attempt() ignores it and reads the answers passed to it at submit.
+  draft_answers jsonb,
   unique (quiz_id, learner_id, attempt_number)
 );
 
@@ -1197,10 +1206,29 @@ create policy "admins can delete certificate assets" on storage.objects
   for delete to authenticated
   using (bucket_id = 'certificate-assets' and public.is_admin());
 
--- NOTE: the `lesson-content` bucket (Tiptap image uploads in the rich text
--- lesson editor) is NOT created here — like the two buckets above it needs
--- public read, but it must be created manually in the Supabase Dashboard
--- (see CLAUDE.md), not via SQL.
+-- Lesson content images: Tiptap uploads from the rich text lesson/quiz editor
+-- (toolbar button, paste, and drag-and-drop). Same public-read / admin-write
+-- shape as the two buckets above.
+insert into storage.buckets (id, name, public)
+values ('lesson-content', 'lesson-content', true)
+on conflict (id) do nothing;
+
+create policy "public can read lesson content" on storage.objects
+  for select to public
+  using (bucket_id = 'lesson-content');
+
+create policy "admins can upload lesson content" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'lesson-content' and public.is_admin());
+
+create policy "admins can update lesson content" on storage.objects
+  for update to authenticated
+  using (bucket_id = 'lesson-content' and public.is_admin())
+  with check (bucket_id = 'lesson-content' and public.is_admin());
+
+create policy "admins can delete lesson content" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'lesson-content' and public.is_admin());
 
 -- =============================================================================
 -- 11. Public landing page content (superadmin-authored)
