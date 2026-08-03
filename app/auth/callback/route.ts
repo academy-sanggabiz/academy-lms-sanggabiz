@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server"
 
+import { resolveUserRole, roleHomePath } from "@/lib/auth/require-admin"
 import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
-  const next = searchParams.get("next") ?? "/learner/dashboard"
+  const next = searchParams.get("next")
 
   if (code) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+      const resolved = await resolveUserRole()
+      const destination = next ?? roleHomePath(resolved?.role ?? "learner")
+      return NextResponse.redirect(`${origin}${destination}`)
     }
   }
 
