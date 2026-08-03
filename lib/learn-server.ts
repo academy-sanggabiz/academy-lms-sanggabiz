@@ -6,9 +6,15 @@ export type QuizAttemptInfo = {
   attemptsUsed: number
   lastScore: number | null
   lastPassed: boolean | null
+  pendingReview: boolean
+  // Assessment mode only: the learner's current in_progress attempt (if any)
+  // and its saved draft answers, so EssayAssessmentPlayer can resume a study
+  // case worked on across multiple sessions. Null when there's no open draft.
+  inProgressAttemptId: string | null
+  draftAnswers: Record<string, string> | null
 }
 
-export type LearnData = {
+type LearnData = {
   course: CourseDetail | null
   enrollmentId: string | null
   completedLessonIds: Set<string>
@@ -60,7 +66,7 @@ export async function getLearnData(courseId: string): Promise<LearnData> {
   if (quizIds.length > 0) {
     const { data: attempts, error: attemptsError } = await supabase
       .from("quiz_attempts")
-      .select("quiz_id, attempt_number, score, passed")
+      .select("id, quiz_id, attempt_number, score, passed, status, draft_answers")
       .eq("learner_id", userId)
       .in("quiz_id", quizIds)
       .order("attempt_number", { ascending: true })
@@ -70,10 +76,17 @@ export async function getLearnData(courseId: string): Promise<LearnData> {
     } else {
       for (const attempt of attempts ?? []) {
         const existing = quizAttempts.get(attempt.quiz_id)
+        const inProgress = attempt.status === "in_progress"
         quizAttempts.set(attempt.quiz_id, {
           attemptsUsed: Math.max(existing?.attemptsUsed ?? 0, attempt.attempt_number),
           lastScore: attempt.score,
           lastPassed: attempt.passed,
+          pendingReview: attempt.status === "pending_review",
+          // Attempts are ordered ascending, so the last in_progress row wins.
+          inProgressAttemptId: inProgress ? attempt.id : existing?.inProgressAttemptId ?? null,
+          draftAnswers: inProgress
+            ? (attempt.draft_answers as Record<string, string> | null)
+            : existing?.draftAnswers ?? null,
         })
       }
     }

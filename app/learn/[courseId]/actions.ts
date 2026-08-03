@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 
 import { createClient } from "@/lib/supabase/server"
+import { checkAndIssueCertificate } from "@/lib/certificates"
 
 export async function toggleLessonComplete(formData: FormData) {
   const courseId = String(formData.get("courseId") ?? "")
@@ -40,6 +41,10 @@ export async function toggleLessonComplete(formData: FormData) {
   if (error) {
     console.error("toggleLessonComplete failed:", error.message)
     return
+  }
+
+  if (completed) {
+    await checkAndIssueCertificate(supabase, { enrollmentId: enrollment.id, courseId, learnerId: userId })
   }
 
   revalidatePath("/learn/[courseId]", "page")

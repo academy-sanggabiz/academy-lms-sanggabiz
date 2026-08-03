@@ -28,7 +28,7 @@ export async function getCourseDetail(id: string): Promise<CourseDetail | null> 
         lessons(
           *,
           resources(*),
-          quiz:quizzes(*, questions(id,type,prompt,points,position,allow_multiple,case_sensitive,options:question_options(id,text,position)))
+          quiz:quizzes(*, questions(id,type,prompt,points,position,allow_multiple,case_sensitive))
         )
       ),
       course_instructors(instructor:instructors(*))`
@@ -42,7 +42,38 @@ export async function getCourseDetail(id: string): Promise<CourseDetail | null> 
     return null
   }
 
-  const sections = (data.sections as CourseSection[])
+  // The query above omits `options` (question_options is admin-only now), so
+  // each question here is missing that field until it's stitched back on
+  // below -- cast through CourseSection since the shape is otherwise identical.
+  const rawSections = data.sections as CourseSection[]
+
+  const questionIds = rawSections.flatMap((s) =>
+    s.lessons.flatMap((l) => (l.quiz ? l.quiz.questions.map((q) => q.id) : []))
+  )
+
+  // question_options.is_correct is admin-only at the RLS level (see
+  // databaseSetup.sql) -- the learner-facing player only ever needs option
+  // text/position, so it reads the answer-key-free view instead of the base
+  // table. short_answer questions are absent from this view entirely (their
+  // "options" are the accepted keywords, i.e. the answer itself).
+  const { data: optionRows, error: optionsError } =
+    questionIds.length > 0
+      ? await supabase
+          .from("question_options_public")
+          .select("id, question_id, text, position")
+          .in("question_id", questionIds)
+      : { data: [], error: null }
+
+  if (optionsError) console.error("getCourseDetail options lookup failed:", optionsError.message)
+
+  const optionsByQuestion = new Map<string, { id: string; text: string; position: number }[]>()
+  for (const row of optionRows ?? []) {
+    const list = optionsByQuestion.get(row.question_id) ?? []
+    list.push({ id: row.id, text: row.text, position: row.position })
+    optionsByQuestion.set(row.question_id, list)
+  }
+
+  const sections = rawSections
     .map((section) => ({
       ...section,
       lessons: [...section.lessons]
@@ -57,12 +88,7 @@ export async function getCourseDetail(id: string): Promise<CourseDetail | null> 
                   questions: [...quiz.questions]
                     .map((q) => ({
                       ...q,
-                      // short_answer options hold the accepted keywords (the answer
-                      // itself) -- never send them to the learner-facing player.
-                      options:
-                        q.type === "short_answer"
-                          ? []
-                          : [...q.options].sort((a, b) => a.position - b.position),
+                      options: (optionsByQuestion.get(q.id) ?? []).sort((a, b) => a.position - b.position),
                     }))
                     .sort((a, b) => a.position - b.position),
                 }

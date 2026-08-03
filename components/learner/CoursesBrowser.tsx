@@ -26,9 +26,11 @@ const sortOptions: { key: SortKey; label: string }[] = [
 export function CoursesBrowser({
   courses,
   enrolledIds,
+  completedIds,
 }: {
   courses: Course[]
   enrolledIds: string[]
+  completedIds: string[]
 }) {
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("newest")
@@ -52,6 +54,11 @@ export function CoursesBrowser({
   const enrolledCourses = useMemo(
     () => sortCourses(courses.filter((c) => enrolledIds.includes(c.id))),
     [courses, enrolledIds, sort]
+  )
+
+  const completedCourses = useMemo(
+    () => sortCourses(courses.filter((c) => completedIds.includes(c.id))),
+    [courses, completedIds, sort]
   )
 
   const sortLabel = sortOptions.find((o) => o.key === sort)?.label ?? "Sort"
@@ -126,7 +133,15 @@ export function CoursesBrowser({
         </TabsContent>
 
         <TabsContent value="completed" className="mt-6">
-          <EmptyState message="You haven't completed any courses yet." />
+          {completedCourses.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {completedCourses.map((course) => (
+                <CourseGridCard key={course.id} course={course} enrolled />
+              ))}
+            </div>
+          ) : (
+            <EmptyState message="You haven't completed any courses yet." />
+          )}
         </TabsContent>
       </Tabs>
     </div>

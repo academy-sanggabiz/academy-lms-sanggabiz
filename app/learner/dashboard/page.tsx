@@ -10,7 +10,7 @@ export default async function LearnerDashboardPage() {
   const { data } = await supabase.auth.getClaims()
   const claims = data?.claims
 
-  const [{ data: profile }, { count: completedCount }, enrolledCourseIds, publishedCourses] =
+  const [{ data: profile }, { count: completedCount }, { count: inProgressCount }, enrolledCourseIds, publishedCourses] =
     await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", claims?.sub ?? "").single(),
       supabase
@@ -18,12 +18,16 @@ export default async function LearnerDashboardPage() {
         .select("*", { count: "exact", head: true })
         .eq("learner_id", claims?.sub ?? "")
         .eq("status", "completed"),
+      supabase
+        .from("enrollments")
+        .select("*", { count: "exact", head: true })
+        .eq("learner_id", claims?.sub ?? "")
+        .eq("status", "active"),
       getEnrolledCourseIds(),
       getPublishedCourses(),
     ])
 
   const displayName = profile?.full_name || claims?.email || "there"
-  const inProgressCount = enrolledCourseIds.length
   const recommended = publishedCourses.find((c) => !enrolledCourseIds.includes(c.id))
 
   return (
@@ -37,7 +41,7 @@ export default async function LearnerDashboardPage() {
               <BookOpen className="size-[18px]" />
               Courses in Progress
             </div>
-            <div className="mt-4 text-4xl leading-none font-bold">{inProgressCount}</div>
+            <div className="mt-4 text-4xl leading-none font-bold">{inProgressCount ?? 0}</div>
           </CardContent>
         </Card>
         <Card className="transition-shadow hover:shadow-[0_8px_24px_rgba(20,55,64,0.08)]">

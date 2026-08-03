@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState, useTransition } from "react"
-import { ArrowLeft, Award, BookOpen, Calendar, Clock, Mail, Pencil } from "lucide-react"
+import { ArrowLeft, Award, BookOpen, Calendar, CheckCircle2, Clock, Download, Mail, Pencil } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,15 +10,25 @@ import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { updateProfileName } from "@/app/learner/profile/actions"
 import type { EnrolledCourseSummary } from "@/lib/enrollments-server"
+import type { LearnerCertificateSummary } from "@/lib/certificates-server"
 
 type ProfileViewProps = {
   name: string
   email: string
   joinedYear: number
   enrolledCourses: EnrolledCourseSummary[]
+  certificates: LearnerCertificateSummary[]
+  initialTab?: "enrolled" | "certificates"
 }
 
-export function ProfileView({ name, email, joinedYear, enrolledCourses }: ProfileViewProps) {
+export function ProfileView({
+  name,
+  email,
+  joinedYear,
+  enrolledCourses,
+  certificates,
+  initialTab = "enrolled",
+}: ProfileViewProps) {
   const [isEditing, setIsEditing] = useState(false)
   const initial = name.charAt(0).toUpperCase()
 
@@ -63,13 +73,21 @@ export function ProfileView({ name, email, joinedYear, enrolledCourses }: Profil
         </div>
       </div>
 
-      <ProfileTabs enrolledCourses={enrolledCourses} />
+      <ProfileTabs enrolledCourses={enrolledCourses} certificates={certificates} initialTab={initialTab} />
     </div>
   )
 }
 
-function ProfileTabs({ enrolledCourses }: { enrolledCourses: EnrolledCourseSummary[] }) {
-  const [tab, setTab] = useState<"enrolled" | "certificates">("enrolled")
+function ProfileTabs({
+  enrolledCourses,
+  certificates,
+  initialTab,
+}: {
+  enrolledCourses: EnrolledCourseSummary[]
+  certificates: LearnerCertificateSummary[]
+  initialTab: "enrolled" | "certificates"
+}) {
+  const [tab, setTab] = useState<"enrolled" | "certificates">(initialTab)
 
   return (
     <div>
@@ -104,7 +122,7 @@ function ProfileTabs({ enrolledCourses }: { enrolledCourses: EnrolledCourseSumma
                   className="flex items-center gap-3.5 rounded-xl border border-border p-3 hover:border-ring/40 hover:bg-muted/40"
                 >
                   <div className="course-thumb-placeholder h-[52px] w-[72px] flex-none rounded-lg" />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="line-clamp-2 text-[13.5px] leading-snug font-semibold">
                       {course.title}
                     </div>
@@ -113,6 +131,12 @@ function ProfileTabs({ enrolledCourses }: { enrolledCourses: EnrolledCourseSumma
                       {course.lesson_count} lessons · {course.duration_hours} hours
                     </div>
                   </div>
+                  {course.status === "completed" && (
+                    <span className="flex flex-none items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                      <CheckCircle2 className="size-3.5" />
+                      Completed
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>
@@ -129,12 +153,54 @@ function ProfileTabs({ enrolledCourses }: { enrolledCourses: EnrolledCourseSumma
         <div className="rounded-2xl border border-border bg-card p-7">
           <div className="mb-4 flex items-center gap-2.5 text-lg font-bold">
             <Award className="size-[18px]" />
-            Certificates (0)
+            Certificates ({certificates.length})
           </div>
-          <div className="flex flex-col items-center gap-3 p-7 text-center">
-            <Award className="size-10 text-muted-foreground/40" strokeWidth={1.5} />
-            <p className="text-sm text-muted-foreground">Complete a course to earn your first certificate!</p>
-          </div>
+
+          {certificates.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {certificates.map((cert) => (
+                <div
+                  key={cert.id}
+                  className="flex items-center gap-3.5 rounded-xl border border-border p-3.5"
+                >
+                  <div className="flex size-11 flex-none items-center justify-center rounded-lg bg-brand-gradient text-white">
+                    <Award className="size-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="line-clamp-2 text-[13.5px] leading-snug font-semibold">
+                      {cert.courseTitle}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Certificate No. {cert.serial} · Issued{" "}
+                      {new Date(cert.issuedAt).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </div>
+                  </div>
+                  {cert.pdfUrl ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      render={<a href={cert.pdfUrl} download target="_blank" rel="noopener noreferrer" />}
+                      nativeButton={false}
+                    >
+                      <Download className="size-3.5" />
+                      Download
+                    </Button>
+                  ) : (
+                    <span className="flex-none text-xs text-muted-foreground">Generating…</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3 p-7 text-center">
+              <Award className="size-10 text-muted-foreground/40" strokeWidth={1.5} />
+              <p className="text-sm text-muted-foreground">Complete a course to earn your first certificate!</p>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -10,10 +10,9 @@
 --
 -- After running this, also complete the dashboard-only steps: enable the
 -- custom access token hook (Auth → Hooks) so `custom_access_token_hook` below
--- actually mirrors profiles.role into the JWT, configure Email/Google auth
--- providers and redirect URLs, and manually create the `lesson-content`
--- Storage bucket (public read) — like `course-thumbnails`/`certificate-assets`
--- below, it holds admin-authored content but was never scripted here either.
+-- actually mirrors profiles.role into the JWT, and configure Email/Google auth
+-- providers and redirect URLs. Storage buckets (including `lesson-content`) are
+-- created by §10 below, so no manual bucket setup is required.
 
 -- =============================================================================
 -- 1. Enums
@@ -36,6 +35,12 @@ create type public.question_type as enum (
   'matching',
   'fill_in_blank'
 );
+
+-- Lifecycle of a quiz_attempts row. 'pending_review' is needed because essay
+-- questions can't be auto-graded: an attempt containing any essay answer is
+-- held here (score/passed left null, lesson not completed) until an admin
+-- grades it through Admin > Grading, at which point it becomes 'graded'.
+create type public.quiz_attempt_status as enum ('in_progress', 'pending_review', 'graded');
 
 -- =============================================================================
 -- 2. profiles (1:1 with auth.users) + auto-provisioning + JWT role claim
@@ -532,6 +537,18 @@ create policy "admins read all lesson_progress" on public.lesson_progress
   for select to authenticated
   using (public.is_admin());
 
+-- finalizeAttempt (Admin > Grading) completes a lesson on the learner's
+-- behalf when a manually-graded quiz attempt passes, same as submitQuiz does
+-- for auto-graded attempts — needs an admin write path here too.
+create policy "admins insert lesson_progress" on public.lesson_progress
+  for insert to authenticated
+  with check (public.is_admin());
+
+create policy "admins update lesson_progress" on public.lesson_progress
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
 grant select, insert, update on public.lesson_progress to authenticated;
 
 -- =============================================================================
@@ -545,7 +562,12 @@ create table public.quizzes (
   pass_score int not null default 70,
   time_limit_seconds int,
   max_attempts int,
-  shuffle boolean not null default false
+  shuffle boolean not null default false,
+  -- is_assessment: renders this quiz as an essay/study-case assessment instead
+  -- of the normal timed quiz -- no "Start Quiz" gate, a wide multi-question
+  -- layout, server-side drafts (quiz_attempts.draft_answers), and no timer.
+  -- Grading stays manual (Admin > Grading), same as any essay question.
+  is_assessment boolean not null default false
 );
 
 create table public.questions (
@@ -581,6 +603,12 @@ create table public.quiz_attempts (
   submitted_at timestamptz,
   score numeric,
   passed boolean,
+  status public.quiz_attempt_status not null default 'in_progress',
+  -- draft_answers: in-progress assessment responses ({ [question_id]: text }),
+  -- saved via the saveDraft action so a learner can resume a study case across
+  -- days before submitting. Only meaningful while status = 'in_progress';
+  -- grade_attempt() ignores it and reads the answers passed to it at submit.
+  draft_answers jsonb,
   unique (quiz_id, learner_id, attempt_number)
 );
 
@@ -590,7 +618,12 @@ create table public.quiz_responses (
   question_id uuid not null references public.questions (id) on delete cascade,
   response jsonb not null,
   is_correct boolean,
-  points_awarded numeric
+  points_awarded numeric,
+  -- Set only when an admin manually grades an essay response (Admin > Grading
+  -- or the CSV re-import path) — both write through the same finalizeAttempt
+  -- codepath, so these are always populated together.
+  graded_by uuid references public.profiles (id) on delete set null,
+  graded_at timestamptz
 );
 
 alter table public.quizzes enable row level security;
@@ -599,18 +632,20 @@ alter table public.question_options enable row level security;
 alter table public.quiz_attempts enable row level security;
 alter table public.quiz_responses enable row level security;
 
--- Quiz content (title, questions, option text) is part of the public "sales
--- page" for a course, readable whenever the parent course is published —
--- same EXISTS-up-the-chain pattern as course_sections/lessons.
+-- Quiz content (title, questions) is part of the public "sales page" for a
+-- course, readable whenever the parent course is published — same
+-- EXISTS-up-the-chain pattern as course_sections/lessons.
 --
--- KNOWN FOLLOW-UP: question_options.is_correct is exposed at the row level
--- here (RLS can't hide a single column), same tradeoff as lessons above. The
--- client-side fetch (lib/courses-server.ts) never selects is_correct, and
--- grading always happens server-side in app/learn/[courseId]/quiz-actions.ts
--- — but a non-enrolled authenticated user could still read it directly via
--- the Supabase REST API. Fine for now; real content later should move this
--- into RLS (e.g. only expose is_correct after an attempt is submitted) or
--- accept this as a deliberate page/action-level-only gate, same as lessons.
+-- question_options deliberately has NO anon/authenticated read policy below
+-- (RLS is row-level, not column-level, so it can't hide just is_correct) —
+-- the base table is admin-only (see "admins can select question_options"
+-- further down). Learner/anon option rendering instead reads the
+-- public.question_options_public view (declared right after the quiz engine
+-- RLS block), which never exposes is_correct. Scoring runs inside the
+-- public.grade_attempt() SECURITY DEFINER function, which reads is_correct
+-- with the function owner's privileges — the app-level "grading always
+-- happens server-side" tradeoff this used to rely on is now enforced by the
+-- database itself, closing the direct-REST-API leak.
 create policy "quizzes readable for published courses" on public.quizzes
   for select
   to anon, authenticated
@@ -632,17 +667,198 @@ create policy "questions readable for published courses" on public.questions
     where q.id = questions.quiz_id and c.status = 'published'
   ));
 
-create policy "question_options readable for published courses" on public.question_options
-  for select
-  to anon, authenticated
-  using (exists (
-    select 1 from public.questions qu
-    join public.quizzes q on q.id = qu.quiz_id
-    join public.lessons l on l.id = q.lesson_id
+-- Learner/anon rendering of option text goes through this view instead of a
+-- select policy on question_options itself -- a view runs with its owner's
+-- privileges, so it can read past the (now admin-only) base-table RLS while
+-- only ever projecting the columns listed here. is_correct is not one of
+-- them, so it is unreachable from anon/authenticated regardless of what
+-- REST query a client sends.
+-- short_answer questions store their accepted keyword(s) as
+-- question_options rows (is_correct = true, no "wrong" options), so text
+-- itself is the answer for that type -- excluded here for the same reason
+-- is_correct is excluded for every type (matches the app-level scrub this
+-- view replaces in lib/courses-server.ts).
+create view public.question_options_public
+  with (security_invoker = false) as
+  select qo.id, qo.question_id, qo.text, qo.position
+  from public.question_options qo
+  join public.questions qu on qu.id = qo.question_id
+  where qu.type <> 'short_answer'
+    and exists (
+      select 1 from public.quizzes q
+      join public.lessons l on l.id = q.lesson_id
+      join public.course_sections cs on cs.id = l.section_id
+      join public.courses c on c.id = cs.course_id
+      where q.id = qu.quiz_id and c.status = 'published'
+    );
+
+grant select on public.question_options_public to anon, authenticated;
+
+-- Server-side quiz grading. Runs SECURITY DEFINER (owner privileges) so it
+-- can read question_options.is_correct even though the base table has no
+-- anon/authenticated select policy -- this is the only place is_correct is
+-- ever read on behalf of a learner. Also re-derives the course from the quiz
+-- and requires an active enrollment before grading anything, so it doubles
+-- as the enrollment gate for quiz submission (paired with the equivalent
+-- check added to startQuiz in app/learn/[courseId]/quiz-actions.ts).
+-- p_answers is a JSON object of { [question_id]: response_string }, mirroring
+-- the client's QuizAnswer[] flattened by question id.
+create or replace function public.grade_attempt(p_attempt_id uuid, p_answers jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_att public.quiz_attempts%rowtype;
+  v_pass int;
+  v_lesson uuid;
+  v_course uuid;
+  v_enr uuid;
+  q public.questions%rowtype;
+  v_resp text;
+  v_ok boolean;
+  v_total numeric := 0;
+  v_award numeric := 0;
+  v_correct int := 0;
+  v_question_count int := 0;
+  v_ungraded boolean := false;
+  v_score numeric;
+  v_passed boolean;
+  v_per jsonb := '{}'::jsonb;
+  v_sel text[];
+  v_cor text[];
+begin
+  if v_uid is null then
+    raise exception 'Not signed in';
+  end if;
+
+  select * into v_att from public.quiz_attempts
+    where id = p_attempt_id and learner_id = v_uid;
+  if not found then
+    raise exception 'Attempt not found';
+  end if;
+  if v_att.status <> 'in_progress' then
+    raise exception 'Attempt already submitted';
+  end if;
+
+  select pass_score, lesson_id into v_pass, v_lesson
+    from public.quizzes where id = v_att.quiz_id;
+
+  select cs.course_id into v_course
+    from public.lessons l
     join public.course_sections cs on cs.id = l.section_id
-    join public.courses c on c.id = cs.course_id
-    where qu.id = question_options.question_id and c.status = 'published'
-  ));
+    where l.id = v_lesson;
+
+  select id into v_enr from public.enrollments
+    where learner_id = v_uid and course_id = v_course;
+  if v_enr is null then
+    raise exception 'Not enrolled';
+  end if;
+
+  for q in select * from public.questions where quiz_id = v_att.quiz_id loop
+    v_question_count := v_question_count + 1;
+    v_resp := p_answers ->> q.id::text;
+
+    if q.type = 'multiple_choice' and q.allow_multiple then
+      v_sel := array(
+        select trim(x) from unnest(string_to_array(coalesce(v_resp, ''), ',')) x
+        where trim(x) <> ''
+      );
+      v_cor := array(
+        select id::text from public.question_options
+        where question_id = q.id and is_correct
+      );
+      v_ok := coalesce(array_length(v_sel, 1), 0) = coalesce(array_length(v_cor, 1), 0)
+        and not exists (
+          select unnest(v_sel)
+          except
+          select unnest(v_cor)
+        );
+    elsif q.type = 'multiple_choice' or q.type = 'true_false' then
+      v_ok := v_resp is not null and exists (
+        select 1 from public.question_options
+        where question_id = q.id and id::text = v_resp and is_correct
+      );
+    elsif q.type = 'short_answer' and exists (
+      select 1 from public.question_options where question_id = q.id and is_correct
+    ) then
+      v_ok := exists (
+        select 1 from public.question_options o
+        where o.question_id = q.id and o.is_correct
+          and (
+            case when q.case_sensitive
+              then btrim(o.text) = btrim(coalesce(v_resp, ''))
+              else lower(btrim(o.text)) = lower(btrim(coalesce(v_resp, '')))
+            end
+          )
+      );
+    else
+      v_ok := null;
+    end if;
+
+    v_total := v_total + q.points;
+    if v_ok is null then
+      v_ungraded := true;
+    elsif v_ok then
+      v_award := v_award + q.points;
+      v_correct := v_correct + 1;
+    end if;
+    v_per := v_per || jsonb_build_object(q.id::text, to_jsonb(v_ok));
+
+    insert into public.quiz_responses (attempt_id, question_id, response, is_correct, points_awarded)
+    values (
+      p_attempt_id,
+      q.id,
+      to_jsonb(v_resp),
+      v_ok,
+      case when v_ok is null then null when v_ok then q.points else 0 end
+    );
+  end loop;
+
+  if v_ungraded then
+    update public.quiz_attempts
+      set submitted_at = now(), status = 'pending_review'
+      where id = p_attempt_id;
+
+    return jsonb_build_object(
+      'pending', true,
+      'score', null,
+      'passed', null,
+      'correctCount', v_correct,
+      'total', v_question_count,
+      'perQuestion', v_per
+    );
+  end if;
+
+  v_score := case when v_total > 0 then round(v_award / v_total * 100) else 100 end;
+  v_passed := v_score >= v_pass;
+
+  update public.quiz_attempts
+    set submitted_at = now(), score = v_score, passed = v_passed, status = 'graded'
+    where id = p_attempt_id;
+
+  if v_passed then
+    insert into public.lesson_progress (enrollment_id, lesson_id, completed, completed_at)
+    values (v_enr, v_lesson, true, now())
+    on conflict (enrollment_id, lesson_id)
+    do update set completed = true, completed_at = now();
+  end if;
+
+  return jsonb_build_object(
+    'pending', false,
+    'score', v_score,
+    'passed', v_passed,
+    'correctCount', v_correct,
+    'total', v_question_count,
+    'perQuestion', v_per
+  );
+end;
+$$;
+
+revoke all on function public.grade_attempt(uuid, jsonb) from public;
+grant execute on function public.grade_attempt(uuid, jsonb) to authenticated;
 
 -- Attempts/responses are private to the learner who made them, same model as
 -- enrollments/lesson_progress. Update is needed on quiz_attempts so
@@ -679,9 +895,34 @@ create policy "own quiz responses insertable" on public.quiz_responses
     where a.id = quiz_responses.attempt_id and a.learner_id = (select auth.uid())
   ));
 
-grant select on public.quizzes, public.questions, public.question_options to anon, authenticated;
+-- Admin > Grading needs to see every attempt/response awaiting review and
+-- write the manual essay grade (quiz_responses) plus the recomputed
+-- score/passed/status (quiz_attempts) once finalizeAttempt runs.
+create policy "admins read all quiz attempts" on public.quiz_attempts
+  for select to authenticated
+  using (public.is_admin());
+
+create policy "admins update quiz attempts" on public.quiz_attempts
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "admins read all quiz responses" on public.quiz_responses
+  for select to authenticated
+  using (public.is_admin());
+
+create policy "admins update quiz responses" on public.quiz_responses
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+-- question_options is deliberately not granted here -- anon/authenticated
+-- read option text only via question_options_public (granted above); the
+-- base table stays admin-only (grant further down, paired with is_admin()
+-- policies).
+grant select on public.quizzes, public.questions to anon, authenticated;
 grant select, insert, update on public.quiz_attempts to authenticated;
-grant select, insert on public.quiz_responses to authenticated;
+grant select, insert, update on public.quiz_responses to authenticated;
 
 -- =============================================================================
 -- 8. Prerequisites & Certificate settings (authoring only)
@@ -750,6 +991,101 @@ create policy "admins can delete course_certificate_settings" on public.course_c
 
 grant select, insert, delete on public.course_prerequisites to authenticated;
 grant select, insert, update, delete on public.course_certificate_settings to authenticated;
+
+-- Learners need to read a course's certificate settings to render/compose a
+-- certificate on completion (checkAndIssueCertificate, lib/certificates.ts) --
+-- same published-course gate as lessons/quizzes below, not enrollment-scoped
+-- (the settings themselves aren't sensitive, just authoring content).
+create policy "certificate settings readable for published courses" on public.course_certificate_settings
+  for select to authenticated
+  using (exists (
+    select 1 from public.courses c
+    where c.id = course_certificate_settings.course_id and c.status = 'published'
+  ));
+
+-- =============================================================================
+-- 8b. Certificates (issued)
+-- =============================================================================
+--
+-- Issued once a learner has completed every lesson in a course AND passed
+-- every quiz-type lesson (checkAndIssueCertificate, lib/certificates.ts).
+-- Generation runs under the learner's own session (auto-triggered from the
+-- learn player) or an admin's session (triggered via manual essay grading in
+-- Admin > Grading) -- there's no service-role client in this project, so RLS
+-- has to allow both paths rather than a single privileged writer.
+
+create table public.certificates (
+  id uuid primary key default gen_random_uuid(),
+  enrollment_id uuid not null unique references public.enrollments (id) on delete cascade,
+  serial text not null unique,
+  issued_at timestamptz not null default now(),
+  pdf_url text
+);
+
+alter table public.certificates enable row level security;
+
+create policy "own certificates readable" on public.certificates
+  for select
+  to authenticated
+  using (exists (
+    select 1 from public.enrollments e
+    where e.id = certificates.enrollment_id and e.learner_id = (select auth.uid())
+  ));
+
+create policy "own certificates insertable" on public.certificates
+  for insert
+  to authenticated
+  with check (exists (
+    select 1 from public.enrollments e
+    where e.id = certificates.enrollment_id and e.learner_id = (select auth.uid())
+  ));
+
+-- Update (not just insert) is needed so the PDF-upload step can write
+-- pdf_url back onto the row after the initial insert.
+create policy "own certificates updatable" on public.certificates
+  for update
+  to authenticated
+  using (exists (
+    select 1 from public.enrollments e
+    where e.id = certificates.enrollment_id and e.learner_id = (select auth.uid())
+  ))
+  with check (exists (
+    select 1 from public.enrollments e
+    where e.id = certificates.enrollment_id and e.learner_id = (select auth.uid())
+  ));
+
+create policy "admins read all certificates" on public.certificates
+  for select to authenticated
+  using (public.is_admin());
+
+create policy "admins insert certificates" on public.certificates
+  for insert to authenticated
+  with check (public.is_admin());
+
+create policy "admins update certificates" on public.certificates
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+grant select, insert, update on public.certificates to authenticated;
+
+-- enrollments had no update policy until now -- status/completed_at were
+-- never written anywhere (see comment on the enrollments table above).
+-- checkAndIssueCertificate needs to flip status to 'completed' from both the
+-- learner's own session and an admin's (manual essay grading), so both paths
+-- get a policy here.
+create policy "own enrollments updatable" on public.enrollments
+  for update
+  to authenticated
+  using ((select auth.uid()) = learner_id)
+  with check ((select auth.uid()) = learner_id);
+
+create policy "admins update enrollments" on public.enrollments
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+grant update on public.enrollments to authenticated;
 
 -- =============================================================================
 -- 9. Admin course-authoring write access
@@ -965,10 +1301,56 @@ create policy "admins can delete certificate assets" on storage.objects
   for delete to authenticated
   using (bucket_id = 'certificate-assets' and public.is_admin());
 
--- NOTE: the `lesson-content` bucket (Tiptap image uploads in the rich text
--- lesson editor) is NOT created here — like the two buckets above it needs
--- public read, but it must be created manually in the Supabase Dashboard
--- (see CLAUDE.md), not via SQL.
+-- Generated certificate PDFs live in the same bucket, under
+-- certificates/{learner_id}/{enrollment_id}.pdf (checkAndIssueCertificate,
+-- lib/certificates.ts). Admin uploads are already covered by the
+-- bucket-wide is_admin() policies above; this adds the learner-owned path so
+-- the auto-issue flow can upload under the learner's own session too, since
+-- there's no service-role client in this project.
+create policy "learners can upload own certificate pdfs" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'certificate-assets'
+    and (storage.foldername(name))[1] = 'certificates'
+    and (storage.foldername(name))[2] = (select auth.uid())::text
+  );
+
+create policy "learners can update own certificate pdfs" on storage.objects
+  for update to authenticated
+  using (
+    bucket_id = 'certificate-assets'
+    and (storage.foldername(name))[1] = 'certificates'
+    and (storage.foldername(name))[2] = (select auth.uid())::text
+  )
+  with check (
+    bucket_id = 'certificate-assets'
+    and (storage.foldername(name))[1] = 'certificates'
+    and (storage.foldername(name))[2] = (select auth.uid())::text
+  );
+
+-- Lesson content images: Tiptap uploads from the rich text lesson/quiz editor
+-- (toolbar button, paste, and drag-and-drop). Same public-read / admin-write
+-- shape as the two buckets above.
+insert into storage.buckets (id, name, public)
+values ('lesson-content', 'lesson-content', true)
+on conflict (id) do nothing;
+
+create policy "public can read lesson content" on storage.objects
+  for select to public
+  using (bucket_id = 'lesson-content');
+
+create policy "admins can upload lesson content" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'lesson-content' and public.is_admin());
+
+create policy "admins can update lesson content" on storage.objects
+  for update to authenticated
+  using (bucket_id = 'lesson-content' and public.is_admin())
+  with check (bucket_id = 'lesson-content' and public.is_admin());
+
+create policy "admins can delete lesson content" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'lesson-content' and public.is_admin());
 
 -- =============================================================================
 -- 11. Public landing page content (superadmin-authored)

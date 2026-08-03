@@ -17,6 +17,7 @@ import type { QuizAttemptInfo } from "@/lib/learn-server"
 import type { AdminQuiz } from "@/lib/courses-admin"
 import { QuizPlayer } from "@/components/learn/QuizPlayer"
 import { QuizPreview } from "@/components/learn/QuizPreview"
+import { EssayAssessmentPlayer } from "@/components/learn/EssayAssessmentPlayer"
 
 export function LessonPane({
   courseId,
@@ -27,6 +28,7 @@ export function LessonPane({
   quizAttempt,
   basePath = "/learn",
   mode = "learner",
+  isCourseComplete = false,
 }: {
   courseId: string
   course: Course
@@ -36,15 +38,25 @@ export function LessonPane({
   quizAttempt?: QuizAttemptInfo
   basePath?: string
   mode?: "learner" | "admin-preview"
+  isCourseComplete?: boolean
 }) {
   const isQuiz = lesson.content_type === "quiz" || lesson.content_type === "mixed"
+  // Assessments are long, multi-question study cases -- scroll them from the top
+  // instead of vertically centering the (short) quiz card.
+  const isAssessment = isQuiz && mode !== "admin-preview" && !!lesson.quiz?.is_assessment
   const [showFinished, setShowFinished] = useState(false)
 
   return (
     <div className={cn("relative flex min-w-0 flex-1 flex-col overflow-y-auto", isQuiz && "bg-[#f4f8fa]")}>
-      <div className={cn("flex-1", isQuiz && "flex flex-col justify-center py-10")}>
+      <div className={cn("flex-1", isQuiz && !isAssessment && "flex flex-col justify-center py-10")}>
         {showFinished ? (
-          <CourseFinishedPane courseId={courseId} prevLessonId={prevLessonId} basePath={basePath} />
+          <CourseFinishedPane
+            courseId={courseId}
+            courseTitle={course.title}
+            prevLessonId={prevLessonId}
+            basePath={basePath}
+            isCourseComplete={isCourseComplete}
+          />
         ) : (
           <>
             {lesson.content_type === "video" && (
@@ -82,13 +94,10 @@ export function LessonPane({
                 {lesson.quiz ? (
                   mode === "admin-preview" ? (
                     <QuizPreview quiz={lesson.quiz as AdminQuiz} />
+                  ) : lesson.quiz.is_assessment ? (
+                    <EssayAssessmentPlayer quiz={lesson.quiz} attemptInfo={quizAttempt} />
                   ) : (
-                    <QuizPlayer
-                      courseId={courseId}
-                      lessonId={lesson.id}
-                      quiz={lesson.quiz}
-                      attemptInfo={quizAttempt}
-                    />
+                    <QuizPlayer quiz={lesson.quiz} attemptInfo={quizAttempt} />
                   )
                 ) : (
                   <QuizPlaceholder />
@@ -104,7 +113,9 @@ export function LessonPane({
               </div>
             )}
 
-            {lesson.content_type !== "quiz" && <LessonTabs course={course} />}
+            {lesson.content_type !== "quiz" && lesson.content_type !== "text" && (
+              <LessonTabs course={course} />
+            )}
           </>
         )}
       </div>
@@ -186,12 +197,16 @@ function LessonNavArrows({
 
 function CourseFinishedPane({
   courseId,
+  courseTitle,
   prevLessonId,
   basePath = "/learn",
+  isCourseComplete,
 }: {
   courseId: string
+  courseTitle: string
   prevLessonId: string | null
   basePath?: string
+  isCourseComplete: boolean
 }) {
   return (
     <div className="relative flex flex-col items-center gap-5 p-16 text-center">
@@ -204,10 +219,31 @@ function CourseFinishedPane({
           <ChevronLeft className="size-5" />
         </Link>
       )}
-      <p className="text-lg font-bold">🙌 You&apos;ve finished the last lesson in this course!</p>
-      <Button variant="outline" render={<Link href="/learner/courses" />} nativeButton={false}>
-        Find more courses
-      </Button>
+      {isCourseComplete ? (
+        <>
+          <p className="text-lg font-bold">🎉 Congratulations — you&apos;ve completed {courseTitle}!</p>
+          <p className="-mt-3 text-sm text-muted-foreground">Your certificate is ready to download.</p>
+          <div className="flex gap-3">
+            <Button
+              className="bg-brand-gradient text-white hover:brightness-105"
+              render={<Link href="/learner/profile?tab=certificates" />}
+              nativeButton={false}
+            >
+              View Your Certificate
+            </Button>
+            <Button variant="outline" render={<Link href="/learner/courses" />} nativeButton={false}>
+              Find more courses
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-lg font-bold">🙌 You&apos;ve finished the last lesson in this course!</p>
+          <Button variant="outline" render={<Link href="/learner/courses" />} nativeButton={false}>
+            Find more courses
+          </Button>
+        </>
+      )}
     </div>
   )
 }
@@ -340,11 +376,11 @@ function TextContent({
   const [fullscreen, setFullscreen] = useState(false)
 
   return (
-    <div className="group relative">
+    <div className="group relative flex h-full flex-col">
       <div
         className={cn(
           "border-b border-border bg-card",
-          fullscreen ? "fixed inset-0 z-50 overflow-y-auto" : "mx-14 h-[62vh] overflow-y-auto"
+          fullscreen ? "fixed inset-0 z-50 overflow-y-auto" : "flex-1 overflow-y-auto"
         )}
       >
         {!fullscreen && (
@@ -365,7 +401,7 @@ function TextContent({
             <Minimize2 className="size-4.5" />
           </button>
         )}
-        <div className="p-8">
+        <div className="px-14 py-8">
           <div className="mb-2.5 text-xs font-semibold tracking-wider text-ring uppercase">
             Reading{lesson.duration_seconds ? ` · ${formatDuration(lesson.duration_seconds)}` : ""}
           </div>
@@ -427,7 +463,7 @@ function LessonTabs({ course }: { course: Course }) {
         {tab === "overview" && (
           <>
             <div className="mb-3 text-lg font-bold">About this course</div>
-            <p className="text-sm leading-relaxed text-muted-foreground">{course.description}</p>
+            <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{course.description}</p>
             <div className="mt-4 flex gap-2 text-[13px] text-muted-foreground">
               <span>{course.lesson_count} lessons</span>
               <span>·</span>

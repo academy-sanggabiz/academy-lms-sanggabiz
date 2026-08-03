@@ -19,11 +19,32 @@ export async function getEnrolledCourseIds(): Promise<string[]> {
   return data.map((row) => row.course_id)
 }
 
+export async function getCompletedCourseIds(): Promise<string[]> {
+  const supabase = await createClient()
+  const { data: claimsData } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims?.sub
+  if (!userId) return []
+
+  const { data, error } = await supabase
+    .from("enrollments")
+    .select("course_id")
+    .eq("learner_id", userId)
+    .eq("status", "completed")
+
+  if (error) {
+    console.error("getCompletedCourseIds failed:", error.message)
+    return []
+  }
+
+  return data.map((row) => row.course_id)
+}
+
 export type EnrolledCourseSummary = {
   id: string
   title: string
   lesson_count: number
   duration_hours: number
+  status: "active" | "completed"
 }
 
 export async function getEnrolledCoursesWithDetails(): Promise<EnrolledCourseSummary[]> {
@@ -34,7 +55,7 @@ export async function getEnrolledCoursesWithDetails(): Promise<EnrolledCourseSum
 
   const { data, error } = await supabase
     .from("enrollments")
-    .select("courses(id, title, lesson_count, duration_hours)")
+    .select("status, courses(id, title, lesson_count, duration_hours)")
     .eq("learner_id", userId)
     .order("enrolled_at", { ascending: false })
 
@@ -44,7 +65,10 @@ export async function getEnrolledCoursesWithDetails(): Promise<EnrolledCourseSum
   }
 
   return data
-    .map((row) => (Array.isArray(row.courses) ? row.courses[0] : row.courses))
+    .map((row) => {
+      const course = Array.isArray(row.courses) ? row.courses[0] : row.courses
+      return course ? { ...course, status: row.status } : null
+    })
     .filter((course): course is EnrolledCourseSummary => course !== null)
 }
 

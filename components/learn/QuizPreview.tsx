@@ -21,7 +21,11 @@ export function QuizPreview({ quiz }: { quiz: AdminQuiz }) {
             <div className="text-[13px] font-semibold text-muted-foreground">
               Question {index + 1} · {question.points} {question.points === 1 ? "point" : "points"}
             </div>
-            <div className="mt-1.5 text-[17px] font-semibold">{question.prompt}</div>
+            {question.type === "essay" ? (
+              <div className="lesson-prose mt-1.5" dangerouslySetInnerHTML={{ __html: question.prompt }} />
+            ) : (
+              <div className="mt-1.5 text-[17px] font-semibold">{question.prompt}</div>
+            )}
 
             {(question.type === "multiple_choice" || question.type === "true_false") && (
               <div className="mt-4 flex flex-col gap-2.5">

@@ -645,7 +645,13 @@ export async function createQuestion(
 
 export async function updateQuiz(
   id: string,
-  input: Partial<{ title: string; pass_score: number; max_attempts: number | null; shuffle: boolean }>
+  input: Partial<{
+    title: string
+    pass_score: number
+    max_attempts: number | null
+    shuffle: boolean
+    is_assessment: boolean
+  }>
 ): Promise<{ ok: true } | { error: string }> {
   const supabase = await createClient()
   const { error } = await supabase.from("quizzes").update(input).eq("id", id)

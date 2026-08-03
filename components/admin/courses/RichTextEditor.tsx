@@ -2,11 +2,13 @@
 
 import { useRef, useState } from "react"
 import { EditorContent, useEditor, type Editor } from "@tiptap/react"
+import type { EditorView } from "@tiptap/pm/view"
 import { StarterKit } from "@tiptap/starter-kit"
 import { TextAlign } from "@tiptap/extension-text-align"
 import { TextStyle, Color } from "@tiptap/extension-text-style"
 import { Highlight } from "@tiptap/extension-highlight"
 import { Image } from "@tiptap/extension-image"
+import { TableKit } from "@tiptap/extension-table/kit"
 import {
   AlignCenter,
   AlignLeft,
@@ -14,6 +16,7 @@ import {
   Bold,
   ChevronDown,
   Code,
+  Columns3,
   Highlighter,
   ImageIcon,
   Italic,
@@ -22,7 +25,10 @@ import {
   Loader2,
   Palette,
   Quote,
+  Rows3,
   Strikethrough,
+  TableIcon,
+  Trash2,
   Underline,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -57,6 +63,33 @@ const HEADING_OPTIONS = [
   { label: "Heading 3", level: 3 as const },
 ]
 
+// Google Docs pastes wrap most runs in `<span style="color:#000000">`, which our
+// Color extension would otherwise apply literally, clashing with the editor's own
+// muted text theme. Strip pasted color so only toolbar-applied color survives.
+function stripPastedColor(html: string): string {
+  const doc = new DOMParser().parseFromString(html, "text/html")
+  doc.body.querySelectorAll<HTMLElement>("[style]").forEach((el) => {
+    el.style.removeProperty("color")
+    el.style.removeProperty("background-color")
+    if (!el.getAttribute("style")) el.removeAttribute("style")
+  })
+  return doc.body.innerHTML
+}
+
+async function uploadAndInsert(view: EditorView, file: File, pos?: number) {
+  const toastId = toast.loading("Uploading image…")
+  const result = await uploadLessonImage(file)
+  toast.dismiss(toastId)
+
+  if ("error" in result) {
+    toast.error(result.error)
+    return
+  }
+  const node = view.state.schema.nodes.image.create({ src: result.url })
+  const tr = pos == null ? view.state.tr.replaceSelectionWith(node) : view.state.tr.insert(pos, node)
+  view.dispatch(tr)
+}
+
 export function RichTextEditor({
   value,
   onBlur,
@@ -73,11 +106,28 @@ export function RichTextEditor({
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Image,
+      TableKit.configure({ table: { resizable: true } }),
     ],
     content: value,
     editorProps: {
       attributes: {
         class: "lesson-prose min-h-[160px] rounded-b-lg border border-t-0 border-border bg-card px-3.5 py-3 focus:outline-none",
+      },
+      transformPastedHTML: stripPastedColor,
+      handlePaste: (view, event) => {
+        const image = Array.from(event.clipboardData?.files ?? []).find((f) => f.type.startsWith("image/"))
+        if (!image) return false
+        event.preventDefault()
+        void uploadAndInsert(view, image)
+        return true
+      },
+      handleDrop: (view, event) => {
+        const image = Array.from(event.dataTransfer?.files ?? []).find((f) => f.type.startsWith("image/"))
+        if (!image) return false
+        event.preventDefault()
+        const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
+        void uploadAndInsert(view, image, coords?.pos)
+        return true
       },
     },
     onBlur: ({ editor }) => {
@@ -250,6 +300,52 @@ function Toolbar({ editor }: { editor: Editor }) {
       >
         <Code className="size-3.5" />
       </ToolbarToggle>
+
+      <ToolbarDivider />
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        title="Insert table"
+        onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+      >
+        <TableIcon className="size-3.5" />
+      </Button>
+
+      {editor.isActive("table") && (
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="sm" className="gap-1" />}>
+            Table
+            <ChevronDown className="size-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => editor.chain().focus().addRowAfter().run()}>
+              <Rows3 className="size-3.5" />
+              Add row after
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => editor.chain().focus().addColumnAfter().run()}>
+              <Columns3 className="size-3.5" />
+              Add column after
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => editor.chain().focus().deleteRow().run()}>
+              <Rows3 className="size-3.5" />
+              Delete row
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => editor.chain().focus().deleteColumn().run()}>
+              <Columns3 className="size-3.5" />
+              Delete column
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => editor.chain().focus().deleteTable().run()}
+            >
+              <Trash2 className="size-3.5" />
+              Delete table
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       <ToolbarDivider />
 

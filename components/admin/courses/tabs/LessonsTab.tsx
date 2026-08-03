@@ -487,7 +487,9 @@ function LessonCard({
         <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
           <Icon className="size-3.5" />
         </span>
-        <span className="text-sm font-bold whitespace-nowrap">Lesson {index + 1}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-bold">
+          {title.trim() || `Lesson ${index + 1}`}
+        </span>
         <span
           className={cn(
             "rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap",
@@ -502,7 +504,6 @@ function LessonCard({
             {durationMin} min
           </span>
         )}
-        <div className="flex-1" />
         <Button
           type="button"
           variant="ghost"

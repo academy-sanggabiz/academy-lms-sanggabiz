@@ -12,13 +12,9 @@ import { startQuiz, submitQuiz, type SubmitQuizResult } from "@/app/learn/[cours
 type Stage = "intro" | "active" | "results"
 
 export function QuizPlayer({
-  courseId,
-  lessonId,
   quiz,
   attemptInfo,
 }: {
-  courseId: string
-  lessonId: string
   quiz: Quiz
   attemptInfo?: QuizAttemptInfo
 }) {
@@ -60,8 +56,7 @@ export function QuizPlayer({
     if (!attemptId) return
     setError(null)
     startTransition(async () => {
-      const payload = quiz.questions.map((q) => ({ questionId: q.id, response: answers[q.id] ?? "" }))
-      const res = await submitQuiz(attemptId, courseId, lessonId, payload)
+      const res = await submitQuiz(attemptId, answers)
       if ("error" in res) {
         setError(res.error)
         return
@@ -83,6 +78,9 @@ export function QuizPlayer({
             <p className="text-sm text-muted-foreground">
               {quiz.questions.length} questions · test what you&apos;ve learned in this module
             </p>
+            {attemptInfo?.pendingReview && (
+              <p className="text-sm text-muted-foreground">Your last attempt is awaiting instructor review.</p>
+            )}
             {error && <p className="text-sm text-destructive">{error}</p>}
             {canAttempt ? (
               <Button
@@ -135,7 +133,11 @@ export function QuizPlayer({
               </div>
             )}
           </div>
-          <div className="mt-4 text-[17px]">{question.prompt}</div>
+          {question.type === "essay" ? (
+            <div className="lesson-prose mt-4" dangerouslySetInnerHTML={{ __html: question.prompt }} />
+          ) : (
+            <div className="mt-4 text-[17px]">{question.prompt}</div>
+          )}
         </div>
 
         {isChoice ? (
@@ -192,23 +194,35 @@ export function QuizPlayer({
   }
 
   if (stage === "results" && result) {
-    const canRetry = attemptsRemaining === null || attemptsRemaining - 1 > 0
+    const canRetry = attemptsRemaining === null || attemptsRemaining > 0
 
     return (
       <div className="mx-auto flex max-w-2xl flex-col gap-5 p-10">
         <div className="flex flex-col items-center gap-2.5 rounded-2xl border border-border bg-card p-10 text-center">
           <div className="text-[15px] font-semibold text-muted-foreground">Quiz Results</div>
-          <div
-            className={cn(
-              "text-5xl font-bold",
-              result.passed ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
-            )}
-          >
-            {result.score}%
-          </div>
-          <div className="text-[14.5px] text-muted-foreground">
-            {result.correctCount} of {result.total} correct
-          </div>
+          {result.pending ? (
+            <>
+              <div className="text-2xl font-bold text-muted-foreground">Awaiting Review</div>
+              <p className="text-[14.5px] text-muted-foreground">
+                This quiz includes questions that need to be graded by an instructor. You&apos;ll see your
+                final score once it&apos;s reviewed.
+              </p>
+            </>
+          ) : (
+            <>
+              <div
+                className={cn(
+                  "text-5xl font-bold",
+                  result.passed ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
+                )}
+              >
+                {result.score}%
+              </div>
+              <div className="text-[14.5px] text-muted-foreground">
+                {result.correctCount} of {result.total} correct
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex flex-col gap-3">
@@ -239,8 +253,15 @@ export function QuizPlayer({
                   <CircleHelp className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="text-[14.5px] font-semibold">{question.prompt}</div>
+                  {question.type === "essay" ? (
+                    <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: question.prompt }} />
+                  ) : (
+                    <div className="text-[14.5px] font-semibold">{question.prompt}</div>
+                  )}
                   <div className="mt-1 text-[13px] text-muted-foreground">Your answer: {answerText}</div>
+                  {isCorrect === null && (
+                    <div className="mt-1 text-[13px] font-medium text-muted-foreground">Pending review</div>
+                  )}
                 </div>
               </div>
             )
