@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { checkAndIssueCertificate } from "@/lib/certificates"
 
 export type EssayGrade = { questionId: string; points: number }
 
@@ -133,6 +134,14 @@ async function finalizeAttempt(attemptId: string): Promise<{ ok: true } | { erro
         },
         { onConflict: "enrollment_id,lesson_id" }
       )
+
+      if (passed) {
+        await checkAndIssueCertificate(supabase, {
+          enrollmentId: enrollment.id,
+          courseId,
+          learnerId: attempt.learner_id,
+        })
+      }
     }
   }
 

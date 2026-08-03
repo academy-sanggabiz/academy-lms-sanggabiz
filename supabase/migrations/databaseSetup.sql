@@ -992,6 +992,101 @@ create policy "admins can delete course_certificate_settings" on public.course_c
 grant select, insert, delete on public.course_prerequisites to authenticated;
 grant select, insert, update, delete on public.course_certificate_settings to authenticated;
 
+-- Learners need to read a course's certificate settings to render/compose a
+-- certificate on completion (checkAndIssueCertificate, lib/certificates.ts) --
+-- same published-course gate as lessons/quizzes below, not enrollment-scoped
+-- (the settings themselves aren't sensitive, just authoring content).
+create policy "certificate settings readable for published courses" on public.course_certificate_settings
+  for select to authenticated
+  using (exists (
+    select 1 from public.courses c
+    where c.id = course_certificate_settings.course_id and c.status = 'published'
+  ));
+
+-- =============================================================================
+-- 8b. Certificates (issued)
+-- =============================================================================
+--
+-- Issued once a learner has completed every lesson in a course AND passed
+-- every quiz-type lesson (checkAndIssueCertificate, lib/certificates.ts).
+-- Generation runs under the learner's own session (auto-triggered from the
+-- learn player) or an admin's session (triggered via manual essay grading in
+-- Admin > Grading) -- there's no service-role client in this project, so RLS
+-- has to allow both paths rather than a single privileged writer.
+
+create table public.certificates (
+  id uuid primary key default gen_random_uuid(),
+  enrollment_id uuid not null unique references public.enrollments (id) on delete cascade,
+  serial text not null unique,
+  issued_at timestamptz not null default now(),
+  pdf_url text
+);
+
+alter table public.certificates enable row level security;
+
+create policy "own certificates readable" on public.certificates
+  for select
+  to authenticated
+  using (exists (
+    select 1 from public.enrollments e
+    where e.id = certificates.enrollment_id and e.learner_id = (select auth.uid())
+  ));
+
+create policy "own certificates insertable" on public.certificates
+  for insert
+  to authenticated
+  with check (exists (
+    select 1 from public.enrollments e
+    where e.id = certificates.enrollment_id and e.learner_id = (select auth.uid())
+  ));
+
+-- Update (not just insert) is needed so the PDF-upload step can write
+-- pdf_url back onto the row after the initial insert.
+create policy "own certificates updatable" on public.certificates
+  for update
+  to authenticated
+  using (exists (
+    select 1 from public.enrollments e
+    where e.id = certificates.enrollment_id and e.learner_id = (select auth.uid())
+  ))
+  with check (exists (
+    select 1 from public.enrollments e
+    where e.id = certificates.enrollment_id and e.learner_id = (select auth.uid())
+  ));
+
+create policy "admins read all certificates" on public.certificates
+  for select to authenticated
+  using (public.is_admin());
+
+create policy "admins insert certificates" on public.certificates
+  for insert to authenticated
+  with check (public.is_admin());
+
+create policy "admins update certificates" on public.certificates
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+grant select, insert, update on public.certificates to authenticated;
+
+-- enrollments had no update policy until now -- status/completed_at were
+-- never written anywhere (see comment on the enrollments table above).
+-- checkAndIssueCertificate needs to flip status to 'completed' from both the
+-- learner's own session and an admin's (manual essay grading), so both paths
+-- get a policy here.
+create policy "own enrollments updatable" on public.enrollments
+  for update
+  to authenticated
+  using ((select auth.uid()) = learner_id)
+  with check ((select auth.uid()) = learner_id);
+
+create policy "admins update enrollments" on public.enrollments
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+grant update on public.enrollments to authenticated;
+
 -- =============================================================================
 -- 9. Admin course-authoring write access
 -- =============================================================================
@@ -1205,6 +1300,33 @@ create policy "admins can update certificate assets" on storage.objects
 create policy "admins can delete certificate assets" on storage.objects
   for delete to authenticated
   using (bucket_id = 'certificate-assets' and public.is_admin());
+
+-- Generated certificate PDFs live in the same bucket, under
+-- certificates/{learner_id}/{enrollment_id}.pdf (checkAndIssueCertificate,
+-- lib/certificates.ts). Admin uploads are already covered by the
+-- bucket-wide is_admin() policies above; this adds the learner-owned path so
+-- the auto-issue flow can upload under the learner's own session too, since
+-- there's no service-role client in this project.
+create policy "learners can upload own certificate pdfs" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'certificate-assets'
+    and (storage.foldername(name))[1] = 'certificates'
+    and (storage.foldername(name))[2] = (select auth.uid())::text
+  );
+
+create policy "learners can update own certificate pdfs" on storage.objects
+  for update to authenticated
+  using (
+    bucket_id = 'certificate-assets'
+    and (storage.foldername(name))[1] = 'certificates'
+    and (storage.foldername(name))[2] = (select auth.uid())::text
+  )
+  with check (
+    bucket_id = 'certificate-assets'
+    and (storage.foldername(name))[1] = 'certificates'
+    and (storage.foldername(name))[2] = (select auth.uid())::text
+  );
 
 -- Lesson content images: Tiptap uploads from the rich text lesson/quiz editor
 -- (toolbar button, paste, and drag-and-drop). Same public-read / admin-write

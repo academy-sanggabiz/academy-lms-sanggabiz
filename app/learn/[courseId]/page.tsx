@@ -4,6 +4,8 @@ import { ArrowLeft } from "lucide-react"
 
 import { getLearnData } from "@/lib/learn-server"
 import { resolveUserRole, roleHomePath } from "@/lib/auth/require-admin"
+import { checkAndIssueCertificate } from "@/lib/certificates"
+import { createClient } from "@/lib/supabase/server"
 import { LearnSidebar } from "@/components/learn/LearnSidebar"
 import { LessonPane } from "@/components/learn/LessonPane"
 
@@ -44,6 +46,22 @@ export default async function LearnPage({
 
   const doneCount = allLessons.filter((l) => completedLessonIds.has(l.id)).length
   const progressPct = Math.round((doneCount / allLessons.length) * 100)
+  const isCourseComplete = progressPct === 100
+
+  // Self-heal: certificate issuance normally fires from the lesson-completing
+  // actions themselves (toggleLessonComplete/submitQuiz/finalizeAttempt), but
+  // a course finished before certificates were enabled/configured for it
+  // never re-triggers that check. Re-running it here on every page view is
+  // cheap (idempotent -- returns the existing row once issued) and makes the
+  // check retry automatically instead of staying stuck.
+  if (isCourseComplete && userRole) {
+    const supabase = await createClient()
+    await checkAndIssueCertificate(supabase, {
+      enrollmentId,
+      courseId,
+      learnerId: userRole.userId,
+    })
+  }
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -76,6 +94,7 @@ export default async function LearnPage({
           prevLessonId={prevLessonId}
           nextLessonId={nextLessonId}
           quizAttempt={currentLesson.quiz ? quizAttempts.get(currentLesson.quiz.id) : undefined}
+          isCourseComplete={isCourseComplete}
         />
         <LearnSidebar
           courseId={courseId}

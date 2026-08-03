@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState, useTransition, type ReactNode } from "react"
-import { CheckCircle2, ClipboardList, Clock } from "lucide-react"
+import { CheckCircle2, Clock } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -165,17 +165,7 @@ export function EssayAssessmentPlayer({
 
   return (
     <Shell>
-      <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-7">
-        <div className="flex items-center gap-2.5 text-ring">
-          <ClipboardList className="size-5" />
-          <span className="text-xs font-semibold tracking-wider uppercase">Study-case assessment</span>
-        </div>
-        <div className="text-2xl font-bold">{quiz.title}</div>
-        <p className="text-sm text-muted-foreground">
-          Read each question and write your response. Save a draft anytime and come back to finish —
-          your answers are only submitted for grading when you press Submit.
-        </p>
-      </div>
+      <div className="text-2xl font-bold">{quiz.title}</div>
 
       {quiz.questions.map((question, index) => (
         <QuestionCard

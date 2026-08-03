@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 
 import { createClient } from "@/lib/supabase/server"
+import { checkAndIssueCertificate } from "@/lib/certificates"
 
 export type SubmitQuizResult = {
   pending: boolean
@@ -230,7 +231,44 @@ export async function submitQuiz(
 
   if (error) return { error: error.message }
 
+  const result = data as SubmitQuizResult
+
+  if (result.passed) {
+    const { data: attempt } = await supabase
+      .from("quiz_attempts")
+      .select("quiz:quizzes(lesson_id)")
+      .eq("id", attemptId)
+      .single()
+
+    const quiz = attempt ? (Array.isArray(attempt.quiz) ? attempt.quiz[0] : attempt.quiz) : null
+    const lessonId = quiz?.lesson_id
+
+    if (lessonId) {
+      const { data: lesson } = await supabase
+        .from("lessons")
+        .select("section:course_sections(course_id)")
+        .eq("id", lessonId)
+        .single()
+
+      const section = lesson ? (Array.isArray(lesson.section) ? lesson.section[0] : lesson.section) : null
+      const courseId = section?.course_id
+
+      if (courseId) {
+        const { data: enrollment } = await supabase
+          .from("enrollments")
+          .select("id")
+          .eq("learner_id", userId)
+          .eq("course_id", courseId)
+          .maybeSingle()
+
+        if (enrollment) {
+          await checkAndIssueCertificate(supabase, { enrollmentId: enrollment.id, courseId, learnerId: userId })
+        }
+      }
+    }
+  }
+
   revalidatePath("/learn/[courseId]", "page")
 
-  return data as SubmitQuizResult
+  return result
 }
