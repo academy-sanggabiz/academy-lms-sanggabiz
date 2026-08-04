@@ -34,10 +34,10 @@ export function EssayAssessmentPlayer({
   const [phase, setPhase] = useState<Phase>(initialPhase)
   const [attemptId, setAttemptId] = useState<string | null>(attemptInfo?.inProgressAttemptId ?? null)
   const [answers, setAnswers] = useState<Record<string, string>>(attemptInfo?.draftAnswers ?? {})
-  // RichTextEditor only fires onBlur, so a click that blurs the editor and
-  // triggers Save/Submit in the same tick can race the state update -- this ref
-  // is the source of truth save/submit actually read from, kept in lockstep
-  // with `answers` on every change.
+  // RichTextEditor's onChange is debounced, so a click that blurs the editor
+  // and triggers Save/Submit in the same tick can still race the state
+  // update -- this ref is the source of truth save/submit actually read
+  // from, kept in lockstep with `answers` on every change.
   const answersRef = useRef(answers)
   const [error, setError] = useState<string | null>(null)
   const [savedAt, setSavedAt] = useState<string | null>(null)
@@ -274,7 +274,7 @@ function QuestionCard({
           })}
         </div>
       ) : question.type === "essay" ? (
-        <RichTextEditor value={value} onBlur={onChange} />
+        <RichTextEditor value={value} onChange={onChange} />
       ) : question.type === "file_upload" ? (
         <FileUploadAnswer value={value} onChange={onChange} onUploadFile={onUploadFile} />
       ) : (

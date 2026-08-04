@@ -4,18 +4,15 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
 import {
-  assignInstructor,
-  createCourse,
   createDraftCourse,
   createInstructor,
   deleteCourse,
   deleteInstructor,
+  saveCourseDraft,
   setCourseStatus,
-  unassignInstructor,
-  updateCourse,
-  type CourseInput,
 } from "@/lib/courses-admin"
 import { requireAdmin } from "@/lib/auth/require-admin"
+import { courseDraftSchema, type CourseDraft } from "@/lib/course-draft"
 
 export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -37,23 +34,10 @@ export async function createDraftCourseAction(): Promise<void> {
   redirect(`/admin/courses/${result.id}/edit?new=1`)
 }
 
-export async function createCourseAction(input: CourseInput): Promise<ActionResult<{ id: string }>> {
-  try {
-    await requireAdmin()
-  } catch {
-    return { ok: false, error: "Not authorized" }
-  }
-
-  const result = await createCourse(input)
-  if ("error" in result) return { ok: false, error: result.error }
-
-  revalidateCoursePaths()
-  return { ok: true, data: result }
-}
-
-export async function updateCourseAction(
-  id: string,
-  input: CourseInput
+export async function saveCourseDraftAction(
+  courseId: string,
+  draft: CourseDraft,
+  status: "draft" | "published"
 ): Promise<ActionResult<undefined>> {
   try {
     await requireAdmin()
@@ -61,7 +45,12 @@ export async function updateCourseAction(
     return { ok: false, error: "Not authorized" }
   }
 
-  const result = await updateCourse(id, input)
+  const parsed = courseDraftSchema.safeParse(draft)
+  if (!parsed.success) {
+    return { ok: false, error: "Invalid course data — please refresh and try again." }
+  }
+
+  const result = await saveCourseDraft(courseId, parsed.data, status)
   if ("error" in result) return { ok: false, error: result.error }
 
   revalidateCoursePaths()
@@ -96,37 +85,6 @@ export async function toggleCourseStatusAction(
   if ("error" in result) return { ok: false, error: result.error }
 
   revalidateCoursePaths()
-  return { ok: true, data: undefined }
-}
-
-export async function assignInstructorAction(
-  courseId: string,
-  instructorId: string
-): Promise<ActionResult<undefined>> {
-  try {
-    await requireAdmin()
-  } catch {
-    return { ok: false, error: "Not authorized" }
-  }
-
-  const result = await assignInstructor(courseId, instructorId)
-  if ("error" in result) return { ok: false, error: result.error }
-
-  revalidatePath("/admin/courses/[id]/edit", "page")
-  return { ok: true, data: undefined }
-}
-
-export async function unassignInstructorAction(courseId: string): Promise<ActionResult<undefined>> {
-  try {
-    await requireAdmin()
-  } catch {
-    return { ok: false, error: "Not authorized" }
-  }
-
-  const result = await unassignInstructor(courseId)
-  if ("error" in result) return { ok: false, error: result.error }
-
-  revalidatePath("/admin/courses/[id]/edit", "page")
   return { ok: true, data: undefined }
 }
 

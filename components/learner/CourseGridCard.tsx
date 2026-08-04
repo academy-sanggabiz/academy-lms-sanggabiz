@@ -49,15 +49,15 @@ export function CourseGridCard({ course, enrolled }: { course: Course; enrolled:
         </span>
       </div>
 
-      {course.description && (
-        <div className="mb-4 min-h-0 flex-1">
+      <div className="mb-4 min-h-0 flex-1">
+        {course.description && (
           <p className="line-clamp-3 text-[13.5px] leading-relaxed text-muted-foreground">
             {course.description}
           </p>
-        </div>
-      )}
+        )}
+      </div>
 
-      <div className="flex gap-3">
+      <div className="mt-auto flex gap-3">
         <Button
           variant="outline"
           className="h-11 flex-1"

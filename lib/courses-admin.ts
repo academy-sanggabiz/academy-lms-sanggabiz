@@ -1,11 +1,13 @@
 import { createClient } from "@/lib/supabase/server"
 import { getAdminProfile } from "@/lib/auth/require-admin"
 import { paginated, rangeFor, type ListParams, type Paginated } from "@/lib/pagination"
+import { linesToArray, type CourseDraft } from "@/lib/course-draft"
 import type {
   Course,
   CourseDetail,
   CourseSection,
   Instructor,
+  Lesson,
   LessonContentType,
   Question,
   QuestionOption,
@@ -54,19 +56,6 @@ export type AdminCourseDetail = CourseDetail & {
 }
 
 /** Server-only admin data access for course authoring -- never import from a Client Component. */
-
-export type CourseInput = {
-  title: string
-  slug?: string
-  description: string | null
-  thumbnail_url: string | null
-  price: number
-  level: string | null
-  status: "draft" | "published"
-  is_private: boolean
-  who_for: string[]
-  requirements: string[]
-}
 
 function slugify(title: string): string {
   return title
@@ -301,41 +290,6 @@ export async function getCourseDetailForAdmin(id: string): Promise<AdminCourseDe
   }
 }
 
-export async function createCourse(
-  input: CourseInput
-): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  const slug = input.slug?.trim() || `${slugify(input.title)}-${Date.now().toString(36)}`
-
-  const { data, error } = await supabase
-    .from("courses")
-    .insert({
-      title: input.title,
-      slug,
-      description: input.description,
-      thumbnail_url: input.thumbnail_url,
-      price: input.price,
-      level: input.level,
-      status: input.status,
-      is_private: input.is_private,
-      who_for: input.who_for,
-      requirements: input.requirements,
-      created_by: user?.id ?? null,
-    })
-    .select("id")
-    .single()
-
-  if (error || !data) {
-    return { error: error?.message ?? "Failed to create course" }
-  }
-
-  return { id: data.id }
-}
-
 export async function createDraftCourse(): Promise<{ id: string } | { error: string }> {
   const supabase = await createClient()
   const {
@@ -366,30 +320,6 @@ export async function createDraftCourse(): Promise<{ id: string } | { error: str
   }
 
   return { id: data.id }
-}
-
-export async function updateCourse(
-  id: string,
-  input: CourseInput
-): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from("courses")
-    .update({
-      title: input.title,
-      description: input.description,
-      thumbnail_url: input.thumbnail_url,
-      price: input.price,
-      level: input.level,
-      status: input.status,
-      is_private: input.is_private,
-      who_for: input.who_for,
-      requirements: input.requirements,
-    })
-    .eq("id", id)
-
-  if (error) return { error: error.message }
-  return { ok: true }
 }
 
 export async function deleteCourse(id: string): Promise<{ ok: true } | { error: string }> {
@@ -436,429 +366,9 @@ export async function createInstructor(input: {
   return { id: data.id }
 }
 
-export async function assignInstructor(
-  courseId: string,
-  instructorId: string
-): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  // Single-instructor-per-course for now (Phase 2 scope) -- clear any
-  // existing assignment first so re-picking an instructor replaces it
-  // rather than accumulating rows.
-  const { error: deleteError } = await supabase
-    .from("course_instructors")
-    .delete()
-    .eq("course_id", courseId)
-  if (deleteError) return { error: deleteError.message }
-
-  const { error } = await supabase
-    .from("course_instructors")
-    .insert({ course_id: courseId, instructor_id: instructorId })
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
-export async function unassignInstructor(
-  courseId: string
-): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("course_instructors").delete().eq("course_id", courseId)
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
 export async function deleteInstructor(id: string): Promise<{ ok: true } | { error: string }> {
   const supabase = await createClient()
   const { error } = await supabase.from("instructors").delete().eq("id", id)
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
-/**
- * The reference "Lessons" tab has no section/module concept -- lessons hang
- * directly off a course. The DB still requires a course_sections row per
- * lesson, so every course gets exactly one auto-created "General" section,
- * never surfaced in the UI.
- */
-async function ensureDefaultSection(courseId: string): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient()
-  const { data: existing, error: selectError } = await supabase
-    .from("course_sections")
-    .select("id")
-    .eq("course_id", courseId)
-    .order("position", { ascending: true })
-    .limit(1)
-    .maybeSingle()
-
-  if (selectError) return { error: selectError.message }
-  if (existing) return { id: existing.id }
-
-  const { data: created, error: insertError } = await supabase
-    .from("course_sections")
-    .insert({ course_id: courseId, title: "General", position: 0 })
-    .select("id")
-    .single()
-
-  if (insertError || !created) return { error: insertError?.message ?? "Failed to create section" }
-  return { id: created.id }
-}
-
-export async function createSection(
-  courseId: string,
-  title: string
-): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient()
-  const position = await nextPosition("course_sections", "course_id", courseId)
-
-  const { data, error } = await supabase
-    .from("course_sections")
-    .insert({ course_id: courseId, title, position })
-    .select("id")
-    .single()
-
-  if (error || !data) return { error: error?.message ?? "Failed to create module" }
-  return { id: data.id }
-}
-
-export async function renameSection(id: string, title: string): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("course_sections").update({ title }).eq("id", id)
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
-export async function deleteSection(id: string): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("course_sections").delete().eq("id", id)
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
-async function nextPosition(
-  table: "lessons" | "resources" | "questions" | "question_options" | "course_prerequisites" | "course_sections",
-  column: "section_id" | "lesson_id" | "quiz_id" | "question_id" | "course_id",
-  id: string
-) {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from(table)
-    .select("position")
-    .eq(column, id)
-    .order("position", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  return (data?.position ?? -1) + 1
-}
-
-export async function createLesson(
-  courseId: string,
-  sectionId: string | null,
-  input: { title: string; content_type: LessonContentType; duration_seconds: number | null }
-): Promise<{ id: string } | { error: string }> {
-  let resolvedSectionId = sectionId
-  if (!resolvedSectionId) {
-    const section = await ensureDefaultSection(courseId)
-    if ("error" in section) return section
-    resolvedSectionId = section.id
-  }
-
-  const supabase = await createClient()
-  const position = await nextPosition("lessons", "section_id", resolvedSectionId)
-
-  const { data, error } = await supabase
-    .from("lessons")
-    .insert({
-      section_id: resolvedSectionId,
-      title: input.title,
-      content_type: input.content_type,
-      duration_seconds: input.duration_seconds,
-      position,
-    })
-    .select("id")
-    .single()
-
-  if (error || !data) return { error: error?.message ?? "Failed to create lesson" }
-  return { id: data.id }
-}
-
-export async function updateLesson(
-  id: string,
-  input: Partial<{
-    title: string
-    content_type: LessonContentType
-    video_url: string | null
-    content: string | null
-    duration_seconds: number | null
-  }>
-): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("lessons").update(input).eq("id", id)
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
-export async function deleteLesson(id: string): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("lessons").delete().eq("id", id)
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
-export async function duplicateLesson(id: string): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient()
-  const { data: source, error: sourceError } = await supabase
-    .from("lessons")
-    .select("*, resources(*)")
-    .eq("id", id)
-    .single()
-
-  if (sourceError || !source) return { error: sourceError?.message ?? "Lesson not found" }
-
-  const position = await nextPosition("lessons", "section_id", source.section_id)
-
-  const { data: copy, error: insertError } = await supabase
-    .from("lessons")
-    .insert({
-      section_id: source.section_id,
-      title: `${source.title} (copy)`,
-      content_type: source.content_type,
-      video_url: source.video_url,
-      content: source.content,
-      duration_seconds: source.duration_seconds,
-      position,
-    })
-    .select("id")
-    .single()
-
-  if (insertError || !copy) return { error: insertError?.message ?? "Failed to duplicate lesson" }
-
-  const resources = (source.resources as Resource[]) ?? []
-  if (resources.length > 0) {
-    const { error: resourcesError } = await supabase.from("resources").insert(
-      resources.map((r) => ({
-        lesson_id: copy.id,
-        title: r.title,
-        file_url: r.file_url,
-        type: r.type,
-        position: r.position,
-      }))
-    )
-    if (resourcesError) return { error: resourcesError.message }
-  }
-
-  return { id: copy.id }
-}
-
-export async function reorderLessons(
-  sections: { id: string; lessonIds: string[] }[]
-): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const results = await Promise.all(
-    sections.flatMap(({ id: sectionId, lessonIds }) =>
-      lessonIds.map((lessonId, position) =>
-        supabase.from("lessons").update({ position, section_id: sectionId }).eq("id", lessonId)
-      )
-    )
-  )
-  const failed = results.find((r) => r.error)
-  if (failed?.error) return { error: failed.error.message }
-  return { ok: true }
-}
-
-export async function createResource(
-  lessonId: string,
-  input: { title: string; file_url: string; type: string }
-): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient()
-  const position = await nextPosition("resources", "lesson_id", lessonId)
-
-  const { data, error } = await supabase
-    .from("resources")
-    .insert({ lesson_id: lessonId, title: input.title, file_url: input.file_url, type: input.type, position })
-    .select("id")
-    .single()
-
-  if (error || !data) return { error: error?.message ?? "Failed to create resource" }
-  return { id: data.id }
-}
-
-export async function updateResource(
-  id: string,
-  input: Partial<{ title: string; file_url: string; type: string }>
-): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("resources").update(input).eq("id", id)
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
-export async function deleteResource(id: string): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("resources").delete().eq("id", id)
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
-async function ensureQuiz(lessonId: string): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient()
-  const { data: existing, error: selectError } = await supabase
-    .from("quizzes")
-    .select("id")
-    .eq("lesson_id", lessonId)
-    .maybeSingle()
-
-  if (selectError) return { error: selectError.message }
-  if (existing) return { id: existing.id }
-
-  const { data: lesson, error: lessonError } = await supabase
-    .from("lessons")
-    .select("title")
-    .eq("id", lessonId)
-    .single()
-
-  if (lessonError || !lesson) return { error: lessonError?.message ?? "Lesson not found" }
-
-  const { data: created, error: insertError } = await supabase
-    .from("quizzes")
-    .insert({ lesson_id: lessonId, title: lesson.title, pass_score: 70, shuffle: false, max_attempts: null })
-    .select("id")
-    .single()
-
-  if (insertError || !created) return { error: insertError?.message ?? "Failed to create quiz" }
-  return { id: created.id }
-}
-
-export async function createQuestion(
-  lessonId: string,
-  input: { type: AuthorableQuestionType; prompt: string; points: number }
-): Promise<{ id: string } | { error: string }> {
-  const quiz = await ensureQuiz(lessonId)
-  if ("error" in quiz) return quiz
-
-  const supabase = await createClient()
-  const position = await nextPosition("questions", "quiz_id", quiz.id)
-
-  const { data, error } = await supabase
-    .from("questions")
-    .insert({ quiz_id: quiz.id, type: input.type, prompt: input.prompt, points: input.points, position })
-    .select("id")
-    .single()
-
-  if (error || !data) return { error: error?.message ?? "Failed to create question" }
-
-  // true_false questions are always exactly two fixed options; seed them so
-  // the editor never needs an add/remove option UI for this type.
-  if (input.type === "true_false") {
-    const { error: optionsError } = await supabase.from("question_options").insert([
-      { question_id: data.id, text: "True", is_correct: true, position: 0 },
-      { question_id: data.id, text: "False", is_correct: false, position: 1 },
-    ])
-    if (optionsError) return { error: optionsError.message }
-  }
-
-  return { id: data.id }
-}
-
-export async function updateQuiz(
-  id: string,
-  input: Partial<{
-    title: string
-    pass_score: number
-    max_attempts: number | null
-    shuffle: boolean
-    is_assessment: boolean
-  }>
-): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("quizzes").update(input).eq("id", id)
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
-export async function updateQuestion(
-  id: string,
-  input: Partial<{
-    type: AuthorableQuestionType
-    prompt: string
-    points: number
-    allow_multiple: boolean
-    case_sensitive: boolean
-  }>
-): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("questions").update(input).eq("id", id)
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
-export async function deleteQuestion(id: string): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("questions").delete().eq("id", id)
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
-export async function createOption(
-  questionId: string,
-  input: { text: string; is_correct?: boolean }
-): Promise<{ id: string } | { error: string }> {
-  const supabase = await createClient()
-  const position = await nextPosition("question_options", "question_id", questionId)
-
-  const { data, error } = await supabase
-    .from("question_options")
-    .insert({ question_id: questionId, text: input.text, is_correct: input.is_correct ?? false, position })
-    .select("id")
-    .single()
-
-  if (error || !data) return { error: error?.message ?? "Failed to create option" }
-  return { id: data.id }
-}
-
-export async function updateOptionText(id: string, text: string): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("question_options").update({ text }).eq("id", id)
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
-export async function setCorrectOption(
-  questionId: string,
-  optionId: string
-): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { data: options, error: selectError } = await supabase
-    .from("question_options")
-    .select("id")
-    .eq("question_id", questionId)
-
-  if (selectError) return { error: selectError.message }
-
-  const results = await Promise.all(
-    (options ?? []).map((o) =>
-      supabase.from("question_options").update({ is_correct: o.id === optionId }).eq("id", o.id)
-    )
-  )
-  const failed = results.find((r) => r.error)
-  if (failed?.error) return { error: failed.error.message }
-  return { ok: true }
-}
-
-// Unlike setCorrectOption (single-select radio: exactly one correct option),
-// this flips one option's is_correct independently — for multi-correct
-// multiple_choice checkboxes and for short_answer keyword rows (always true).
-export async function toggleCorrectOption(
-  optionId: string,
-  isCorrect: boolean
-): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("question_options").update({ is_correct: isCorrect }).eq("id", optionId)
-  if (error) return { error: error.message }
-  return { ok: true }
-}
-
-export async function deleteOption(id: string): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("question_options").delete().eq("id", id)
   if (error) return { error: error.message }
   return { ok: true }
 }
@@ -905,55 +415,419 @@ export async function getOwnedCourseIdsOrNull(): Promise<string[] | null> {
   return (data ?? []).map((c) => c.id)
 }
 
-export async function setRequirePrerequisites(
-  courseId: string,
-  value: boolean
-): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.from("courses").update({ require_prerequisites: value }).eq("id", courseId)
-  if (error) return { error: error.message }
-  return { ok: true }
+// question_options(*) doesn't declare quiz_id/question_id on the client-safe
+// Question/QuestionOption types (see the AdminQuestionOption doc comment
+// above), but questions(*) DOES return quiz_id at runtime -- this augments
+// the type just enough to compare it during diffing below.
+type SnapshotQuestion = AdminQuestion & { quiz_id: string }
+
+function wrapSaveError(step: string, message: string): { error: string } {
+  return { error: `Save failed at ${step}. Your changes are still here — press Save again. (${message})` }
 }
 
-export async function addPrerequisite(
+/**
+ * Batch-persists a CourseDraft (see lib/course-draft.ts) built up entirely in
+ * client state. Re-reads the server snapshot itself rather than trusting a
+ * client-supplied one -- the client's "original" is untrusted and stale by
+ * construction (the admin may have sat on the draft for minutes).
+ * getCourseDetailForAdmin's ownership check doubles as this call's
+ * authorization gate (returns null for a non-owner).
+ *
+ * Diff strategy: everything present in the draft but absent from the
+ * snapshot maps is treated as new and inserted with its client id; this is
+ * also the full extent of "provenance" checking needed -- a forged id
+ * belonging to another course's row is simply absent from THIS course's
+ * snapshot maps, so it's inserted, and on the astronomically unlikely chance
+ * it collides with an existing PK the insert fails and the whole save is
+ * safely aborted (see the partial-failure note below).
+ *
+ * Ordering: all inserts/updates happen parent -> child, all deletes happen
+ * child -> parent, and this is deliberate -- everything here cascades on
+ * delete, so the risk isn't a broken FK, it's a *premature* cascade (e.g.
+ * deleting a module before the lesson dragged out of it has been
+ * re-parented, which would take the lesson's lesson_progress with it).
+ *
+ * `quizzes` rows are NEVER deleted here, even when a lesson's quiz
+ * disappears from the draft (deleted lesson, or content_type flipped away
+ * from "quiz") -- quiz_attempts/quiz_responses cascade off quizzes/questions,
+ * so deleting a quiz row would silently destroy learner history. An orphaned
+ * quiz row is harmless: the learner UI only ever reaches a quiz through a
+ * content_type = 'quiz' lesson.
+ *
+ * Partial-failure stance: there is no transaction across these calls (no
+ * service-role client, no RPC yet -- see the plan doc for the RPC escalation
+ * path). Because Phase B is insert-or-update keyed on client-generated ids,
+ * a failure partway through leaves the DB a strict superset of the previous
+ * state, and pressing Save again converges (already-written rows compare
+ * equal on the next diff and are skipped).
+ */
+export async function saveCourseDraft(
   courseId: string,
-  prerequisiteCourseId: string
+  draft: CourseDraft,
+  status: "draft" | "published"
 ): Promise<{ ok: true } | { error: string }> {
+  const snapshot = await getCourseDetailForAdmin(courseId)
+  if (!snapshot) return { error: "Course not found" }
+
+  if (draft.prerequisiteIds.includes(courseId)) {
+    return { error: "A course cannot be its own prerequisite" }
+  }
+  const prerequisiteIds = Array.from(new Set(draft.prerequisiteIds))
+
   const supabase = await createClient()
-  const position = await nextPosition("course_prerequisites", "course_id", courseId)
 
-  const { error } = await supabase
-    .from("course_prerequisites")
-    .insert({ course_id: courseId, prerequisite_course_id: prerequisiteCourseId, position })
+  // ---- Snapshot lookup maps -------------------------------------------
+  const sectionsById = new Map(snapshot.sections.map((s) => [s.id, s]))
+  const lessonsById = new Map<string, { lesson: Lesson; sectionId: string }>()
+  const resourcesById = new Map<string, Resource>()
+  const quizByLessonId = new Map<string, AdminQuiz>()
+  const questionsById = new Map<string, SnapshotQuestion>()
+  const optionsById = new Map<string, AdminQuestionOption>()
 
-  if (error) return { error: error.message }
-  return { ok: true }
-}
+  for (const section of snapshot.sections) {
+    for (const lesson of section.lessons) {
+      lessonsById.set(lesson.id, { lesson, sectionId: section.id })
+      for (const r of lesson.resources) resourcesById.set(r.id, r)
+      const quiz = lesson.quiz as AdminQuiz | null
+      if (quiz) {
+        quizByLessonId.set(lesson.id, quiz)
+        for (const q of quiz.questions) {
+          questionsById.set(q.id, q as SnapshotQuestion)
+          for (const o of q.options) optionsById.set(o.id, o)
+        }
+      }
+    }
+  }
 
-export async function removePrerequisite(
-  courseId: string,
-  prerequisiteCourseId: string
-): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from("course_prerequisites")
-    .delete()
-    .eq("course_id", courseId)
-    .eq("prerequisite_course_id", prerequisiteCourseId)
+  // ---- Phase B write buckets, built while walking the draft tree ------
+  const sectionRows: { id: string; course_id: string; title: string; position: number }[] = []
+  const lessonRows: {
+    id: string
+    section_id: string
+    title: string
+    content_type: LessonContentType
+    video_url: string | null
+    content: string | null
+    duration_seconds: number | null
+    position: number
+  }[] = []
+  const resourceRows: {
+    id: string
+    lesson_id: string
+    title: string
+    file_url: string
+    type: string | null
+    position: number
+  }[] = []
+  const quizRows: {
+    id: string
+    lesson_id: string
+    title: string
+    pass_score: number
+    max_attempts: number | null
+    shuffle: boolean
+    is_assessment: boolean
+  }[] = []
+  const questionRows: {
+    id: string
+    quiz_id: string
+    type: AuthorableQuestionType
+    prompt: string
+    points: number
+    allow_multiple: boolean
+    case_sensitive: boolean
+    position: number
+  }[] = []
+  const optionRows: {
+    id: string
+    question_id: string
+    text: string
+    is_correct: boolean
+    position: number
+  }[] = []
 
-  if (error) return { error: error.message }
-  return { ok: true }
-}
+  const seenSectionIds = new Set<string>()
+  const seenLessonIds = new Set<string>()
+  const seenResourceIds = new Set<string>()
+  const seenQuestionIds = new Set<string>()
+  const seenOptionIds = new Set<string>()
 
-export async function saveCertificateSettings(
-  courseId: string,
-  input: Partial<CourseCertificateSettings>
-): Promise<{ ok: true } | { error: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from("course_certificate_settings")
-    .upsert({ course_id: courseId, ...input }, { onConflict: "course_id" })
+  draft.sections.forEach((section, sectionIndex) => {
+    seenSectionIds.add(section.id)
+    const existingSection = sectionsById.get(section.id)
+    if (
+      !existingSection ||
+      existingSection.title !== section.title ||
+      existingSection.position !== sectionIndex
+    ) {
+      sectionRows.push({ id: section.id, course_id: courseId, title: section.title, position: sectionIndex })
+    }
 
-  if (error) return { error: error.message }
+    section.lessons.forEach((lesson, lessonIndex) => {
+      seenLessonIds.add(lesson.id)
+      const existingLesson = lessonsById.get(lesson.id)
+      if (
+        !existingLesson ||
+        existingLesson.sectionId !== section.id ||
+        existingLesson.lesson.title !== lesson.title ||
+        existingLesson.lesson.content_type !== lesson.content_type ||
+        existingLesson.lesson.video_url !== lesson.video_url ||
+        existingLesson.lesson.content !== lesson.content ||
+        existingLesson.lesson.duration_seconds !== lesson.duration_seconds ||
+        existingLesson.lesson.position !== lessonIndex
+      ) {
+        lessonRows.push({
+          id: lesson.id,
+          section_id: section.id,
+          title: lesson.title,
+          content_type: lesson.content_type,
+          video_url: lesson.video_url,
+          content: lesson.content,
+          duration_seconds: lesson.duration_seconds,
+          position: lessonIndex,
+        })
+      }
+
+      lesson.resources.forEach((resource, resourceIndex) => {
+        seenResourceIds.add(resource.id)
+        const existingResource = resourcesById.get(resource.id)
+        if (
+          !existingResource ||
+          existingResource.title !== resource.title ||
+          existingResource.file_url !== resource.file_url ||
+          existingResource.type !== resource.type ||
+          existingResource.position !== resourceIndex
+        ) {
+          resourceRows.push({
+            id: resource.id,
+            lesson_id: lesson.id,
+            title: resource.title,
+            file_url: resource.file_url,
+            type: resource.type,
+            position: resourceIndex,
+          })
+        }
+      })
+
+      if (lesson.quiz) {
+        const existingQuiz = quizByLessonId.get(lesson.id)
+        // quizzes.lesson_id is UNIQUE -- if a quiz already exists for this
+        // lesson, always resolve to ITS id regardless of what the client
+        // sent, so a stale/forged client quiz id can never collide with it.
+        const quizId = existingQuiz?.id ?? lesson.quiz.id
+
+        if (
+          !existingQuiz ||
+          existingQuiz.pass_score !== lesson.quiz.pass_score ||
+          existingQuiz.max_attempts !== lesson.quiz.max_attempts ||
+          existingQuiz.shuffle !== lesson.quiz.shuffle ||
+          existingQuiz.is_assessment !== lesson.quiz.is_assessment ||
+          existingQuiz.title !== lesson.title
+        ) {
+          quizRows.push({
+            id: quizId,
+            lesson_id: lesson.id,
+            title: lesson.title,
+            pass_score: lesson.quiz.pass_score,
+            max_attempts: lesson.quiz.max_attempts,
+            shuffle: lesson.quiz.shuffle,
+            is_assessment: lesson.quiz.is_assessment,
+          })
+        }
+
+        lesson.quiz.questions.forEach((question, questionIndex) => {
+          seenQuestionIds.add(question.id)
+          const existingQuestion = questionsById.get(question.id)
+          if (
+            !existingQuestion ||
+            existingQuestion.quiz_id !== quizId ||
+            existingQuestion.type !== question.type ||
+            existingQuestion.prompt !== question.prompt ||
+            existingQuestion.points !== question.points ||
+            existingQuestion.allow_multiple !== question.allow_multiple ||
+            existingQuestion.case_sensitive !== question.case_sensitive ||
+            existingQuestion.position !== questionIndex
+          ) {
+            questionRows.push({
+              id: question.id,
+              quiz_id: quizId,
+              type: question.type,
+              prompt: question.prompt,
+              points: question.points,
+              allow_multiple: question.allow_multiple,
+              case_sensitive: question.case_sensitive,
+              position: questionIndex,
+            })
+          }
+
+          question.options.forEach((option, optionIndex) => {
+            seenOptionIds.add(option.id)
+            const existingOption = optionsById.get(option.id)
+            if (
+              !existingOption ||
+              existingOption.text !== option.text ||
+              existingOption.is_correct !== option.is_correct ||
+              existingOption.position !== optionIndex
+            ) {
+              optionRows.push({
+                id: option.id,
+                question_id: question.id,
+                text: option.text,
+                is_correct: option.is_correct,
+                position: optionIndex,
+              })
+            }
+          })
+        })
+      }
+    })
+  })
+
+  // ---- Phase C deletes, computed after the walk (child -> parent) -----
+  const deletedOptionIds = [...optionsById.keys()].filter((id) => !seenOptionIds.has(id))
+  const deletedQuestionIds = [...questionsById.keys()].filter((id) => !seenQuestionIds.has(id))
+  const deletedResourceIds = [...resourcesById.keys()].filter((id) => !seenResourceIds.has(id))
+  const deletedLessonIds = [...lessonsById.keys()].filter((id) => !seenLessonIds.has(id))
+  const deletedSectionIds = [...sectionsById.keys()].filter((id) => !seenSectionIds.has(id))
+
+  // ---- Prerequisites / certificate / instructor diffs ------------------
+  const existingPrereqIds = new Set(snapshot.prerequisites.map((p) => p.id))
+  const removedPrereqIds = [...existingPrereqIds].filter((id) => !prerequisiteIds.includes(id))
+  const prerequisiteRows = prerequisiteIds.map((id, index) => ({
+    course_id: courseId,
+    prerequisite_course_id: id,
+    position: index,
+  }))
+  const prerequisitesChanged =
+    prerequisiteIds.length !== snapshot.prerequisites.length ||
+    removedPrereqIds.length > 0 ||
+    prerequisiteIds.some((id, index) => snapshot.prerequisites[index]?.id !== id)
+
+  const instructorChanged = (snapshot.instructor?.id ?? null) !== draft.instructorId
+
+  const existingCertificate = snapshot.certificate_settings
+  const certificate = draft.certificate
+  const certificateChanged =
+    (existingCertificate === null) !== (certificate === null) ||
+    (existingCertificate !== null &&
+      certificate !== null &&
+      (Object.keys(certificate) as (keyof CourseCertificateSettings)[]).some(
+        (key) => existingCertificate[key] !== certificate[key]
+      ))
+
+  // ---- Phase B: writes, parent -> child ---------------------------------
+
+  const { error: courseError } = await supabase
+    .from("courses")
+    .update({
+      title: draft.title,
+      description: draft.description || null,
+      thumbnail_url: draft.thumbnail_url || null,
+      price: draft.enrollmentMode === "paid" ? draft.price : 0,
+      level: draft.level || null,
+      status,
+      is_private: draft.isPrivate,
+      who_for: linesToArray(draft.audienceText),
+      requirements: linesToArray(draft.requirementsText),
+      require_prerequisites: draft.requirePrerequisites,
+    })
+    .eq("id", courseId)
+  if (courseError) return wrapSaveError("course details", courseError.message)
+
+  if (sectionRows.length > 0) {
+    const { error } = await supabase.from("course_sections").upsert(sectionRows, { onConflict: "id" })
+    if (error) return wrapSaveError("modules", error.message)
+  }
+
+  if (lessonRows.length > 0) {
+    const { error } = await supabase.from("lessons").upsert(lessonRows, { onConflict: "id" })
+    if (error) return wrapSaveError("lessons", error.message)
+  }
+
+  if (resourceRows.length > 0) {
+    const { error } = await supabase.from("resources").upsert(resourceRows, { onConflict: "id" })
+    if (error) return wrapSaveError("resources", error.message)
+  }
+
+  if (quizRows.length > 0) {
+    const { error } = await supabase.from("quizzes").upsert(quizRows, { onConflict: "id" })
+    if (error) return wrapSaveError("quizzes", error.message)
+  }
+
+  if (questionRows.length > 0) {
+    const { error } = await supabase.from("questions").upsert(questionRows, { onConflict: "id" })
+    if (error) return wrapSaveError("questions", error.message)
+  }
+
+  if (optionRows.length > 0) {
+    const { error } = await supabase.from("question_options").upsert(optionRows, { onConflict: "id" })
+    if (error) return wrapSaveError("answer options", error.message)
+  }
+
+  if (prerequisitesChanged && prerequisiteRows.length > 0) {
+    const { error } = await supabase
+      .from("course_prerequisites")
+      .upsert(prerequisiteRows, { onConflict: "course_id,prerequisite_course_id" })
+    if (error) return wrapSaveError("prerequisites", error.message)
+  }
+
+  if (certificateChanged) {
+    if (certificate) {
+      const { error } = await supabase
+        .from("course_certificate_settings")
+        .upsert({ course_id: courseId, ...certificate }, { onConflict: "course_id" })
+      if (error) return wrapSaveError("certificate settings", error.message)
+    } else {
+      const { error } = await supabase.from("course_certificate_settings").delete().eq("course_id", courseId)
+      if (error) return wrapSaveError("certificate settings", error.message)
+    }
+  }
+
+  if (instructorChanged) {
+    const { error: deleteError } = await supabase
+      .from("course_instructors")
+      .delete()
+      .eq("course_id", courseId)
+    if (deleteError) return wrapSaveError("instructor assignment", deleteError.message)
+
+    if (draft.instructorId) {
+      const { error: insertError } = await supabase
+        .from("course_instructors")
+        .insert({ course_id: courseId, instructor_id: draft.instructorId })
+      if (insertError) return wrapSaveError("instructor assignment", insertError.message)
+    }
+  }
+
+  // ---- Phase C: deletes, child -> parent ---------------------------------
+
+  if (deletedOptionIds.length > 0) {
+    const { error } = await supabase.from("question_options").delete().in("id", deletedOptionIds)
+    if (error) return { error: error.message }
+  }
+  if (deletedQuestionIds.length > 0) {
+    const { error } = await supabase.from("questions").delete().in("id", deletedQuestionIds)
+    if (error) return { error: error.message }
+  }
+  if (deletedResourceIds.length > 0) {
+    const { error } = await supabase.from("resources").delete().in("id", deletedResourceIds)
+    if (error) return { error: error.message }
+  }
+  if (deletedLessonIds.length > 0) {
+    const { error } = await supabase.from("lessons").delete().in("id", deletedLessonIds)
+    if (error) return { error: error.message }
+  }
+  if (deletedSectionIds.length > 0) {
+    const { error } = await supabase.from("course_sections").delete().in("id", deletedSectionIds)
+    if (error) return { error: error.message }
+  }
+  if (removedPrereqIds.length > 0) {
+    const { error } = await supabase
+      .from("course_prerequisites")
+      .delete()
+      .eq("course_id", courseId)
+      .in("prerequisite_course_id", removedPrereqIds)
+    if (error) return { error: error.message }
+  }
+
   return { ok: true }
 }
