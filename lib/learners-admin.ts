@@ -239,6 +239,102 @@ export async function getAdminLearnerCourseProgress(
   })
 }
 
+export type LearnerSearchResult = {
+  id: string
+  name: string
+  email: string
+  initial: string
+}
+
+/** PostgREST's .or() takes a comma-separated filter list, and each filter's
+ * value ends at the next comma -- so a comma in user input would split one
+ * filter into two malformed ones. `%`/`_` are ilike wildcards, and parens
+ * would break out of the filter group. Strip all of them rather than trying to
+ * escape, since none are meaningful in a name/email search. */
+function escapeForOrFilter(value: string): string {
+  return value.replace(/[,()%_\\]/g, " ").trim()
+}
+
+/**
+ * Search ALL registered learners by name/email, for the invite picker on a
+ * course's Learners tab.
+ *
+ * Deliberately starts from `profiles` rather than `enrollments`, unlike
+ * getAdminLearnerList above: the whole point is finding a learner the admin
+ * has NOT enrolled yet, who by definition has no enrollment row to derive
+ * from. `profiles` stays globally admin-readable ("admins read all profiles"),
+ * which is what makes this possible -- so this is intentionally not
+ * owner-scoped. Only ever returns role='learner' rows, so admins are not
+ * enrollable through it.
+ */
+export async function searchLearners(query: string): Promise<LearnerSearchResult[]> {
+  const term = escapeForOrFilter(query)
+  if (term.length < 2) return []
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .eq("role", "learner")
+    .or(`full_name.ilike.%${term}%,email.ilike.%${term}%`)
+    .order("full_name")
+    .limit(20)
+
+  if (error || !data) {
+    console.error("searchLearners failed:", error?.message)
+    return []
+  }
+
+  return data.map((p) => {
+    const name = p.full_name || p.email || "Unnamed learner"
+    return { id: p.id, name, email: p.email ?? "", initial: initialOf(name) }
+  })
+}
+
+export type CourseRosterEntry = {
+  learnerId: string
+  name: string
+  email: string
+  initial: string
+  status: "active" | "completed"
+  enrolledAt: string
+}
+
+/**
+ * Learners enrolled in one course -- the course-centric inverse of
+ * getAdminLearnerList. Scoped by the owns_course() RLS on enrollments, so an
+ * admin can only read the roster of a course they own.
+ */
+export async function getCourseRoster(courseId: string): Promise<CourseRosterEntry[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("enrollments")
+    .select("learner_id, status, enrolled_at, profiles(id, full_name, email)")
+    .eq("course_id", courseId)
+    .order("enrolled_at", { ascending: false })
+
+  if (error || !data) {
+    console.error("getCourseRoster failed:", error?.message)
+    return []
+  }
+
+  return data.map((row) => {
+    // profiles is a to-one relation here, but PostgREST's generated types
+    // widen embedded rows to an array -- normalize the same way getCourseDetail
+    // does for lesson.quiz.
+    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
+    const name = profile?.full_name || profile?.email || "Unnamed learner"
+    return {
+      learnerId: row.learner_id,
+      name,
+      email: profile?.email ?? "",
+      initial: initialOf(name),
+      status: row.status as "active" | "completed",
+      enrolledAt: row.enrolled_at,
+    }
+  })
+}
+
 export async function enrollLearnerInCourse(
   learnerId: string,
   courseId: string

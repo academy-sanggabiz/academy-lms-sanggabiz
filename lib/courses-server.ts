@@ -6,7 +6,12 @@ export async function getPublishedCourses(): Promise<Course[]> {
   const { data, error } = await supabase
     .from("courses")
     .select("*")
+    // Private courses are invite-only, so they never belong in a browse/catalog
+    // list even for a learner who IS enrolled (they reach them via My Courses
+    // instead). RLS already hides them from everyone else; this filter is the
+    // same belt-and-braces as the status check beside it.
     .eq("status", "published")
+    .eq("is_private", false)
     .order("created_at")
 
   if (error) {
@@ -15,6 +20,40 @@ export async function getPublishedCourses(): Promise<Course[]> {
   }
 
   return data
+}
+
+/**
+ * Full Course rows for everything the caller is enrolled in -- including
+ * private courses, which getPublishedCourses() deliberately excludes.
+ *
+ * The learner's "Enrolled"/"Completed" tabs must NOT be derived by filtering
+ * the catalog list by enrolled ids: a private course is absent from that list
+ * by design, so the filter silently drops it and an invited learner loses
+ * access to the very course they were enrolled in. Going through `enrollments`
+ * instead is what makes private courses reachable -- RLS's can_read_course()
+ * admits a course you're enrolled in.
+ */
+export async function getEnrolledCourses(): Promise<Course[]> {
+  const supabase = await createClient()
+  const { data: claimsData } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims?.sub
+  if (!userId) return []
+
+  const { data, error } = await supabase
+    .from("enrollments")
+    .select("courses(*)")
+    .eq("learner_id", userId)
+
+  if (error) {
+    console.error("getEnrolledCourses failed:", error.message)
+    return []
+  }
+
+  // PostgREST widens embedded to-one rows to an array -- same normalization
+  // getEnrolledCoursesWithDetails (lib/enrollments-server.ts) does.
+  return data
+    .map((row) => (Array.isArray(row.courses) ? row.courses[0] : row.courses))
+    .filter((course): course is Course => course != null)
 }
 
 export async function getCourseDetail(id: string): Promise<CourseDetail | null> {

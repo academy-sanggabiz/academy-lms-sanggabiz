@@ -12,6 +12,12 @@ export type Course = {
   who_for: string[]
   requirements: string[]
   language: string
+  /**
+   * Invite-only: hidden from the catalog and from anon visitors, readable only
+   * by the owning admin and learners an admin has explicitly enrolled.
+   * Orthogonal to `status` -- a private course can still be draft or published.
+   */
+  is_private: boolean
   created_by: string | null
   created_at: string
   updated_at: string
@@ -25,9 +31,19 @@ export type Instructor = {
   avatar_url: string | null
 }
 
+/** Money only -- a zero amount is `Rp 0`, never a word. */
 export function formatPrice(price: number): string {
-  if (price <= 0) return "Free"
   return `Rp ${price.toLocaleString("id-ID")}`
+}
+
+/**
+ * Course-facing access label: invite-only reads "Private", an open zero-price
+ * course reads "Public", anything else shows the price.
+ */
+export function formatCourseAccess(course: Pick<Course, "price" | "is_private">): string {
+  if (course.is_private) return "Private"
+  if (course.price <= 0) return "Public"
+  return formatPrice(course.price)
 }
 
 export type LessonContentType = "video" | "text" | "quiz" | "mixed" | "ppt"

@@ -62,6 +62,7 @@ export type CourseInput = {
   price: number
   level: string | null
   status: "draft" | "published"
+  is_private: boolean
   who_for: string[]
   requirements: string[]
 }
@@ -77,10 +78,11 @@ function slugify(title: string): string {
 /**
  * RLS alone isn't enough to scope this to the admin's own courses: every
  * authenticated user (learners included) also matches the separate
- * "published courses are readable" policy, so a non-superadmin here would
- * still see every OTHER admin's published courses via that policy union.
- * created_by narrows the view below what RLS permits -- RLS still fully
- * blocks cross-admin writes regardless.
+ * "readable courses" policy, so a non-superadmin here would still see every
+ * OTHER admin's published courses via that policy union. (Private courses are
+ * the exception -- "readable courses" excludes them unless you're enrolled --
+ * but public ones still leak across admins.) created_by narrows the view below
+ * what RLS permits -- RLS still fully blocks cross-admin writes regardless.
  */
 export async function getAdminCourseList(): Promise<Course[]> {
   const supabase = await createClient()
@@ -248,6 +250,7 @@ export async function createCourse(
       price: input.price,
       level: input.level,
       status: input.status,
+      is_private: input.is_private,
       who_for: input.who_for,
       requirements: input.requirements,
       created_by: user?.id ?? null,
@@ -308,6 +311,7 @@ export async function updateCourse(
       price: input.price,
       level: input.level,
       status: input.status,
+      is_private: input.is_private,
       who_for: input.who_for,
       requirements: input.requirements,
     })
