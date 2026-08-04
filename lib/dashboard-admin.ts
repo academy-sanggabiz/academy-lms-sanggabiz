@@ -48,3 +48,4 @@ export async function getRecentEnrollments(limit = 5): Promise<RecentEnrollment[
     }
   })
 }
+
