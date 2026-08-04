@@ -1,37 +1,40 @@
 "use client"
 
-import { useFormContext } from "react-hook-form"
-
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { uploadCourseThumbnail } from "@/lib/storage"
 import { ImageDropzone } from "../ImageDropzone"
-import type { CourseFormValues } from "../schema"
+import { useCourseDraft } from "../CourseDraftContext"
 
-export function BasicInfoTab() {
-  const {
-    register,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useFormContext<CourseFormValues>()
+type BasicField = "title" | "description" | "requirementsText" | "audienceText" | "thumbnail_url"
 
-  const thumbnailUrl = watch("thumbnail_url")
+export function BasicInfoTab({ errors = {} }: { errors?: Partial<Record<BasicField, string>> }) {
+  const { draft, dispatch } = useCourseDraft()
+
+  function setField(key: BasicField, value: string) {
+    dispatch({ type: "setField", patch: { [key]: value } })
+  }
 
   return (
     <div className="space-y-5">
       <div className="space-y-1.5">
         <Label htmlFor="title">Course Title</Label>
-        <Input id="title" {...register("title")} placeholder="e.g. Introduction to Web Development" />
-        {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
+        <Input
+          id="title"
+          value={draft.title}
+          onChange={(e) => setField("title", e.target.value)}
+          placeholder="e.g. Introduction to Web Development"
+        />
+        {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
       </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="description">Course Description</Label>
         <Textarea
           id="description"
-          {...register("description")}
+          value={draft.description}
+          onChange={(e) => setField("description", e.target.value)}
           placeholder="What will learners get from this course?"
           rows={4}
         />
@@ -41,7 +44,8 @@ export function BasicInfoTab() {
         <Label htmlFor="requirementsText">Requirements</Label>
         <Textarea
           id="requirementsText"
-          {...register("requirementsText")}
+          value={draft.requirementsText}
+          onChange={(e) => setField("requirementsText", e.target.value)}
           placeholder="One requirement per line"
           rows={3}
         />
@@ -51,20 +55,21 @@ export function BasicInfoTab() {
         <Label htmlFor="audienceText">Who this course is for</Label>
         <Textarea
           id="audienceText"
-          {...register("audienceText")}
+          value={draft.audienceText}
+          onChange={(e) => setField("audienceText", e.target.value)}
           placeholder="One audience item per line"
           rows={3}
         />
       </div>
 
       <ImageDropzone
-        value={thumbnailUrl || null}
-        onChange={(url) => setValue("thumbnail_url", url, { shouldDirty: true })}
+        value={draft.thumbnail_url || null}
+        onChange={(url) => setField("thumbnail_url", url)}
         uploadFn={uploadCourseThumbnail}
         label="Course Thumbnail"
         hint="PNG or JPEG, max 5MB"
       />
-      {errors.thumbnail_url && <p className="text-xs text-destructive">{errors.thumbnail_url.message}</p>}
+      {errors.thumbnail_url && <p className="text-xs text-destructive">{errors.thumbnail_url}</p>}
     </div>
   )
 }

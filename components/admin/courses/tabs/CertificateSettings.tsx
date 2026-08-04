@@ -1,8 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { useState } from "react"
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,9 +8,9 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import type { CertificateType, CourseCertificateSettings } from "@/lib/courses-admin"
-import { saveCertificateSettingsAction } from "@/app/admin/courses/settings-actions"
 import { uploadCertificateTemplate, uploadSignatureImage } from "@/lib/storage"
 import { ImageDropzone } from "../ImageDropzone"
+import { useCourseDraft } from "../CourseDraftContext"
 
 const CERTIFICATE_TYPES: { value: CertificateType; label: string; description: string }[] = [
   { value: "completion", label: "Completion", description: '"Certificate of Completion" - "has successfully completed"' },
@@ -33,41 +31,18 @@ const DEFAULT_SETTINGS: CourseCertificateSettings = {
   additional_text: null,
 }
 
-export function CertificateSettings({
-  courseId,
-  settings,
-}: {
-  courseId: string
-  settings: CourseCertificateSettings | null
-}) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const initial = settings ?? DEFAULT_SETTINGS
+export function CertificateSettings() {
+  const { draft, dispatch } = useCourseDraft()
+  const settings = draft.certificate ?? DEFAULT_SETTINGS
 
-  const [enabled, setEnabled] = useState(initial.enabled)
-  const [templateUrl, setTemplateUrl] = useState(initial.template_url ?? "")
-  const [certificateType, setCertificateType] = useState<CertificateType>(initial.certificate_type)
-  const [customTitle, setCustomTitle] = useState(initial.custom_title ?? "")
-  const [description, setDescription] = useState(initial.description ?? "")
-  const [signatureUrl, setSignatureUrl] = useState(initial.signature_url ?? "")
-  const [signerName, setSignerName] = useState(initial.signer_name ?? "")
-  const [signerTitle, setSignerTitle] = useState(initial.signer_title ?? "")
-  const [additionalText, setAdditionalText] = useState(initial.additional_text ?? "")
+  const [customTitle, setCustomTitle] = useState(settings.custom_title ?? "")
+  const [description, setDescription] = useState(settings.description ?? "")
+  const [signerName, setSignerName] = useState(settings.signer_name ?? "")
+  const [signerTitle, setSignerTitle] = useState(settings.signer_title ?? "")
+  const [additionalText, setAdditionalText] = useState(settings.additional_text ?? "")
 
-  function save(input: Partial<CourseCertificateSettings>) {
-    startTransition(async () => {
-      const result = await saveCertificateSettingsAction(courseId, input)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
-  }
-
-  function handleToggle(checked: boolean) {
-    setEnabled(checked)
-    save({ enabled: checked })
+  function save(patch: Partial<CourseCertificateSettings>) {
+    dispatch({ type: "setField", patch: { certificate: { ...settings, ...patch } } })
   }
 
   return (
@@ -80,17 +55,14 @@ export function CertificateSettings({
             Issue certificates to students upon course completion
           </div>
         </div>
-        <Switch checked={enabled} onCheckedChange={handleToggle} disabled={isPending} />
+        <Switch checked={settings.enabled} onCheckedChange={(checked) => save({ enabled: checked })} />
       </div>
 
-      {enabled && (
+      {settings.enabled && (
         <div className="space-y-4 border-t border-border pt-4">
           <ImageDropzone
-            value={templateUrl || null}
-            onChange={(url) => {
-              setTemplateUrl(url)
-              save({ template_url: url || null })
-            }}
+            value={settings.template_url}
+            onChange={(url) => save({ template_url: url || null })}
             uploadFn={uploadCertificateTemplate}
             label="Certificate Template (Optional)"
             hint="Landscape orientation, PNG/JPEG, max 5MB"
@@ -102,15 +74,12 @@ export function CertificateSettings({
               <div
                 key={t.value}
                 className="flex cursor-pointer gap-2.5"
-                onClick={() => {
-                  setCertificateType(t.value)
-                  save({ certificate_type: t.value })
-                }}
+                onClick={() => save({ certificate_type: t.value })}
               >
                 <div
                   className={cn(
                     "mt-0.5 size-4 shrink-0 rounded-full border-2",
-                    certificateType === t.value ? "border-primary bg-primary/20" : "border-border"
+                    settings.certificate_type === t.value ? "border-primary bg-primary/20" : "border-border"
                   )}
                 />
                 <div>
@@ -121,7 +90,7 @@ export function CertificateSettings({
             ))}
           </div>
 
-          {certificateType === "custom" && (
+          {settings.certificate_type === "custom" && (
             <div className="max-w-sm space-y-1.5">
               <Label htmlFor="cert-custom-title">Custom Certificate Title</Label>
               <Input
@@ -154,11 +123,8 @@ export function CertificateSettings({
           </div>
 
           <ImageDropzone
-            value={signatureUrl || null}
-            onChange={(url) => {
-              setSignatureUrl(url)
-              save({ signature_url: url || null })
-            }}
+            value={settings.signature_url}
+            onChange={(url) => save({ signature_url: url || null })}
             uploadFn={uploadSignatureImage}
             label="Upload Signature Image"
             hint="PNG or JPEG, max 1MB"

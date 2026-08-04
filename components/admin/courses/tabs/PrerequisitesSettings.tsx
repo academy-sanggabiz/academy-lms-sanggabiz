@@ -1,9 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { X } from "lucide-react"
-import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -15,63 +13,30 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import type { CoursePrerequisite } from "@/lib/courses-admin"
-import {
-  addPrerequisiteAction,
-  removePrerequisiteAction,
-  setRequirePrerequisitesAction,
-} from "@/app/admin/courses/settings-actions"
+import { useCourseDraft } from "../CourseDraftContext"
 
-export function PrerequisitesSettings({
-  courseId,
-  requirePrerequisites,
-  prerequisites,
-  availableCourses,
-}: {
-  courseId: string
-  requirePrerequisites: boolean
-  prerequisites: CoursePrerequisite[]
-  availableCourses: CoursePrerequisite[]
-}) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const [required, setRequired] = useState(requirePrerequisites)
+export function PrerequisitesSettings({ availableCourses }: { availableCourses: CoursePrerequisite[] }) {
+  const { draft, dispatch } = useCourseDraft()
   const [pickerValue, setPickerValue] = useState<string>("")
 
-  const pickableCourses = availableCourses.filter((c) => !prerequisites.some((p) => p.id === c.id))
+  const titleById = new Map(availableCourses.map((c) => [c.id, c.title]))
+  const selected = draft.prerequisiteIds.map((id) => ({ id, title: titleById.get(id) ?? id }))
+  const pickableCourses = availableCourses.filter((c) => !draft.prerequisiteIds.includes(c.id))
 
   function handleToggle(checked: boolean) {
-    setRequired(checked)
-    startTransition(async () => {
-      const result = await setRequirePrerequisitesAction(courseId, checked)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
+    dispatch({ type: "setField", patch: { requirePrerequisites: checked } })
   }
 
   function handleAdd() {
     if (!pickerValue) return
-    startTransition(async () => {
-      const result = await addPrerequisiteAction(courseId, pickerValue)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      setPickerValue("")
-      router.refresh()
-    })
+    dispatch({ type: "setField", patch: { prerequisiteIds: [...draft.prerequisiteIds, pickerValue] } })
+    setPickerValue("")
   }
 
   function handleRemove(prerequisiteCourseId: string) {
-    startTransition(async () => {
-      const result = await removePrerequisiteAction(courseId, prerequisiteCourseId)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
+    dispatch({
+      type: "setField",
+      patch: { prerequisiteIds: draft.prerequisiteIds.filter((id) => id !== prerequisiteCourseId) },
     })
   }
 
@@ -85,10 +50,10 @@ export function PrerequisitesSettings({
             Require learners to complete other courses before enrolling in this course
           </div>
         </div>
-        <Switch checked={required} onCheckedChange={handleToggle} disabled={isPending} />
+        <Switch checked={draft.requirePrerequisites} onCheckedChange={handleToggle} />
       </div>
 
-      {required && (
+      {draft.requirePrerequisites && (
         <div className="space-y-3 border-t border-border pt-3.5">
           <div>
             <div className="mb-2.5 text-xs font-semibold">Prerequisite Courses</div>
@@ -105,7 +70,7 @@ export function PrerequisitesSettings({
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" onClick={handleAdd} disabled={!pickerValue || isPending}>
+              <Button type="button" onClick={handleAdd} disabled={!pickerValue}>
                 Add
               </Button>
             </div>
@@ -114,9 +79,9 @@ export function PrerequisitesSettings({
             </p>
           </div>
 
-          {prerequisites.length > 0 && (
+          {selected.length > 0 && (
             <div className="flex flex-col gap-2">
-              {prerequisites.map((course) => (
+              {selected.map((course) => (
                 <div
                   key={course.id}
                   className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-sm"
@@ -125,7 +90,6 @@ export function PrerequisitesSettings({
                   <button
                     type="button"
                     onClick={() => handleRemove(course.id)}
-                    disabled={isPending}
                     className="shrink-0 text-destructive"
                   >
                     <X className="size-3.5" />

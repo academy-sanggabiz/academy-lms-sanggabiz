@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { memo, useState } from "react"
 import {
   DndContext,
   DragOverlay,
@@ -41,8 +40,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
-import type { CourseSection, Lesson, LessonContentType, Resource } from "@/lib/courses"
-import type { AdminQuiz } from "@/lib/courses-admin"
+import type { LessonContentType } from "@/lib/courses"
+import { newId, stripEmptyHtml, type DraftLesson, type DraftResource, type DraftSection } from "@/lib/course-draft"
 import {
   ChevronDown,
   Clock,
@@ -57,21 +56,8 @@ import {
   Video,
   X,
 } from "lucide-react"
-import { toast } from "sonner"
 
-import {
-  createLessonAction,
-  createResourceAction,
-  createSectionAction,
-  deleteLessonAction,
-  deleteResourceAction,
-  deleteSectionAction,
-  duplicateLessonAction,
-  renameSectionAction,
-  reorderLessonsAction,
-  updateLessonAction,
-  updateResourceAction,
-} from "@/app/admin/courses/lessons-actions"
+import { useCourseDraft } from "../CourseDraftContext"
 import { QuizEditor } from "./QuizEditor"
 import { RichTextEditor } from "../RichTextEditor"
 
@@ -90,48 +76,25 @@ const TYPE_ICON: Record<LessonContentType, React.ComponentType<{ className?: str
   ppt: Presentation,
 }
 
-export function LessonsTab({ courseId, initialSections }: { courseId: string; initialSections: CourseSection[] }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+export function LessonsTab() {
+  const { draft, dispatch } = useCourseDraft()
+  const sections = draft.sections
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [expandedSectionId, setExpandedSectionId] = useState<string | null>(initialSections[0]?.id ?? null)
-  const [sections, setSections] = useState(initialSections)
-  const [prevInitialSections, setPrevInitialSections] = useState(initialSections)
+  const [expandedSectionId, setExpandedSectionId] = useState<string | null>(sections[0]?.id ?? null)
   const [activeId, setActiveId] = useState<string | null>(null)
-
-  if (initialSections !== prevInitialSections) {
-    setPrevInitialSections(initialSections)
-    setSections(initialSections)
-  }
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
   function handleAddSection() {
-    startTransition(async () => {
-      const result = await createSectionAction(courseId, `Module ${sections.length + 1}`)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      setExpandedSectionId(result.data.id)
-      router.refresh()
-    })
+    const id = newId()
+    dispatch({ type: "addSection", id })
+    setExpandedSectionId(id)
   }
 
   function handleAddLesson(sectionId: string) {
-    startTransition(async () => {
-      const result = await createLessonAction(courseId, sectionId, {
-        title: "Untitled Lesson",
-        content_type: "video",
-        duration_seconds: null,
-      })
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      setExpandedId(result.data.id)
-      router.refresh()
-    })
+    const id = newId()
+    dispatch({ type: "addLesson", id, sectionId })
+    setExpandedId(id)
   }
 
   function findSectionIdForLesson(lessonId: string) {
@@ -151,29 +114,8 @@ export function LessonsTab({ courseId, initialSections }: { courseId: string; in
     if (!fromSectionId || !toSectionId) return
     if (fromSectionId === toSectionId && active.id === over.id) return
 
-    const next = sections.map((s) => ({ ...s, lessons: [...s.lessons] }))
-    const from = next.find((s) => s.id === fromSectionId)!
-    const to = next.find((s) => s.id === toSectionId)!
-    const fromIndex = from.lessons.findIndex((l) => l.id === active.id)
-    const [moved] = from.lessons.splice(fromIndex, 1)
-
-    const overIndex = to.lessons.findIndex((l) => l.id === over.id)
-    const toIndex = overIndex >= 0 ? overIndex : to.lessons.length
-    to.lessons.splice(toIndex, 0, moved)
-
-    setSections(next)
-
-    startTransition(async () => {
-      const result = await reorderLessonsAction(
-        next.map((s) => ({ id: s.id, lessonIds: s.lessons.map((l) => l.id) }))
-      )
-      if (!result.ok) {
-        toast.error(result.error)
-        setSections(sections)
-        return
-      }
-      router.refresh()
-    })
+    const overLessonId = sections.some((s) => s.id === over.id) ? null : (over.id as string)
+    dispatch({ type: "moveLesson", lessonId: active.id as string, toSectionId, overLessonId })
   }
 
   const activeLesson = activeId
@@ -184,11 +126,7 @@ export function LessonsTab({ courseId, initialSections }: { courseId: string; in
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-[17px] font-bold">Course Lessons</h3>
-        <Button
-          onClick={handleAddSection}
-          disabled={isPending}
-          className="bg-brand-gradient text-white hover:brightness-105"
-        >
+        <Button onClick={handleAddSection} className="bg-brand-gradient text-white hover:brightness-105">
           <Plus className="size-3.5" />
           Add Module
         </Button>
@@ -218,7 +156,6 @@ export function LessonsTab({ courseId, initialSections }: { courseId: string; in
                 onAddLesson={() => handleAddLesson(section.id)}
                 expandedLessonId={expandedId}
                 onToggleLessonExpand={(id) => setExpandedId(expandedId === id ? null : id)}
-                isPending={isPending}
               />
             ))}
           </div>
@@ -235,25 +172,22 @@ export function LessonsTab({ courseId, initialSections }: { courseId: string; in
   )
 }
 
-function SectionCard({
+const SectionCard = memo(function SectionCard({
   section,
   expanded,
   onToggleExpand,
   onAddLesson,
   expandedLessonId,
   onToggleLessonExpand,
-  isPending,
 }: {
-  section: CourseSection
+  section: DraftSection
   expanded: boolean
   onToggleExpand: () => void
   onAddLesson: () => void
   expandedLessonId: string | null
   onToggleLessonExpand: (id: string) => void
-  isPending: boolean
 }) {
-  const router = useRouter()
-  const [, startTransition] = useTransition()
+  const { dispatch } = useCourseDraft()
   const [editingTitle, setEditingTitle] = useState(false)
   const [title, setTitle] = useState(section.title)
 
@@ -263,27 +197,11 @@ function SectionCard({
       setTitle(section.title)
       return
     }
-    startTransition(async () => {
-      const result = await renameSectionAction(section.id, title.trim())
-      if (!result.ok) {
-        toast.error(result.error)
-        setTitle(section.title)
-        return
-      }
-      router.refresh()
-    })
+    dispatch({ type: "renameSection", id: section.id, title: title.trim() })
   }
 
   function handleDelete() {
-    startTransition(async () => {
-      const result = await deleteSectionAction(section.id)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      toast.success("Module deleted")
-      router.refresh()
-    })
+    dispatch({ type: "deleteSection", id: section.id })
   }
 
   return (
@@ -322,9 +240,9 @@ function SectionCard({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete &quot;{section.title}&quot;?</AlertDialogTitle>
               <AlertDialogDescription>
-                This permanently deletes the module and its {section.lessons.length}{" "}
-                {section.lessons.length === 1 ? "lesson" : "lessons"} (including their resources and quizzes).
-                This cannot be undone.
+                This removes the module and its {section.lessons.length}{" "}
+                {section.lessons.length === 1 ? "lesson" : "lessons"} (including their resources and quizzes)
+                from the draft. Nothing is deleted from the database until you press Save.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -365,14 +283,7 @@ function SectionCard({
               ))}
             </SortableContext>
           )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onAddLesson}
-            disabled={isPending}
-            className="self-start"
-          >
+          <Button type="button" variant="outline" size="sm" onClick={onAddLesson} className="self-start">
             <Plus className="size-3.5" />
             Add Lesson
           </Button>
@@ -380,24 +291,22 @@ function SectionCard({
       )}
     </div>
   )
-}
+})
 
-function LessonCard({
+const LessonCard = memo(function LessonCard({
   lesson,
   index,
   expanded,
   onToggleExpand,
 }: {
-  lesson: Lesson
+  lesson: DraftLesson
   index: number
   expanded: boolean
   onToggleExpand: () => void
 }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const { dispatch } = useCourseDraft()
 
   const [title, setTitle] = useState(lesson.title)
-  const [contentType, setContentType] = useState<LessonContentType>(lesson.content_type)
   const [videoUrl, setVideoUrl] = useState(lesson.video_url ?? "")
   const [content, setContent] = useState(lesson.content ?? "")
   const [durationMin, setDurationMin] = useState(
@@ -409,6 +318,8 @@ function LessonCard({
   const [quizOpen, setQuizOpen] = useState(lesson.content_type === "quiz")
   const [settingsOpen, setSettingsOpen] = useState(false)
 
+  const contentType = lesson.content_type
+
   const isComplete =
     title.trim().length > 0 &&
     (contentType === "video" || contentType === "ppt"
@@ -419,44 +330,20 @@ function LessonCard({
           ? (lesson.quiz?.questions.length ?? 0) > 0
           : true)
 
-  function save(input: Parameters<typeof updateLessonAction>[1]) {
-    startTransition(async () => {
-      const result = await updateLessonAction(lesson.id, input)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
+  function save(patch: Partial<DraftLesson>) {
+    dispatch({ type: "patchLesson", id: lesson.id, patch })
   }
 
   function handlePickType(value: LessonContentType) {
-    setContentType(value)
     save({ content_type: value })
   }
 
   function handleDuplicate() {
-    startTransition(async () => {
-      const result = await duplicateLessonAction(lesson.id)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      toast.success("Lesson duplicated")
-      router.refresh()
-    })
+    dispatch({ type: "duplicateLesson", id: lesson.id })
   }
 
   function handleDelete() {
-    startTransition(async () => {
-      const result = await deleteLessonAction(lesson.id)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      toast.success("Lesson deleted")
-      router.refresh()
-    })
+    dispatch({ type: "deleteLesson", id: lesson.id })
   }
 
   const Icon = TYPE_ICON[contentType]
@@ -504,14 +391,7 @@ function LessonCard({
             {durationMin} min
           </span>
         )}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          title="Duplicate lesson"
-          onClick={handleDuplicate}
-          disabled={isPending}
-        >
+        <Button type="button" variant="ghost" size="icon-sm" title="Duplicate lesson" onClick={handleDuplicate}>
           <Copy className="size-3.5" />
         </Button>
         <AlertDialog>
@@ -524,7 +404,8 @@ function LessonCard({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete &quot;{lesson.title}&quot;?</AlertDialogTitle>
               <AlertDialogDescription>
-                This permanently deletes the lesson and all of its resources. This cannot be undone.
+                This removes the lesson and all of its resources from the draft. Nothing is deleted from
+                the database until you press Save.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -613,9 +494,9 @@ function LessonCard({
             {contentType === "text" && (
               <RichTextEditor
                 value={content}
-                onBlur={(html) => {
+                onChange={(html) => {
                   setContent(html)
-                  save({ content: html.replace(/<[^>]*>/g, "").trim() ? html : null })
+                  save({ content: stripEmptyHtml(html) })
                 }}
               />
             )}
@@ -651,7 +532,7 @@ function LessonCard({
             open={quizOpen}
             onToggle={() => setQuizOpen((v) => !v)}
           >
-            <QuizEditor lessonId={lesson.id} quiz={lesson.quiz as AdminQuiz | null} />
+            <QuizEditor lessonId={lesson.id} quiz={lesson.quiz} />
           </SubSection>
           )}
 
@@ -670,7 +551,7 @@ function LessonCard({
       )}
     </div>
   )
-}
+})
 
 function SubSection({
   title,
@@ -698,9 +579,8 @@ function SubSection({
   )
 }
 
-function ResourcesEditor({ lessonId, resources }: { lessonId: string; resources: Resource[] }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+function ResourcesEditor({ lessonId, resources }: { lessonId: string; resources: DraftResource[] }) {
+  const { dispatch } = useCourseDraft()
   const [dialogType, setDialogType] = useState<"link" | "file" | null>(null)
   const [resTitle, setResTitle] = useState("")
   const [resUrl, setResUrl] = useState("")
@@ -708,32 +588,18 @@ function ResourcesEditor({ lessonId, resources }: { lessonId: string; resources:
 
   function handleAdd() {
     if (!dialogType || !resTitle.trim() || !resUrl.trim()) return
-    startTransition(async () => {
-      const result = await createResourceAction(lessonId, {
-        title: resTitle.trim(),
-        file_url: resUrl.trim(),
-        type: dialogType,
-      })
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      setResTitle("")
-      setResUrl("")
-      setDialogType(null)
-      router.refresh()
+    dispatch({
+      type: "addResource",
+      lessonId,
+      resource: { title: resTitle.trim(), file_url: resUrl.trim(), type: dialogType },
     })
+    setResTitle("")
+    setResUrl("")
+    setDialogType(null)
   }
 
   function handleRemove(id: string) {
-    startTransition(async () => {
-      const result = await deleteResourceAction(id)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
+    dispatch({ type: "deleteResource", id })
   }
 
   return (
@@ -758,7 +624,6 @@ function ResourcesEditor({ lessonId, resources }: { lessonId: string; resources:
               onTitleChange={setResTitle}
               onUrlChange={setResUrl}
               onSave={handleAdd}
-              isPending={isPending}
             />
           </Dialog>
           <Dialog open={dialogType === "file"} onOpenChange={(open) => setDialogType(open ? "file" : null)}>
@@ -774,7 +639,6 @@ function ResourcesEditor({ lessonId, resources }: { lessonId: string; resources:
               onTitleChange={setResTitle}
               onUrlChange={setResUrl}
               onSave={handleAdd}
-              isPending={isPending}
             />
           </Dialog>
         </div>
@@ -803,7 +667,6 @@ function ResourceDialogContent({
   onTitleChange,
   onUrlChange,
   onSave,
-  isPending,
 }: {
   title: string
   urlLabel?: string
@@ -812,7 +675,6 @@ function ResourceDialogContent({
   onTitleChange: (v: string) => void
   onUrlChange: (v: string) => void
   onSave: () => void
-  isPending: boolean
 }) {
   return (
     <DialogContent>
@@ -835,7 +697,7 @@ function ResourceDialogContent({
         </div>
       </div>
       <DialogFooter>
-        <Button onClick={onSave} disabled={!resTitle.trim() || !resUrl.trim() || isPending}>
+        <Button onClick={onSave} disabled={!resTitle.trim() || !resUrl.trim()}>
           Add
         </Button>
       </DialogFooter>
@@ -849,26 +711,18 @@ function ResourceRow({
   onToggle,
   onRemove,
 }: {
-  resource: Resource
+  resource: DraftResource
   open: boolean
   onToggle: () => void
   onRemove: () => void
 }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const { dispatch } = useCourseDraft()
   const [title, setTitle] = useState(resource.title)
   const [url, setUrl] = useState(resource.file_url)
   const Icon = resource.type === "file" ? FileText : Link2
 
-  function save(input: Parameters<typeof updateResourceAction>[1]) {
-    startTransition(async () => {
-      const result = await updateResourceAction(resource.id, input)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
+  function save(patch: Partial<DraftResource>) {
+    dispatch({ type: "patchResource", id: resource.id, patch })
   }
 
   return (
@@ -879,7 +733,7 @@ function ResourceRow({
         <span className="shrink-0 rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-semibold text-secondary-foreground">
           {resource.type === "file" ? "File" : "Link"}
         </span>
-        <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} disabled={isPending}>
+        <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove}>
           <X className="size-3.5 text-destructive" />
         </Button>
         <Button type="button" variant="ghost" size="icon-sm" onClick={onToggle}>

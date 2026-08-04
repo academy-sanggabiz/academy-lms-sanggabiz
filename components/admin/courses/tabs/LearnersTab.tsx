@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
-import { useFormContext } from "react-hook-form"
 import { Lock, UserPlus, X } from "lucide-react"
 import { toast } from "sonner"
 
@@ -15,7 +14,7 @@ import { ListPagination } from "@/components/admin/ListPagination"
 import { ListToolbar } from "@/components/admin/ListToolbar"
 
 import { InviteLearnerDialog } from "../InviteLearnerDialog"
-import type { CourseFormValues } from "../schema"
+import { useCourseDraft } from "../CourseDraftContext"
 
 const ROSTER_PREFIX = "roster"
 
@@ -34,11 +33,11 @@ export function LearnersTab({
   courseId: string
   roster: Paginated<CourseRosterEntry>
 }) {
-  // Enrollment itself saves immediately (it isn't part of the form), but the
+  // Enrollment itself saves immediately (it isn't part of the draft), but the
   // private/public copy below tracks the *unsaved* toggle so it matches what
   // the admin is currently looking at on the Settings tab.
-  const { watch } = useFormContext<CourseFormValues>()
-  const isPrivate = watch("isPrivate")
+  const { draft } = useCourseDraft()
+  const isPrivate = draft.isPrivate
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [inviteOpen, setInviteOpen] = useState(false)

@@ -1,9 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { ChevronDown, Plus, Trash2, X } from "lucide-react"
-import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -20,18 +18,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { RichTextEditor } from "../RichTextEditor"
-import type { AdminQuestion, AdminQuestionOption, AdminQuiz, AuthorableQuestionType } from "@/lib/courses-admin"
-import {
-  createOptionAction,
-  createQuestionAction,
-  deleteOptionAction,
-  deleteQuestionAction,
-  setCorrectOptionAction,
-  toggleCorrectOptionAction,
-  updateOptionAction,
-  updateQuestionAction,
-  updateQuizAction,
-} from "@/app/admin/courses/quiz-actions"
+import type { AuthorableQuestionType } from "@/lib/courses-admin"
+import type { DraftOption, DraftQuestion, DraftQuiz } from "@/lib/course-draft"
+import { useCourseDraft } from "../CourseDraftContext"
 
 const QUESTION_TYPES: { value: AuthorableQuestionType; label: string }[] = [
   { value: "multiple_choice", label: "Multiple Choice" },
@@ -41,9 +30,8 @@ const QUESTION_TYPES: { value: AuthorableQuestionType; label: string }[] = [
   { value: "file_upload", label: "File Upload" },
 ]
 
-export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: AdminQuiz | null }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: DraftQuiz | null }) {
+  const { dispatch } = useCourseDraft()
   const [pickerOpen, setPickerOpen] = useState(false)
   const [selectedType, setSelectedType] = useState<AuthorableQuestionType>("multiple_choice")
 
@@ -54,22 +42,15 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: AdminQu
   }
 
   function handleAddQuestion(type: AuthorableQuestionType) {
-    startTransition(async () => {
-      const result = await createQuestionAction(lessonId, { type, prompt: "", points: 1 })
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      setPickerOpen(false)
-      router.refresh()
-    })
+    dispatch({ type: "addQuestion", lessonId, questionType: type })
+    setPickerOpen(false)
   }
 
   const questions = quiz?.questions ?? []
 
   return (
     <div>
-      {quiz && questions.length > 0 && <QuizSettings quiz={quiz} />}
+      {quiz && questions.length > 0 && <QuizSettings lessonId={lessonId} quiz={quiz} />}
 
       {questions.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
@@ -83,14 +64,7 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: AdminQu
         </div>
       )}
 
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="mt-3"
-        onClick={openPicker}
-        disabled={isPending}
-      >
+      <Button type="button" variant="outline" size="sm" className="mt-3" onClick={openPicker}>
         <Plus className="size-3.5" />
         Add Question
       </Button>
@@ -116,15 +90,10 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: AdminQu
             </RadioGroup>
           </div>
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setPickerOpen(false)} disabled={isPending}>
+            <Button type="button" variant="ghost" onClick={() => setPickerOpen(false)}>
               Cancel
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleAddQuestion(selectedType)}
-              disabled={isPending}
-            >
+            <Button type="button" variant="outline" onClick={() => handleAddQuestion(selectedType)}>
               Add Question
             </Button>
           </DialogFooter>
@@ -134,23 +103,13 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: AdminQu
   )
 }
 
-function QuizSettings({ quiz }: { quiz: AdminQuiz }) {
-  const router = useRouter()
-  const [, startTransition] = useTransition()
+function QuizSettings({ lessonId, quiz }: { lessonId: string; quiz: DraftQuiz }) {
+  const { dispatch } = useCourseDraft()
   const [passScore, setPassScore] = useState(String(quiz.pass_score))
   const [maxAttempts, setMaxAttempts] = useState(quiz.max_attempts ? String(quiz.max_attempts) : "")
-  const [shuffle, setShuffle] = useState(quiz.shuffle)
-  const [isAssessment, setIsAssessment] = useState(quiz.is_assessment)
 
-  function save(input: Parameters<typeof updateQuizAction>[1]) {
-    startTransition(async () => {
-      const result = await updateQuizAction(quiz.id, input)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
+  function save(patch: Partial<Omit<DraftQuiz, "id" | "questions">>) {
+    dispatch({ type: "patchQuiz", lessonId, patch })
   }
 
   return (
@@ -182,22 +141,16 @@ function QuizSettings({ quiz }: { quiz: AdminQuiz }) {
       <div className="flex items-center gap-2">
         <Switch
           id={`shuffle-${quiz.id}`}
-          checked={shuffle}
-          onCheckedChange={(checked) => {
-            setShuffle(checked)
-            save({ shuffle: checked })
-          }}
+          checked={quiz.shuffle}
+          onCheckedChange={(checked) => save({ shuffle: checked })}
         />
         <Label htmlFor={`shuffle-${quiz.id}`}>Shuffle Questions</Label>
       </div>
       <div className="flex w-full items-start gap-2 border-t border-border pt-3">
         <Switch
           id={`assessment-${quiz.id}`}
-          checked={isAssessment}
-          onCheckedChange={(checked) => {
-            setIsAssessment(checked)
-            save({ is_assessment: checked })
-          }}
+          checked={quiz.is_assessment}
+          onCheckedChange={(checked) => save({ is_assessment: checked })}
         />
         <div className="space-y-0.5">
           <Label htmlFor={`assessment-${quiz.id}`}>Study-case assessment</Label>
@@ -211,35 +164,18 @@ function QuizSettings({ quiz }: { quiz: AdminQuiz }) {
   )
 }
 
-function QuestionCard({ question, index }: { question: AdminQuestion; index: number }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+function QuestionCard({ question, index }: { question: DraftQuestion; index: number }) {
+  const { dispatch } = useCourseDraft()
   const [expanded, setExpanded] = useState(false)
   const [prompt, setPrompt] = useState(question.prompt)
   const [points, setPoints] = useState(String(question.points))
-  const [allowMultiple, setAllowMultiple] = useState(question.allow_multiple)
-  const [caseSensitive, setCaseSensitive] = useState(question.case_sensitive)
 
-  function save(input: Parameters<typeof updateQuestionAction>[1]) {
-    startTransition(async () => {
-      const result = await updateQuestionAction(question.id, input)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
+  function save(patch: Partial<DraftQuestion>) {
+    dispatch({ type: "patchQuestion", id: question.id, patch })
   }
 
   function handleDelete() {
-    startTransition(async () => {
-      const result = await deleteQuestionAction(question.id)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
+    dispatch({ type: "deleteQuestion", id: question.id })
   }
 
   const typeLabel = QUESTION_TYPES.find((t) => t.value === question.type)?.label ?? question.type
@@ -252,7 +188,7 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
           {typeLabel}
         </span>
         <div className="flex-1" />
-        <Button type="button" variant="ghost" size="icon-sm" onClick={handleDelete} disabled={isPending}>
+        <Button type="button" variant="ghost" size="icon-sm" onClick={handleDelete}>
           <Trash2 className="size-3.5 text-destructive" />
         </Button>
         <Button type="button" variant="ghost" size="icon-sm" onClick={() => setExpanded((v) => !v)}>
@@ -266,7 +202,7 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
             <Label>Prompt</Label>
             <RichTextEditor
               value={prompt}
-              onBlur={(html) => {
+              onChange={(html) => {
                 const next = html.replace(/<[^>]*>/g, "").trim() ? html : ""
                 setPrompt(next)
                 save({ prompt: next })
@@ -290,18 +226,15 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
               <div className="flex items-center gap-2">
                 <Switch
                   id={`allow-multiple-${question.id}`}
-                  checked={allowMultiple}
-                  onCheckedChange={(checked) => {
-                    setAllowMultiple(checked)
-                    save({ allow_multiple: checked })
-                  }}
+                  checked={question.allow_multiple}
+                  onCheckedChange={(checked) => save({ allow_multiple: checked })}
                 />
                 <Label htmlFor={`allow-multiple-${question.id}`}>Allow multiple correct answers</Label>
               </div>
               <OptionsEditor
                 questionId={question.id}
                 options={question.options}
-                variant={allowMultiple ? "multi" : "single"}
+                variant={question.allow_multiple ? "multi" : "single"}
               />
             </>
           )}
@@ -313,11 +246,8 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
               <div className="flex items-center gap-2">
                 <Switch
                   id={`case-sensitive-${question.id}`}
-                  checked={caseSensitive}
-                  onCheckedChange={(checked) => {
-                    setCaseSensitive(checked)
-                    save({ case_sensitive: checked })
-                  }}
+                  checked={question.case_sensitive}
+                  onCheckedChange={(checked) => save({ case_sensitive: checked })}
                 />
                 <Label htmlFor={`case-sensitive-${question.id}`}>Case sensitive</Label>
               </div>
@@ -342,19 +272,11 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
   )
 }
 
-function TrueFalseEditor({ questionId, options }: { questionId: string; options: AdminQuestionOption[] }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+function TrueFalseEditor({ questionId, options }: { questionId: string; options: DraftOption[] }) {
+  const { dispatch } = useCourseDraft()
 
   function handleSetCorrect(optionId: string) {
-    startTransition(async () => {
-      const result = await setCorrectOptionAction(questionId, optionId)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
+    dispatch({ type: "setCorrectOption", questionId, optionId })
   }
 
   return (
@@ -365,7 +287,6 @@ function TrueFalseEditor({ questionId, options }: { questionId: string; options:
           <button
             key={option.id}
             type="button"
-            disabled={isPending}
             onClick={() => handleSetCorrect(option.id)}
             className={cn(
               "flex flex-1 items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-left text-sm font-semibold transition-colors disabled:opacity-50",
@@ -392,57 +313,25 @@ function OptionsEditor({
   variant,
 }: {
   questionId: string
-  options: AdminQuestionOption[]
+  options: DraftOption[]
   variant: "single" | "multi" | "keyword"
 }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const { dispatch } = useCourseDraft()
 
   function handleAddOption() {
-    startTransition(async () => {
-      const result = await createOptionAction(questionId, {
-        text: "",
-        is_correct: variant === "keyword" ? true : false,
-      })
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
+    dispatch({ type: "addOption", questionId, option: { is_correct: variant === "keyword" } })
   }
 
   function handleSetCorrect(optionId: string) {
-    startTransition(async () => {
-      const result = await setCorrectOptionAction(questionId, optionId)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
+    dispatch({ type: "setCorrectOption", questionId, optionId })
   }
 
   function handleToggleCorrect(optionId: string, isCorrect: boolean) {
-    startTransition(async () => {
-      const result = await toggleCorrectOptionAction(optionId, isCorrect)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
+    dispatch({ type: "patchOption", id: optionId, patch: { is_correct: isCorrect } })
   }
 
   function handleRemove(optionId: string) {
-    startTransition(async () => {
-      const result = await deleteOptionAction(optionId)
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
+    dispatch({ type: "deleteOption", id: optionId })
   }
 
   return (
@@ -458,7 +347,7 @@ function OptionsEditor({
           onRemove={() => handleRemove(option.id)}
         />
       ))}
-      <Button type="button" variant="outline" size="sm" onClick={handleAddOption} disabled={isPending}>
+      <Button type="button" variant="outline" size="sm" onClick={handleAddOption}>
         <Plus className="size-3.5" />
         {variant === "keyword" ? "Add Answer" : "Add Option"}
       </Button>
@@ -473,23 +362,17 @@ function OptionRow({
   onToggleCorrect,
   onRemove,
 }: {
-  option: AdminQuestionOption
+  option: DraftOption
   variant: "single" | "multi" | "keyword"
   onSetCorrect: () => void
   onToggleCorrect: (checked: boolean) => void
   onRemove: () => void
 }) {
-  const router = useRouter()
+  const { dispatch } = useCourseDraft()
   const [text, setText] = useState(option.text)
 
   function save() {
-    updateOptionAction(option.id, text).then((result) => {
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      router.refresh()
-    })
+    dispatch({ type: "patchOption", id: option.id, patch: { text } })
   }
 
   return (
