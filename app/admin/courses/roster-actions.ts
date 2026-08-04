@@ -25,7 +25,8 @@ function revalidateRosterPaths() {
 }
 
 export async function searchLearnersAction(
-  query: string
+  query: string,
+  courseId?: string
 ): Promise<ActionResult<LearnerSearchResult[]>> {
   try {
     await requireAdmin()
@@ -33,7 +34,7 @@ export async function searchLearnersAction(
     return { ok: false, error: "Not authorized" }
   }
 
-  const results = await searchLearners(query)
+  const results = await searchLearners(query, courseId)
   return { ok: true, data: results }
 }
 

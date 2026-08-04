@@ -23,6 +23,7 @@ import { useNavigationBlocker } from "@/components/admin/NavigationBlockerContex
 import type { Instructor } from "@/lib/courses"
 import type { AdminCourseDetail, CoursePrerequisite } from "@/lib/courses-admin"
 import type { CourseRosterEntry } from "@/lib/learners-admin"
+import type { Paginated } from "@/lib/pagination"
 import { updateCourseAction } from "@/app/admin/courses/actions"
 
 import { BasicInfoTab } from "./tabs/BasicInfoTab"
@@ -42,7 +43,7 @@ export function CourseFormShell({
   course: AdminCourseDetail
   instructors: Instructor[]
   availableCoursesForPrerequisites: CoursePrerequisite[]
-  roster: CourseRosterEntry[]
+  roster: Paginated<CourseRosterEntry>
   isNew?: boolean
 }) {
   const router = useRouter()

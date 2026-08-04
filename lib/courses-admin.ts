@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { getAdminProfile } from "@/lib/auth/require-admin"
+import { paginated, rangeFor, type ListParams, type Paginated } from "@/lib/pagination"
 import type {
   Course,
   CourseDetail,
@@ -83,12 +84,17 @@ function slugify(title: string): string {
  * the exception -- "readable courses" excludes them unless you're enrolled --
  * but public ones still leak across admins.) created_by narrows the view below
  * what RLS permits -- RLS still fully blocks cross-admin writes regardless.
+ *
+ * For pickers that need a broad list of owned courses (EnrollModal's course
+ * list), not the paginated Course Management list (getAdminCourseList
+ * below). .limit(50) is a stop-gap against unbounded growth, not real
+ * pagination -- see Phase 9 of the pagination plan.
  */
-export async function getAdminCourseList(): Promise<Course[]> {
+export async function getAllAdminCourses(): Promise<Course[]> {
   const supabase = await createClient()
   const admin = await getAdminProfile()
 
-  let query = supabase.from("courses").select("*").order("created_at", { ascending: false })
+  let query = supabase.from("courses").select("*").order("created_at", { ascending: false }).limit(50)
   if (admin && admin.role !== "superadmin") {
     query = query.eq("created_by", admin.userId)
   }
@@ -96,11 +102,76 @@ export async function getAdminCourseList(): Promise<Course[]> {
   const { data, error } = await query
 
   if (error) {
-    console.error("getAdminCourseList failed:", error.message)
+    console.error("getAllAdminCourses failed:", error.message)
     return []
   }
 
   return data
+}
+
+export type AdminCourseFilters = { status: "all" | "published" | "draft"; price: "all" | "free" | "paid" }
+
+const COURSE_SORT_COLUMN: Record<string, string> = {
+  created_at: "created_at",
+  title: "title",
+  price: "price",
+}
+
+export async function getAdminCourseList(p: ListParams<AdminCourseFilters>): Promise<Paginated<Course>> {
+  const supabase = await createClient()
+  const admin = await getAdminProfile()
+
+  let query = supabase.from("courses").select("*", { count: "exact" })
+  if (admin && admin.role !== "superadmin") {
+    query = query.eq("created_by", admin.userId)
+  }
+  if (p.q) {
+    query = query.ilike("title", `%${p.q}%`)
+  }
+  if (p.filters.status !== "all") {
+    query = query.eq("status", p.filters.status)
+  }
+  if (p.filters.price === "free") {
+    query = query.eq("price", 0)
+  } else if (p.filters.price === "paid") {
+    query = query.gt("price", 0)
+  }
+
+  const [from, to] = rangeFor(p.page, p.pageSize)
+  const sortColumn = COURSE_SORT_COLUMN[p.sort] ?? "created_at"
+  query = query.order(sortColumn, { ascending: p.dir === "asc" }).range(from, to)
+
+  const { data, error, count } = await query
+
+  if (error || !data) {
+    console.error("getAdminCourseList failed:", error?.message)
+    return paginated([], 0, p)
+  }
+
+  return paginated(data, count, p)
+}
+
+/** Same scoping as getAdminCourseList, but for the Dashboard's "recent courses" card -- newest first, paginated at a fixed page size. */
+export async function getRecentCourses(p: { page: number; pageSize: number }): Promise<Paginated<Course>> {
+  const supabase = await createClient()
+  const admin = await getAdminProfile()
+
+  let query = supabase.from("courses").select("*", { count: "exact" })
+  if (admin && admin.role !== "superadmin") {
+    query = query.eq("created_by", admin.userId)
+  }
+
+  const [from, to] = rangeFor(p.page, p.pageSize)
+  query = query.order("created_at", { ascending: false }).range(from, to)
+
+  const { data, error, count } = await query
+
+  if (error || !data) {
+    console.error("getRecentCourses failed:", error?.message)
+    return paginated([], 0, p)
+  }
+
+  return paginated(data, count, p)
 }
 
 export type AdminCourseStats = {
@@ -338,9 +409,10 @@ export async function setCourseStatus(
   return { ok: true }
 }
 
+/** Unbounded picker dialog, not a paginated list -- .limit(50) is a stop-gap against unbounded growth, not real pagination (see Phase 9 of the pagination plan). */
 export async function listInstructors(): Promise<Instructor[]> {
   const supabase = await createClient()
-  const { data, error } = await supabase.from("instructors").select("*").order("name")
+  const { data, error } = await supabase.from("instructors").select("*").order("name").limit(50)
   if (error) {
     console.error("listInstructors failed:", error.message)
     return []
@@ -791,11 +863,12 @@ export async function deleteOption(id: string): Promise<{ ok: true } | { error: 
   return { ok: true }
 }
 
+/** Unbounded picker dialog, not a paginated list -- .limit(50) is a stop-gap against unbounded growth, not real pagination (see Phase 9 of the pagination plan). */
 export async function listCoursesForPrerequisitePicker(excludeCourseId: string): Promise<CoursePrerequisite[]> {
   const supabase = await createClient()
   const admin = await getAdminProfile()
 
-  let query = supabase.from("courses").select("id, title").neq("id", excludeCourseId).order("title")
+  let query = supabase.from("courses").select("id, title").neq("id", excludeCourseId).order("title").limit(50)
   if (admin && admin.role !== "superadmin") {
     query = query.eq("created_by", admin.userId)
   }

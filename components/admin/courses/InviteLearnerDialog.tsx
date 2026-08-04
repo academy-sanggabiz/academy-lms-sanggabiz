@@ -22,13 +22,11 @@ const MIN_QUERY_LENGTH = 2
 export function InviteLearnerDialog({
   courseId,
   open,
-  enrolledLearnerIds,
   onClose,
   onEnrolled,
 }: {
   courseId: string
   open: boolean
-  enrolledLearnerIds: string[]
   onClose: () => void
   onEnrolled: () => void
 }) {
@@ -36,14 +34,7 @@ export function InviteLearnerDialog({
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="max-w-[460px]">
         {/* Remount per open so the query/results don't persist between sessions */}
-        {open && (
-          <InviteLearnerDialogContent
-            courseId={courseId}
-            enrolledLearnerIds={enrolledLearnerIds}
-            onClose={onClose}
-            onEnrolled={onEnrolled}
-          />
-        )}
+        {open && <InviteLearnerDialogContent courseId={courseId} onClose={onClose} onEnrolled={onEnrolled} />}
       </DialogContent>
     </Dialog>
   )
@@ -51,12 +42,10 @@ export function InviteLearnerDialog({
 
 function InviteLearnerDialogContent({
   courseId,
-  enrolledLearnerIds,
   onClose,
   onEnrolled,
 }: {
   courseId: string
-  enrolledLearnerIds: string[]
   onClose: () => void
   onEnrolled: () => void
 }) {
@@ -83,7 +72,7 @@ function InviteLearnerDialogContent({
     let cancelled = false
     const timer = setTimeout(async () => {
       setIsSearching(true)
-      const result = await searchLearnersAction(trimmed)
+      const result = await searchLearnersAction(trimmed, courseId)
       if (cancelled) return
       setIsSearching(false)
       if (!result.ok) {
@@ -98,7 +87,7 @@ function InviteLearnerDialogContent({
       cancelled = true
       clearTimeout(timer)
     }
-  }, [trimmed])
+  }, [trimmed, courseId])
 
   function handleEnroll(learner: LearnerSearchResult) {
     startTransition(async () => {
@@ -113,8 +102,7 @@ function InviteLearnerDialogContent({
     })
   }
 
-  const alreadyEnrolled = new Set([...enrolledLearnerIds, ...justEnrolled])
-  const selectable = results.filter((r) => !alreadyEnrolled.has(r.id))
+  const selectable = results.filter((r) => !r.alreadyEnrolled && !justEnrolled.has(r.id))
 
   return (
     <>
