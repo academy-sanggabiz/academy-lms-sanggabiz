@@ -28,40 +28,24 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import type { Instructor } from "@/lib/courses"
-import {
-  assignInstructorAction,
-  createInstructorAction,
-  deleteInstructorAction,
-  unassignInstructorAction,
-} from "@/app/admin/courses/actions"
+import { createInstructorAction, deleteInstructorAction } from "@/app/admin/courses/actions"
+import { useCourseDraft } from "./CourseDraftContext"
 
-export function InstructorPicker({
-  courseId,
-  instructors,
-  currentInstructorId,
-}: {
-  courseId: string
-  instructors: Instructor[]
-  currentInstructorId: string | null
-}) {
+// instructors is a global directory (is_admin()-gated, not owns_course()) --
+// multiple admins' courses can reference the same instructor -- so create
+// and delete stay immediate server writes; only the course<->instructor
+// assignment itself is drafted.
+export function InstructorPicker({ instructors: initialInstructors }: { instructors: Instructor[] }) {
+  const { draft, dispatch } = useCourseDraft()
+  const [instructors, setInstructors] = useState(initialInstructors)
   const [isPending, startTransition] = useTransition()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [name, setName] = useState("")
   const [bio, setBio] = useState("")
 
   function handleSelect(instructorId: string) {
-    startTransition(async () => {
-      const result =
-        instructorId === currentInstructorId
-          ? await unassignInstructorAction(courseId)
-          : await assignInstructorAction(courseId, instructorId)
-
-      if (!result.ok) {
-        toast.error(result.error)
-        return
-      }
-      toast.success(instructorId === currentInstructorId ? "Instructor removed" : "Instructor assigned")
-    })
+    const isSelected = instructorId === draft.instructorId
+    dispatch({ type: "setField", patch: { instructorId: isSelected ? null : instructorId } })
   }
 
   function handleCreate() {
@@ -72,11 +56,13 @@ export function InstructorPicker({
         toast.error(result.error)
         return
       }
-      const assignResult = await assignInstructorAction(courseId, result.data.id)
-      if (!assignResult.ok) {
-        toast.error(assignResult.error)
-        return
-      }
+      // createInstructorAction doesn't revalidatePath (it's not tied to any
+      // one course) -- append locally instead of relying on a server refresh.
+      setInstructors((prev) => [
+        ...prev,
+        { id: result.data.id, name: name.trim(), title: null, bio: bio.trim() || null, avatar_url: null },
+      ])
+      dispatch({ type: "setField", patch: { instructorId: result.data.id } })
       toast.success("Instructor created and assigned")
       setName("")
       setBio("")
@@ -91,6 +77,10 @@ export function InstructorPicker({
         toast.error(result.error)
         return
       }
+      setInstructors((prev) => prev.filter((i) => i.id !== instructorId))
+      if (draft.instructorId === instructorId) {
+        dispatch({ type: "setField", patch: { instructorId: null } })
+      }
       toast.success("Instructor deleted")
     })
   }
@@ -104,12 +94,11 @@ export function InstructorPicker({
       ) : (
         <div className="space-y-2">
           {instructors.map((instructor) => {
-            const selected = instructor.id === currentInstructorId
+            const selected = instructor.id === draft.instructorId
             return (
               <div key={instructor.id} className="flex items-center gap-2">
                 <button
                   type="button"
-                  disabled={isPending}
                   onClick={() => handleSelect(instructor.id)}
                   className={`flex flex-1 items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                     selected ? "border-primary bg-secondary" : "border-border hover:bg-muted"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { EditorContent, useEditor, type Editor } from "@tiptap/react"
 import type { EditorView } from "@tiptap/pm/view"
 import { StarterKit } from "@tiptap/starter-kit"
@@ -90,13 +90,51 @@ async function uploadAndInsert(view: EditorView, file: File, pos?: number) {
   view.dispatch(tr)
 }
 
+// Debounce window for onUpdate -- long enough that a fast typist doesn't
+// spam dispatches, short enough that autosave/beforeunload always have a
+// near-current draft. Blur (and unmount) flush immediately regardless.
+const UPDATE_DEBOUNCE_MS = 400
+
 export function RichTextEditor({
   value,
-  onBlur,
+  onChange,
 }: {
   value: string
-  onBlur: (html: string) => void
+  onChange: (html: string) => void
 }) {
+  const onChangeRef = useRef(onChange)
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function scheduleUpdate(html: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null
+      onChangeRef.current(html)
+    }, UPDATE_DEBOUNCE_MS)
+  }
+
+  function flush(html: string) {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
+    onChangeRef.current(html)
+  }
+
+  useEffect(() => {
+    return () => {
+      // Flush any pending debounced edit rather than dropping it on unmount
+      // (e.g. collapsing the SubSection this editor lives in).
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+        debounceRef.current = null
+      }
+    }
+  }, [])
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -130,10 +168,19 @@ export function RichTextEditor({
         return true
       },
     },
-    onBlur: ({ editor }) => {
-      onBlur(editor.getHTML())
-    },
+    onUpdate: ({ editor }) => scheduleUpdate(editor.getHTML()),
+    onBlur: ({ editor }) => flush(editor.getHTML()),
   })
+
+  // External value sync: needed for localStorage-restore and for the
+  // post-save reseed (baseline := draft). Guarded so it never fights the
+  // user's own typing/cursor position -- only fires when `value` changed
+  // for a reason OTHER than this editor's own onUpdate.
+  useEffect(() => {
+    if (!editor) return
+    if (value === editor.getHTML()) return
+    editor.commands.setContent(value, { emitUpdate: false })
+  }, [value, editor])
 
   if (!editor) return null
 

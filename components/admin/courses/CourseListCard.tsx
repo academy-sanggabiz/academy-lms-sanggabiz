@@ -84,15 +84,15 @@ export function CourseListCard({ course }: { course: Course }) {
         </span>
       </div>
 
-      {course.description && (
-        <div className="mb-4 min-h-0 flex-1">
+      <div className="mb-4 min-h-0 flex-1">
+        {course.description && (
           <p className="line-clamp-2 text-[13.5px] leading-relaxed text-muted-foreground">
             {course.description}
           </p>
-        </div>
-      )}
+        )}
+      </div>
 
-      <div className="flex gap-2">
+      <div className="mt-auto flex gap-2">
         <Button
           variant="outline"
           className="h-9 flex-1"
