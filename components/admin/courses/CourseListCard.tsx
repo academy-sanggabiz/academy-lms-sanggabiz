@@ -7,7 +7,7 @@ import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatPrice, type Course } from "@/lib/courses"
+import { formatCourseAccess, type Course } from "@/lib/courses"
 import { cn } from "@/lib/utils"
 import { toggleCourseStatusAction } from "@/app/admin/courses/actions"
 
@@ -15,7 +15,7 @@ import { DeleteCourseDialog } from "./DeleteCourseDialog"
 
 export function CourseListCard({ course }: { course: Course }) {
   const [isPending, startTransition] = useTransition()
-  const price = formatPrice(course.price)
+  const price = formatCourseAccess(course)
   const isPublished = course.status === "published"
 
   function handleToggleStatus() {

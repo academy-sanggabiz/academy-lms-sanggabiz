@@ -15,6 +15,8 @@ export const courseFormSchema = z.object({
   level: z.string().trim(),
   enrollmentMode: z.enum(["free", "paid"]),
   price: z.number().min(0, "Price can't be negative"),
+  // Unlike enrollmentMode (derived from price), this is a real courses column.
+  isPrivate: z.boolean(),
 })
 
 export type CourseFormValues = z.infer<typeof courseFormSchema>

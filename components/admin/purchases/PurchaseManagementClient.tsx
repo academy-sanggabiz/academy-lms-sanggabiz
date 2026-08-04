@@ -9,8 +9,8 @@ import type { AdminPurchase, TransactionStatus } from "@/lib/purchases-admin"
 import { PurchaseListToolbar, type StatusFilter } from "./PurchaseListToolbar"
 
 const STATUS_LABEL: Record<TransactionStatus, string> = {
-  completed: "Completed",
-  free: "Free",
+  completed: "Paid",
+  free: "Public",
   pending: "Pending",
   refunded: "Refunded",
 }

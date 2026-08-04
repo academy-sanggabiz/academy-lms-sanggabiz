@@ -22,9 +22,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useNavigationBlocker } from "@/components/admin/NavigationBlockerContext"
 import type { Instructor } from "@/lib/courses"
 import type { AdminCourseDetail, CoursePrerequisite } from "@/lib/courses-admin"
+import type { CourseRosterEntry } from "@/lib/learners-admin"
 import { updateCourseAction } from "@/app/admin/courses/actions"
 
 import { BasicInfoTab } from "./tabs/BasicInfoTab"
+import { LearnersTab } from "./tabs/LearnersTab"
 import { LessonsTab } from "./tabs/LessonsTab"
 import { PreviewTab } from "./tabs/PreviewTab"
 import { SettingsTab } from "./tabs/SettingsTab"
@@ -34,11 +36,13 @@ export function CourseFormShell({
   course,
   instructors,
   availableCoursesForPrerequisites,
+  roster,
   isNew = false,
 }: {
   course: AdminCourseDetail
   instructors: Instructor[]
   availableCoursesForPrerequisites: CoursePrerequisite[]
+  roster: CourseRosterEntry[]
   isNew?: boolean
 }) {
   const router = useRouter()
@@ -57,6 +61,7 @@ export function CourseFormShell({
       level: course.level ?? "",
       enrollmentMode: course.price > 0 ? "paid" : "free",
       price: course.price ?? 0,
+      isPrivate: course.is_private,
     },
   })
 
@@ -96,6 +101,7 @@ export function CourseFormShell({
         price: values.enrollmentMode === "paid" ? values.price : 0,
         level: values.level || null,
         status,
+        is_private: values.isPrivate,
         who_for: linesToArray(values.audienceText),
         requirements: linesToArray(values.requirementsText),
       }
@@ -160,6 +166,7 @@ export function CourseFormShell({
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
               <TabsTrigger value="lessons">Lessons</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabsTrigger value="learners">Learners</TabsTrigger>
               <TabsTrigger value="preview">Preview</TabsTrigger>
             </TabsList>
 
@@ -174,6 +181,7 @@ export function CourseFormShell({
             <TabsContent value="settings">
               <SettingsTab
                 courseId={course.id}
+                status={course.status}
                 instructors={instructors}
                 currentInstructorId={course.instructor?.id ?? null}
                 requirePrerequisites={course.require_prerequisites}
@@ -181,6 +189,10 @@ export function CourseFormShell({
                 availableCoursesForPrerequisites={availableCoursesForPrerequisites}
                 certificateSettings={course.certificate_settings}
               />
+            </TabsContent>
+
+            <TabsContent value="learners">
+              <LearnersTab courseId={course.id} roster={roster} />
             </TabsContent>
 
             <TabsContent value="preview">

@@ -58,7 +58,7 @@ export function CourseListToolbar({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All prices</SelectItem>
-          <SelectItem value="free">Free</SelectItem>
+          <SelectItem value="free">Public</SelectItem>
           <SelectItem value="paid">Paid</SelectItem>
         </SelectContent>
       </Select>

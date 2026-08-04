@@ -3,7 +3,7 @@
 import { useFormContext } from "react-hook-form"
 import { BookOpen, Clock, Tag } from "lucide-react"
 
-import { formatPrice } from "@/lib/courses"
+import { formatCourseAccess } from "@/lib/courses"
 import { cn } from "@/lib/utils"
 import type { CourseFormValues } from "../schema"
 
@@ -15,15 +15,19 @@ export function PreviewTab({
   durationHours: number
 }) {
   const { watch } = useFormContext<CourseFormValues>()
-  const [title, description, thumbnailUrl, enrollmentMode, price] = watch([
+  const [title, description, thumbnailUrl, enrollmentMode, price, isPrivate] = watch([
     "title",
     "description",
     "thumbnail_url",
     "enrollmentMode",
     "price",
+    "isPrivate",
   ])
 
-  const priceLabel = formatPrice(enrollmentMode === "paid" ? price : 0)
+  const priceLabel = formatCourseAccess({
+    price: enrollmentMode === "paid" ? price : 0,
+    is_private: isPrivate,
+  })
 
   return (
     <div>

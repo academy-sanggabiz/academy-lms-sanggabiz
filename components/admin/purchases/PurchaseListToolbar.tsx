@@ -41,8 +41,8 @@ export function PurchaseListToolbar({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Status</SelectItem>
-          <SelectItem value="completed">Completed</SelectItem>
-          <SelectItem value="free">Free</SelectItem>
+          <SelectItem value="completed">Paid</SelectItem>
+          <SelectItem value="free">Public</SelectItem>
           <SelectItem value="pending">Pending</SelectItem>
           <SelectItem value="refunded">Refunded</SelectItem>
         </SelectContent>
