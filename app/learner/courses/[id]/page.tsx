@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { CourseCurriculum } from "@/components/learner/CourseCurriculum"
 import { getCourseDetail } from "@/lib/courses-server"
 import { isEnrolled } from "@/lib/enrollments-server"
-import { formatPrice } from "@/lib/courses"
+import { formatCourseAccess } from "@/lib/courses"
 import { cn } from "@/lib/utils"
 import { enroll } from "@/app/learner/courses/actions"
 
@@ -21,7 +21,7 @@ export default async function CourseDetailPage({
   if (!course) notFound()
 
   const enrolled = await isEnrolled(course.id)
-  const price = formatPrice(course.price)
+  const price = formatCourseAccess(course)
 
   return (
     <div className="space-y-6">

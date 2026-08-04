@@ -25,10 +25,14 @@ const sortOptions: { key: SortKey; label: string }[] = [
 
 export function CoursesBrowser({
   courses,
+  enrolledCourses,
   enrolledIds,
   completedIds,
 }: {
+  /** Catalog: published + public only. Drives the All tab. */
   courses: Course[]
+  /** Everything the learner is enrolled in, private courses included. */
+  enrolledCourses: Course[]
   enrolledIds: string[]
   completedIds: string[]
 }) {
@@ -51,14 +55,14 @@ export function CoursesBrowser({
     return sortCourses(filtered)
   }, [courses, query, sort])
 
-  const enrolledCourses = useMemo(
-    () => sortCourses(courses.filter((c) => enrolledIds.includes(c.id))),
-    [courses, enrolledIds, sort]
-  )
+  // Derived from enrolledCourses, NOT from the catalog: filtering `courses` by
+  // enrolled ids drops private courses entirely, since they're absent from the
+  // catalog by design.
+  const enrolledList = useMemo(() => sortCourses(enrolledCourses), [enrolledCourses, sort])
 
-  const completedCourses = useMemo(
-    () => sortCourses(courses.filter((c) => completedIds.includes(c.id))),
-    [courses, completedIds, sort]
+  const completedList = useMemo(
+    () => sortCourses(enrolledCourses.filter((c) => completedIds.includes(c.id))),
+    [enrolledCourses, completedIds, sort]
   )
 
   const sortLabel = sortOptions.find((o) => o.key === sort)?.label ?? "Sort"
@@ -121,9 +125,9 @@ export function CoursesBrowser({
         </TabsContent>
 
         <TabsContent value="enrolled" className="mt-6">
-          {enrolledCourses.length > 0 ? (
+          {enrolledList.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {enrolledCourses.map((course) => (
+              {enrolledList.map((course) => (
                 <CourseGridCard key={course.id} course={course} enrolled />
               ))}
             </div>
@@ -133,9 +137,9 @@ export function CoursesBrowser({
         </TabsContent>
 
         <TabsContent value="completed" className="mt-6">
-          {completedCourses.length > 0 ? (
+          {completedList.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {completedCourses.map((course) => (
+              {completedList.map((course) => (
                 <CourseGridCard key={course.id} course={course} enrolled />
               ))}
             </div>

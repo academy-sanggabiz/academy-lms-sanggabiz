@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import { formatPrice, type Course } from "@/lib/courses"
+import { formatCourseAccess, type Course } from "@/lib/courses"
 
 export function CourseCard({
   course,
@@ -32,7 +32,7 @@ export function CourseCard({
           "course thumbnail"
         )}
         <span className="absolute top-3 right-3 rounded-full bg-ring px-3 py-1 text-xs font-semibold text-white">
-          {formatPrice(course.price)}
+          {formatCourseAccess(course)}
         </span>
       </div>
       <div className="mb-2.5 min-h-[46px] text-base leading-snug font-bold">

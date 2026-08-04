@@ -2,12 +2,12 @@ import Link from "next/link"
 import { BookOpen, Check, Clock, Eye, Tag } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { formatPrice, type Course } from "@/lib/courses"
+import { formatCourseAccess, type Course } from "@/lib/courses"
 import { cn } from "@/lib/utils"
 import { enroll } from "@/app/learner/courses/actions"
 
 export function CourseGridCard({ course, enrolled }: { course: Course; enrolled: boolean }) {
-  const price = formatPrice(course.price)
+  const price = formatCourseAccess(course)
 
   return (
     <div className="flex h-full flex-col rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-[0_8px_24px_rgba(20,55,64,0.08)]">

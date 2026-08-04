@@ -18,8 +18,8 @@ import type { LearnerPurchase, TransactionStatus } from "@/lib/purchases-server"
 type StatusFilter = "all" | TransactionStatus
 
 const STATUS_LABEL: Record<TransactionStatus, string> = {
-  completed: "Completed",
-  free: "Free",
+  completed: "Paid",
+  free: "Public",
   pending: "Pending",
   refunded: "Refunded",
 }
@@ -71,8 +71,8 @@ export function PurchaseHistoryClient({ purchases }: { purchases: LearnerPurchas
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="free">Free</SelectItem>
+              <SelectItem value="completed">Paid</SelectItem>
+              <SelectItem value="free">Public</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="refunded">Refunded</SelectItem>
             </SelectContent>
