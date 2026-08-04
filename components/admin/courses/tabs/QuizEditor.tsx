@@ -10,13 +10,14 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { RichTextEditor } from "../RichTextEditor"
 import type { AdminQuestion, AdminQuestionOption, AdminQuiz, AuthorableQuestionType } from "@/lib/courses-admin"
@@ -32,33 +33,25 @@ import {
   updateQuizAction,
 } from "@/app/admin/courses/quiz-actions"
 
-const QUESTION_TYPES: { value: AuthorableQuestionType; label: string; description: string }[] = [
-  {
-    value: "multiple_choice",
-    label: "Multiple Choice",
-    description: "Learners pick one option, or several if you allow multiple correct answers.",
-  },
-  {
-    value: "true_false",
-    label: "True / False",
-    description: "A simple two-option question.",
-  },
-  {
-    value: "short_answer",
-    label: "Short Answer",
-    description: "Learners type a word or phrase — optionally auto-graded against keywords.",
-  },
-  {
-    value: "essay",
-    label: "Essay",
-    description: "Learners answer in free text; not auto-graded.",
-  },
+const QUESTION_TYPES: { value: AuthorableQuestionType; label: string }[] = [
+  { value: "multiple_choice", label: "Multiple Choice" },
+  { value: "true_false", label: "True / False" },
+  { value: "short_answer", label: "Short Answer" },
+  { value: "essay", label: "Long Answer" },
+  { value: "file_upload", label: "File Upload" },
 ]
 
 export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: AdminQuiz | null }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [selectedType, setSelectedType] = useState<AuthorableQuestionType>("multiple_choice")
+
+  function openPicker() {
+    // Always start from the default rather than remembering the last pick.
+    setSelectedType("multiple_choice")
+    setPickerOpen(true)
+  }
 
   function handleAddQuestion(type: AuthorableQuestionType) {
     startTransition(async () => {
@@ -95,7 +88,7 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: AdminQu
         variant="outline"
         size="sm"
         className="mt-3"
-        onClick={() => setPickerOpen(true)}
+        onClick={openPicker}
         disabled={isPending}
       >
         <Plus className="size-3.5" />
@@ -103,25 +96,38 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: AdminQu
       </Button>
 
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="max-w-[480px]">
+        <DialogContent className="max-w-[420px]">
           <DialogHeader>
             <DialogTitle>Add Question</DialogTitle>
             <DialogDescription>Choose a question type. This can&apos;t be changed later.</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-2">
-            {QUESTION_TYPES.map((t) => (
-              <button
-                key={t.value}
-                type="button"
-                disabled={isPending}
-                onClick={() => handleAddQuestion(t.value)}
-                className="rounded-lg border border-border p-3 text-left transition-colors hover:border-ring hover:bg-muted/40 disabled:pointer-events-none disabled:opacity-50"
-              >
-                <div className="text-sm font-semibold">{t.label}</div>
-                <div className="mt-0.5 text-xs text-muted-foreground">{t.description}</div>
-              </button>
-            ))}
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <RadioGroup
+              value={selectedType}
+              onValueChange={(value) => setSelectedType(value as AuthorableQuestionType)}
+            >
+              {QUESTION_TYPES.map((t) => (
+                <label key={t.value} className="flex items-center gap-2.5 text-sm">
+                  <RadioGroupItem value={t.value} />
+                  {t.label}
+                </label>
+              ))}
+            </RadioGroup>
           </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setPickerOpen(false)} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleAddQuestion(selectedType)}
+              disabled={isPending}
+            >
+              Add Question
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
@@ -256,56 +262,28 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
 
       {expanded && (
         <div className="space-y-3.5 p-3.5">
-          {question.type === "essay" ? (
-            <>
-              <div className="space-y-1.5">
-                <Label>Prompt</Label>
-                <RichTextEditor
-                  value={prompt}
-                  onBlur={(html) => {
-                    const next = html.replace(/<[^>]*>/g, "").trim() ? html : ""
-                    setPrompt(next)
-                    save({ prompt: next })
-                  }}
-                />
-              </div>
-              <div className="w-24 space-y-1.5">
-                <Label htmlFor={`question-points-${question.id}`}>Points</Label>
-                <Input
-                  id={`question-points-${question.id}`}
-                  type="number"
-                  min={0}
-                  value={points}
-                  onChange={(e) => setPoints(e.target.value)}
-                  onBlur={() => save({ points: Number(points) || 0 })}
-                />
-              </div>
-            </>
-          ) : (
-            <div className="flex gap-3">
-              <div className="flex-1 space-y-1.5">
-                <Label htmlFor={`question-prompt-${question.id}`}>Prompt</Label>
-                <Textarea
-                  id={`question-prompt-${question.id}`}
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  onBlur={() => save({ prompt })}
-                  rows={2}
-                />
-              </div>
-              <div className="w-24 space-y-1.5">
-                <Label htmlFor={`question-points-${question.id}`}>Points</Label>
-                <Input
-                  id={`question-points-${question.id}`}
-                  type="number"
-                  min={0}
-                  value={points}
-                  onChange={(e) => setPoints(e.target.value)}
-                  onBlur={() => save({ points: Number(points) || 0 })}
-                />
-              </div>
-            </div>
-          )}
+          <div className="space-y-1.5">
+            <Label>Prompt</Label>
+            <RichTextEditor
+              value={prompt}
+              onBlur={(html) => {
+                const next = html.replace(/<[^>]*>/g, "").trim() ? html : ""
+                setPrompt(next)
+                save({ prompt: next })
+              }}
+            />
+          </div>
+          <div className="w-24 space-y-1.5">
+            <Label htmlFor={`question-points-${question.id}`}>Points</Label>
+            <Input
+              id={`question-points-${question.id}`}
+              type="number"
+              min={0}
+              value={points}
+              onChange={(e) => setPoints(e.target.value)}
+              onBlur={() => save({ points: Number(points) || 0 })}
+            />
+          </div>
 
           {question.type === "multiple_choice" && (
             <>
@@ -350,6 +328,12 @@ function QuestionCard({ question, index }: { question: AdminQuestion; index: num
           {question.type === "essay" && (
             <p className="text-xs text-muted-foreground">
               Learners answer in free text; these responses aren&apos;t auto-graded.
+            </p>
+          )}
+
+          {question.type === "file_upload" && (
+            <p className="text-xs text-muted-foreground">
+              Learners upload a PDF instead of typing an answer; these responses aren&apos;t auto-graded.
             </p>
           )}
         </div>

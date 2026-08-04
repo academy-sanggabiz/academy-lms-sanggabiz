@@ -53,7 +53,7 @@ export function ImportGradesDialog() {
         }
       }}
     >
-      <DialogTrigger render={<Button variant="outline" />} nativeButton={false}>
+      <DialogTrigger render={<Button variant="outline" />}>
         Import Grades
       </DialogTrigger>
       <DialogContent className="max-w-[460px]">
