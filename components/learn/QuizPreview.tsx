@@ -2,6 +2,7 @@ import { Check } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import type { AdminQuiz } from "@/lib/courses-admin"
+import { QuestionPrompt } from "@/components/learn/QuestionPrompt"
 
 export function QuizPreview({ quiz }: { quiz: AdminQuiz }) {
   return (
@@ -21,11 +22,7 @@ export function QuizPreview({ quiz }: { quiz: AdminQuiz }) {
             <div className="text-[13px] font-semibold text-muted-foreground">
               Question {index + 1} · {question.points} {question.points === 1 ? "point" : "points"}
             </div>
-            {question.type === "essay" ? (
-              <div className="lesson-prose mt-1.5" dangerouslySetInnerHTML={{ __html: question.prompt }} />
-            ) : (
-              <div className="mt-1.5 text-[17px] font-semibold">{question.prompt}</div>
-            )}
+            <QuestionPrompt prompt={question.prompt} className="mt-1.5 text-[17px] font-semibold" />
 
             {(question.type === "multiple_choice" || question.type === "true_false") && (
               <div className="mt-4 flex flex-col gap-2.5">
@@ -74,7 +71,7 @@ export function QuizPreview({ quiz }: { quiz: AdminQuiz }) {
             )}
 
             {question.type === "essay" && (
-              <p className="mt-4 text-sm text-muted-foreground">Essay response — graded manually, no answer key.</p>
+              <p className="mt-4 text-sm text-muted-foreground">Long answer response — graded manually, no answer key.</p>
             )}
           </div>
         )

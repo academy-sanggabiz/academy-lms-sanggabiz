@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef, useState, useTransition, type ReactNode } from "react"
-import { CheckCircle2, Clock } from "lucide-react"
+import { useEffect, useRef, useState, useTransition, type ChangeEvent, type ReactNode } from "react"
+import { CheckCircle2, Clock, FileText, Upload } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,8 @@ import type { Question, Quiz } from "@/lib/courses"
 import type { QuizAttemptInfo } from "@/lib/learn-server"
 import { saveDraft, startAssessmentAttempt, submitQuiz } from "@/app/learn/[courseId]/quiz-actions"
 import { RichTextEditor } from "@/components/admin/courses/RichTextEditor"
+import { getQuizSubmissionUrl, uploadQuizSubmission } from "@/lib/storage"
+import { QuestionPrompt } from "@/components/learn/QuestionPrompt"
 
 type Phase = "form" | "pending" | "graded"
 
@@ -59,6 +61,15 @@ export function EssayAssessmentPlayer({
     }
     setAttemptId(res.attemptId)
     return res.attemptId
+  }
+
+  // Uploads happen the moment a learner picks a file, so the attempt needs to
+  // exist first (same reason Save Draft/Submit call ensureAttempt) -- the
+  // uploaded object's RLS-owned path is {learnerId}/{attemptId}/{questionId}.
+  async function handleUploadFile(questionId: string, file: File) {
+    const id = await ensureAttempt()
+    if (!id) return { error: "Couldn't start the assessment attempt." }
+    return uploadQuizSubmission(file, id, questionId)
   }
 
   function handleSaveDraft() {
@@ -174,6 +185,7 @@ export function EssayAssessmentPlayer({
           index={index}
           value={answers[question.id] ?? ""}
           onChange={(value) => setAnswer(question.id, value)}
+          onUploadFile={(file) => handleUploadFile(question.id, file)}
         />
       ))}
 
@@ -204,11 +216,13 @@ function QuestionCard({
   index,
   value,
   onChange,
+  onUploadFile,
 }: {
   question: Question
   index: number
   value: string
   onChange: (value: string) => void
+  onUploadFile: (file: File) => Promise<{ path: string } | { error: string }>
 }) {
   const isChoice = question.type === "multiple_choice" || question.type === "true_false"
   const selectedIds = isChoice ? value.split(",").filter(Boolean) : []
@@ -228,11 +242,7 @@ function QuestionCard({
     <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-7">
       <div className="text-sm font-semibold text-muted-foreground">Question {index + 1}</div>
 
-      {question.type === "essay" ? (
-        <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: question.prompt }} />
-      ) : (
-        <div className="text-[17px] whitespace-pre-line">{question.prompt}</div>
-      )}
+      <QuestionPrompt prompt={question.prompt} className="text-[17px]" />
 
       {isChoice ? (
         <div className="flex flex-col gap-3">
@@ -265,6 +275,8 @@ function QuestionCard({
         </div>
       ) : question.type === "essay" ? (
         <RichTextEditor value={value} onBlur={onChange} />
+      ) : question.type === "file_upload" ? (
+        <FileUploadAnswer value={value} onChange={onChange} onUploadFile={onUploadFile} />
       ) : (
         <textarea
           value={value}
@@ -273,6 +285,79 @@ function QuestionCard({
           className="min-h-[120px] w-full resize-y rounded-lg border border-input bg-card p-3.5 text-[15px] outline-none focus:border-ring"
         />
       )}
+    </div>
+  )
+}
+
+// Renders the current upload state for a file_upload answer. `value` holds the
+// storage object path (not a URL, since quiz-submissions is a private bucket
+// -- see lib/storage.ts uploadQuizSubmission/getQuizSubmissionUrl), so a
+// viewable link is resolved lazily via a signed URL whenever the path changes.
+export function FileUploadAnswer({
+  value,
+  onChange,
+  onUploadFile,
+}: {
+  value: string
+  onChange: (value: string) => void
+  onUploadFile: (file: File) => Promise<{ path: string } | { error: string }>
+}) {
+  const [isUploading, setIsUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [viewUrl, setViewUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    if (!value) return
+    getQuizSubmissionUrl(value).then((res) => {
+      if (cancelled) return
+      if ("url" in res) setViewUrl(res.url)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [value])
+
+  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
+    setError(null)
+    setIsUploading(true)
+    const res = await onUploadFile(file)
+    setIsUploading(false)
+    if ("error" in res) {
+      setError(res.error)
+      return
+    }
+    onChange(res.path)
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <label
+        className={cn(
+          "flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-input bg-card px-4 py-2.5 text-sm font-semibold hover:border-ring",
+          isUploading && "pointer-events-none opacity-50"
+        )}
+      >
+        <Upload className="size-4" />
+        {isUploading ? "Uploading…" : value ? "Replace PDF" : "Upload PDF"}
+        <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={handleFileChange} />
+      </label>
+      {value && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <FileText className="size-4" />
+          {viewUrl ? (
+            <a href={viewUrl} target="_blank" rel="noopener noreferrer" className="text-ring hover:underline">
+              View uploaded PDF
+            </a>
+          ) : (
+            "PDF uploaded"
+          )}
+        </div>
+      )}
+      {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   )
 }

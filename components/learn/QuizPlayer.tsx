@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button"
 import type { Quiz } from "@/lib/courses"
 import type { QuizAttemptInfo } from "@/lib/learn-server"
 import { startQuiz, submitQuiz, type SubmitQuizResult } from "@/app/learn/[courseId]/quiz-actions"
+import { uploadQuizSubmission } from "@/lib/storage"
+import { FileUploadAnswer } from "@/components/learn/EssayAssessmentPlayer"
+import { QuestionPrompt } from "@/components/learn/QuestionPrompt"
 
 type Stage = "intro" | "active" | "results"
 
@@ -133,11 +136,7 @@ export function QuizPlayer({
               </div>
             )}
           </div>
-          {question.type === "essay" ? (
-            <div className="lesson-prose mt-4" dangerouslySetInnerHTML={{ __html: question.prompt }} />
-          ) : (
-            <div className="mt-4 text-[17px]">{question.prompt}</div>
-          )}
+          <QuestionPrompt prompt={question.prompt} className="mt-4 text-[17px]" />
         </div>
 
         {isChoice ? (
@@ -167,6 +166,14 @@ export function QuizPlayer({
                 </button>
               )
             })}
+          </div>
+        ) : question.type === "file_upload" ? (
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <FileUploadAnswer
+              value={answers[question.id] ?? ""}
+              onChange={(value) => setAnswers((a) => ({ ...a, [question.id]: value }))}
+              onUploadFile={(file) => uploadQuizSubmission(file, attemptId!, question.id)}
+            />
           </div>
         ) : (
           <div className="rounded-2xl border border-border bg-card p-6">
@@ -236,7 +243,11 @@ export function QuizPlayer({
                     .filter(Boolean)
                     .map((id) => question.options.find((o) => o.id === id)?.text ?? "—")
                     .join(", ") || "—"
-                : answer || "—"
+                : question.type === "file_upload"
+                  ? answer
+                    ? "PDF submitted"
+                    : "—"
+                  : answer || "—"
 
             return (
               <div
@@ -253,11 +264,7 @@ export function QuizPlayer({
                   <CircleHelp className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
                 )}
                 <div className="min-w-0 flex-1">
-                  {question.type === "essay" ? (
-                    <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: question.prompt }} />
-                  ) : (
-                    <div className="text-[14.5px] font-semibold">{question.prompt}</div>
-                  )}
+                  <QuestionPrompt prompt={question.prompt} className="text-[14.5px] font-semibold" />
                   <div className="mt-1 text-[13px] text-muted-foreground">Your answer: {answerText}</div>
                   {isCorrect === null && (
                     <div className="mt-1 text-[13px] font-medium text-muted-foreground">Pending review</div>
