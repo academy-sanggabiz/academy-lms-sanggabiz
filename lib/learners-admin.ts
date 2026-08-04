@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { recordEnrollmentTransaction } from "@/lib/transactions-server"
 import { getOwnedCourseIdsOrNull } from "@/lib/courses-admin"
+import { escapeForOrFilter, paginated, rangeFor, type ListParams, type Paginated } from "@/lib/pagination"
 
 /** Server-only admin data access for Learner Management -- never import from a Client Component. */
 
@@ -11,8 +12,9 @@ export type AdminLearner = {
   initial: string
   enrolledCount: number
   completedCount: number
-  enrolledCourseIds: string[]
 }
+
+export type AdminLearnerFilters = { filter: "all" | "enrolled" | "completed" }
 
 export type AdminLearnerStats = {
   totalLearners: number
@@ -41,98 +43,101 @@ function initialOf(name: string): string {
   return name.trim().charAt(0).toUpperCase() || "?"
 }
 
+type AdminLearnerPageRow = {
+  learner_id: string
+  name: string
+  email: string
+  enrolled_count: number
+  completed_count: number
+  total_count: number
+}
+
 /**
- * enrollments should already be RLS-scoped to courses the acting admin owns
- * (superadmin: every course), so deriving the learner set from enrollments
- * -- rather than starting from the global `profiles` table -- is what keeps
- * Learner Management isolated per admin. The explicit .in("course_id", ...)
- * filter below is a belt-and-suspenders app-layer guard on top of that RLS
- * (see getOwnedCourseIdsOrNull, lib/courses-admin.ts) -- it keeps this list
- * correct even if the owns_course() RLS migration hasn't actually landed.
+ * RPC-backed -- see admin_learner_page() (pagination migration). Replaces
+ * the previous approach of reading every enrollment row and folding it into
+ * a JS Map keyed by learner; the RPC re-applies the same owner-scoping
+ * (created_by = auth.uid() or is_superadmin()) directly in SQL, so it keeps
+ * the guard getOwnedCourseIdsOrNull() used to provide.
  */
-export async function getAdminLearnerList(): Promise<AdminLearner[]> {
+export async function getAdminLearnerList(p: ListParams<AdminLearnerFilters>): Promise<Paginated<AdminLearner>> {
+  const supabase = await createClient()
+  const offset = (p.page - 1) * p.pageSize
+
+  const { data, error } = await supabase.rpc("admin_learner_page", {
+    p_q: p.q,
+    p_filter: p.filters.filter,
+    p_sort: p.sort,
+    p_dir: p.dir,
+    p_limit: p.pageSize,
+    p_offset: offset,
+  })
+
+  if (error || !data) {
+    console.error("getAdminLearnerList failed:", error?.message)
+    return paginated([], 0, p)
+  }
+
+  const rows = (data as AdminLearnerPageRow[]).map((row) => ({
+    id: row.learner_id,
+    name: row.name,
+    email: row.email,
+    initial: initialOf(row.name),
+    enrolledCount: row.enrolled_count,
+    completedCount: row.completed_count,
+  }))
+  const total = data.length > 0 ? (data as AdminLearnerPageRow[])[0].total_count : 0
+
+  return paginated(rows, total, p)
+}
+
+type AdminLearnerStatsRow = {
+  total_learners: number
+  total_enrollments: number
+  total_completed: number
+}
+
+/** RPC-backed -- see admin_learner_stats() (pagination migration). Replaces the previous full-table enrollments read + JS count. */
+export async function getAdminLearnerStats(): Promise<AdminLearnerStats> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc("admin_learner_stats").single<AdminLearnerStatsRow>()
+
+  if (error || !data) {
+    console.error("getAdminLearnerStats failed:", error?.message)
+    return { totalLearners: 0, totalEnrollments: 0, totalCompleted: 0 }
+  }
+
+  return {
+    totalLearners: data.total_learners,
+    totalEnrollments: data.total_enrollments,
+    totalCompleted: data.total_completed,
+  }
+}
+
+/**
+ * Bounded to one learner -- for the Enroll modal's course-toggle list, which
+ * needs to know which of the (small, unbounded) course picker's courses this
+ * learner is already enrolled in. Fetched on modal open rather than shipped
+ * in the paginated learner list payload, which no longer carries every
+ * enrolled course id per row.
+ */
+export async function getLearnerEnrolledCourseIds(learnerId: string): Promise<string[]> {
   const supabase = await createClient()
   const ownedCourseIds = await getOwnedCourseIdsOrNull()
   if (ownedCourseIds !== null && ownedCourseIds.length === 0) return []
 
-  let query = supabase.from("enrollments").select("learner_id, course_id, status")
+  let query = supabase.from("enrollments").select("course_id").eq("learner_id", learnerId)
   if (ownedCourseIds !== null) {
     query = query.in("course_id", ownedCourseIds)
   }
 
-  const { data: enrollments, error: enrollmentsError } = await query
+  const { data, error } = await query
 
-  if (enrollmentsError) {
-    console.error("getAdminLearnerList (enrollments) failed:", enrollmentsError.message)
+  if (error || !data) {
+    console.error("getLearnerEnrolledCourseIds failed:", error?.message)
     return []
   }
 
-  const counts = new Map<string, { enrolled: number; completed: number; courseIds: string[] }>()
-  for (const e of enrollments ?? []) {
-    const entry = counts.get(e.learner_id) ?? { enrolled: 0, completed: 0, courseIds: [] }
-    entry.enrolled += 1
-    entry.courseIds.push(e.course_id)
-    if (e.status === "completed") entry.completed += 1
-    counts.set(e.learner_id, entry)
-  }
-
-  const learnerIds = [...counts.keys()]
-  if (learnerIds.length === 0) return []
-
-  const { data: profiles, error: profilesError } = await supabase
-    .from("profiles")
-    .select("id, full_name, email")
-    .in("id", learnerIds)
-
-  if (profilesError || !profiles) {
-    console.error("getAdminLearnerList failed:", profilesError?.message)
-    return []
-  }
-
-  return profiles.map((p) => {
-    const name = p.full_name || p.email || "Unnamed learner"
-    const entry = counts.get(p.id) ?? { enrolled: 0, completed: 0, courseIds: [] }
-    return {
-      id: p.id,
-      name,
-      email: p.email ?? "",
-      initial: initialOf(name),
-      enrolledCount: entry.enrolled,
-      completedCount: entry.completed,
-      enrolledCourseIds: entry.courseIds,
-    }
-  })
-}
-
-/** Same owner-scoping rationale as getAdminLearnerList -- totalLearners counts distinct learners across scoped enrollments, not the global learner count. */
-export async function getAdminLearnerStats(): Promise<AdminLearnerStats> {
-  const supabase = await createClient()
-  const ownedCourseIds = await getOwnedCourseIdsOrNull()
-  if (ownedCourseIds !== null && ownedCourseIds.length === 0) {
-    return { totalLearners: 0, totalEnrollments: 0, totalCompleted: 0 }
-  }
-
-  let query = supabase.from("enrollments").select("learner_id, status")
-  if (ownedCourseIds !== null) {
-    query = query.in("course_id", ownedCourseIds)
-  }
-
-  const { data: enrollments, error } = await query
-
-  if (error) {
-    console.error("getAdminLearnerStats failed:", error.message)
-    return { totalLearners: 0, totalEnrollments: 0, totalCompleted: 0 }
-  }
-
-  const rows = enrollments ?? []
-  const distinctLearners = new Set(rows.map((e) => e.learner_id))
-  const totalCompleted = rows.filter((e) => e.status === "completed").length
-
-  return {
-    totalLearners: distinctLearners.size,
-    totalEnrollments: rows.length,
-    totalCompleted,
-  }
+  return data.map((row) => row.course_id)
 }
 
 export async function getAdminLearnerDetail(learnerId: string): Promise<AdminLearnerDetail | null> {
@@ -244,15 +249,7 @@ export type LearnerSearchResult = {
   name: string
   email: string
   initial: string
-}
-
-/** PostgREST's .or() takes a comma-separated filter list, and each filter's
- * value ends at the next comma -- so a comma in user input would split one
- * filter into two malformed ones. `%`/`_` are ilike wildcards, and parens
- * would break out of the filter group. Strip all of them rather than trying to
- * escape, since none are meaningful in a name/email search. */
-function escapeForOrFilter(value: string): string {
-  return value.replace(/[,()%_\\]/g, " ").trim()
+  alreadyEnrolled: boolean
 }
 
 /**
@@ -266,8 +263,14 @@ function escapeForOrFilter(value: string): string {
  * which is what makes this possible -- so this is intentionally not
  * owner-scoped. Only ever returns role='learner' rows, so admins are not
  * enrollable through it.
+ *
+ * courseId (optional) stamps alreadyEnrolled on each result via one bounded
+ * follow-up query (<=20 ids, the search's own .limit()) -- this replaces the
+ * caller passing down a full enrolledLearnerIds list, which broke once the
+ * roster itself became paginated (a learner enrolled but on roster page 3
+ * would otherwise show as available to invite again).
  */
-export async function searchLearners(query: string): Promise<LearnerSearchResult[]> {
+export async function searchLearners(query: string, courseId?: string): Promise<LearnerSearchResult[]> {
   const term = escapeForOrFilter(query)
   if (term.length < 2) return []
 
@@ -285,9 +288,28 @@ export async function searchLearners(query: string): Promise<LearnerSearchResult
     return []
   }
 
+  let alreadyEnrolledIds = new Set<string>()
+  if (courseId && data.length > 0) {
+    const { data: enrolled } = await supabase
+      .from("enrollments")
+      .select("learner_id")
+      .eq("course_id", courseId)
+      .in(
+        "learner_id",
+        data.map((p) => p.id)
+      )
+    alreadyEnrolledIds = new Set((enrolled ?? []).map((e) => e.learner_id))
+  }
+
   return data.map((p) => {
     const name = p.full_name || p.email || "Unnamed learner"
-    return { id: p.id, name, email: p.email ?? "", initial: initialOf(name) }
+    return {
+      id: p.id,
+      name,
+      email: p.email ?? "",
+      initial: initialOf(name),
+      alreadyEnrolled: alreadyEnrolledIds.has(p.id),
+    }
   })
 }
 
@@ -304,21 +326,33 @@ export type CourseRosterEntry = {
  * Learners enrolled in one course -- the course-centric inverse of
  * getAdminLearnerList. Scoped by the owns_course() RLS on enrollments, so an
  * admin can only read the roster of a course they own.
+ *
+ * Uses profiles!inner so a referencedTable .or() filters parent enrollment
+ * rows rather than merely nulling out the embed -- the one embedded-filter
+ * case that works without a flattening view, since it's a single relation.
  */
-export async function getCourseRoster(courseId: string): Promise<CourseRosterEntry[]> {
+export async function getCourseRoster(courseId: string, p: ListParams): Promise<Paginated<CourseRosterEntry>> {
   const supabase = await createClient()
-  const { data, error } = await supabase
+
+  let query = supabase
     .from("enrollments")
-    .select("learner_id, status, enrolled_at, profiles(id, full_name, email)")
+    .select("learner_id, status, enrolled_at, profiles!inner(id, full_name, email)", { count: "exact" })
     .eq("course_id", courseId)
-    .order("enrolled_at", { ascending: false })
+  if (p.q) {
+    query = query.or(`full_name.ilike.%${p.q}%,email.ilike.%${p.q}%`, { referencedTable: "profiles" })
+  }
+
+  const [from, to] = rangeFor(p.page, p.pageSize)
+  query = query.order("enrolled_at", { ascending: p.dir === "asc" }).range(from, to)
+
+  const { data, error, count } = await query
 
   if (error || !data) {
     console.error("getCourseRoster failed:", error?.message)
-    return []
+    return paginated([], 0, p)
   }
 
-  return data.map((row) => {
+  const rows = data.map((row) => {
     // profiles is a to-one relation here, but PostgREST's generated types
     // widen embedded rows to an array -- normalize the same way getCourseDetail
     // does for lesson.quiz.
@@ -333,6 +367,8 @@ export async function getCourseRoster(courseId: string): Promise<CourseRosterEnt
       enrolledAt: row.enrolled_at,
     }
   })
+
+  return paginated(rows, count, p)
 }
 
 export async function enrollLearnerInCourse(

@@ -1,73 +1,47 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Mail, Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import type { Course } from "@/lib/courses"
+import type { Paginated } from "@/lib/pagination"
 import type { AdminLearner } from "@/lib/learners-admin"
+import { ListFilterSelect } from "@/components/admin/ListFilterSelect"
+import { ListPagination } from "@/components/admin/ListPagination"
+import { ListToolbar } from "@/components/admin/ListToolbar"
 
 import { EnrollModal } from "./EnrollModal"
 
-type LearnerFilter = "all" | "enrolled" | "completed"
-
 export function LearnerManagementClient({
-  learners,
+  page,
   courses,
 }: {
-  learners: AdminLearner[]
+  page: Paginated<AdminLearner>
   courses: Course[]
 }) {
-  const [query, setQuery] = useState("")
-  const [filter, setFilter] = useState<LearnerFilter>("all")
   const [enrollTarget, setEnrollTarget] = useState<AdminLearner | null>(null)
-
-  const filtered = useMemo(() => {
-    return learners.filter((l) => {
-      if (query) {
-        const q = query.toLowerCase()
-        if (!l.name.toLowerCase().includes(q) && !l.email.toLowerCase().includes(q)) return false
-      }
-      if (filter === "enrolled" && l.enrolledCount === 0) return false
-      if (filter === "completed" && l.completedCount === 0) return false
-      return true
-    })
-  }, [learners, query, filter])
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold">All Learners</h2>
-        <div className="flex flex-wrap gap-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name or email..."
-            className="h-9 min-w-[240px]"
+        <ListToolbar placeholder="Search by name or email...">
+          <ListFilterSelect
+            paramKey="filter"
+            defaultValue="all"
+            placeholder="Filter"
+            options={[
+              { value: "all", label: "All Learners" },
+              { value: "enrolled", label: "Enrolled" },
+              { value: "completed", label: "Completed" },
+            ]}
           />
-          <Select value={filter} onValueChange={(value) => setFilter(value as LearnerFilter)}>
-            <SelectTrigger className="h-9 w-[160px]">
-              <SelectValue placeholder="Filter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Learners</SelectItem>
-              <SelectItem value="enrolled">Enrolled</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        </ListToolbar>
       </div>
 
-      {filtered.length === 0 ? (
+      {page.rows.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
           No learners match your search.
         </div>
@@ -78,7 +52,7 @@ export function LearnerManagementClient({
             <div>Email</div>
             <div>Actions</div>
           </div>
-          {filtered.map((l) => (
+          {page.rows.map((l) => (
             <div
               key={l.id}
               className="grid grid-cols-[2fr_2fr_1.4fr] items-center gap-3 border-b border-border px-3 py-3.5"
@@ -111,6 +85,8 @@ export function LearnerManagementClient({
           ))}
         </div>
       )}
+
+      <ListPagination meta={page} />
 
       <EnrollModal
         learner={enrollTarget}
