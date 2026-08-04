@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react"
 import { toast } from "sonner"
+import { UploadCloud } from "lucide-react"
 
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { importGradesAction, type ImportGradesSummary } from "@/app/admin/grading/actions"
 
 export function ImportGradesDialog() {
@@ -20,11 +22,15 @@ export function ImportGradesDialog() {
   const [isPending, startTransition] = useTransition()
   const [fileName, setFileName] = useState<string | null>(null)
   const [summary, setSummary] = useState<ImportGradesSummary | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+  function processFile(file: File) {
+    if (!file.name.toLowerCase().endsWith(".csv") && file.type !== "text/csv") {
+      toast.error("Please select a CSV file")
+      return
+    }
+
     setFileName(file.name)
     setSummary(null)
 
@@ -40,6 +46,19 @@ export function ImportGradesDialog() {
         toast.success(`Graded ${result.data.gradedCount} attempt${result.data.gradedCount === 1 ? "" : "s"}`)
       }
     })
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) processFile(file)
+    e.target.value = ""
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) processFile(file)
   }
 
   return (
@@ -65,15 +84,37 @@ export function ImportGradesDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".csv,text/csv"
-          onChange={handleFileChange}
-          disabled={isPending}
-          className="text-sm"
-        />
-        {fileName && <p className="text-xs text-muted-foreground">{fileName}</p>}
+        <div
+          onClick={() => !isPending && fileInputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault()
+            setIsDragging(true)
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          className={cn(
+            "flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border px-6 py-8 text-center transition-colors",
+            isDragging && "border-ring bg-muted/50",
+            isPending && "pointer-events-none opacity-60"
+          )}
+        >
+          <UploadCloud className="size-6 text-muted-foreground" />
+          {fileName ? (
+            <p className="text-sm font-medium">{fileName}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Drag & drop your CSV here, or <span className="font-medium text-foreground">click to browse</span>
+            </p>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleFileChange}
+            disabled={isPending}
+            className="hidden"
+          />
+        </div>
 
         {summary && (
           <div className="rounded-lg bg-muted p-3 text-sm">

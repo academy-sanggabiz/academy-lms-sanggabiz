@@ -38,7 +38,7 @@ export function AttemptGradingForm({ detail }: { detail: AttemptGradingDetail })
         return
       }
       toast.success("Attempt graded")
-      router.push("/admin/grading")
+      router.push(`/admin/grading/quiz/${detail.quizId}`)
     })
   }
 
