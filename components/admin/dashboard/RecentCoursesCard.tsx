@@ -1,5 +1,9 @@
 import type { Course } from "@/lib/courses"
+import type { Paginated } from "@/lib/pagination"
 import { Badge } from "@/components/ui/badge"
+import { ListPagination } from "@/components/admin/ListPagination"
+
+const PREFIX = "course"
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -9,11 +13,11 @@ function formatDate(iso: string): string {
   })
 }
 
-export function RecentCoursesCard({ courses }: { courses: Course[] }) {
+export function RecentCoursesCard({ courses }: { courses: Paginated<Course> }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <h2 className="mb-4 text-sm font-semibold">Recent Courses</h2>
-      {courses.length === 0 ? (
+      {courses.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No courses yet</p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">
@@ -23,7 +27,7 @@ export function RecentCoursesCard({ courses }: { courses: Course[] }) {
             <div>Date</div>
           </div>
           <div className="max-h-[320px] overflow-y-auto">
-            {courses.map((c) => {
+            {courses.rows.map((c) => {
               const isPublished = c.status === "published"
               return (
                 <div
@@ -48,6 +52,7 @@ export function RecentCoursesCard({ courses }: { courses: Course[] }) {
           </div>
         </div>
       )}
+      <ListPagination meta={courses} prefix={PREFIX} hidePageSize />
     </div>
   )
 }

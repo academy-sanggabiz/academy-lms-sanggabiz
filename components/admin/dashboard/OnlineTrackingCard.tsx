@@ -1,9 +1,13 @@
 import Link from "next/link"
 
 import type { TrackingEnrollment } from "@/lib/tracking-server"
+import type { Paginated } from "@/lib/pagination"
 import { Button } from "@/components/ui/button"
+import { ListPagination } from "@/components/admin/ListPagination"
 
-export function OnlineTrackingCard({ rows }: { rows: TrackingEnrollment[] }) {
+const PREFIX = "track"
+
+export function OnlineTrackingCard({ rows }: { rows: Paginated<TrackingEnrollment> }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -17,7 +21,7 @@ export function OnlineTrackingCard({ rows }: { rows: TrackingEnrollment[] }) {
           View All
         </Button>
       </div>
-      {rows.length === 0 ? (
+      {rows.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No enrollments yet</p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">
@@ -28,7 +32,7 @@ export function OnlineTrackingCard({ rows }: { rows: TrackingEnrollment[] }) {
             <div>Assignment</div>
           </div>
           <div className="max-h-[320px] overflow-y-auto">
-            {rows.map((r) => (
+            {rows.rows.map((r) => (
               <div
                 key={r.enrollmentId}
                 className="grid grid-cols-[2fr_2fr_1fr_1fr] items-center gap-3 border-b border-border px-3 py-3 text-sm last:border-b-0"
@@ -42,6 +46,7 @@ export function OnlineTrackingCard({ rows }: { rows: TrackingEnrollment[] }) {
           </div>
         </div>
       )}
+      <ListPagination meta={rows} prefix={PREFIX} hidePageSize />
     </div>
   )
 }

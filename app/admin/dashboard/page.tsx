@@ -1,24 +1,47 @@
 import { BookOpen, GraduationCap, Trophy, Users } from "lucide-react"
 
-import { getAdminCourseList, getAdminCourseStats } from "@/lib/courses-admin"
+import { getAdminCourseStats, getRecentCourses } from "@/lib/courses-admin"
 import { getRecentEnrollments } from "@/lib/dashboard-admin"
 import { getAdminLearnerStats } from "@/lib/learners-admin"
 import { listTrackingEnrollments } from "@/lib/tracking-server"
+import { parseListParams, type RawSearchParams } from "@/lib/pagination"
 import { StatCard } from "@/components/admin/StatCard"
 import { RecentEnrollmentsCard } from "@/components/admin/dashboard/RecentEnrollmentsCard"
 import { RecentCoursesCard } from "@/components/admin/dashboard/RecentCoursesCard"
 import { OnlineTrackingCard } from "@/components/admin/dashboard/OnlineTrackingCard"
 
-export default async function AdminDashboardPage() {
-  const [learnerStats, courseStats, recentEnrollments, courses, tracking] = await Promise.all([
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>
+}) {
+  const raw = await searchParams
+  const enrollParams = parseListParams<Record<string, never>>(raw, {
+    prefix: "enroll",
+    sortable: [],
+    defaultSort: "enrolled_at",
+    defaultPageSize: 5,
+  })
+  const courseParams = parseListParams<Record<string, never>>(raw, {
+    prefix: "course",
+    sortable: [],
+    defaultSort: "created_at",
+    defaultPageSize: 5,
+  })
+  const trackParams = parseListParams<Record<string, never>>(raw, {
+    prefix: "track",
+    sortable: ["enrolled_at"],
+    defaultSort: "enrolled_at",
+    defaultPageSize: 5,
+  })
+
+  const [learnerStats, courseStats, recentEnrollments, recentCourses, recentTracking] = await Promise.all([
     getAdminLearnerStats(),
     getAdminCourseStats(),
-    getRecentEnrollments(5),
-    getAdminCourseList(),
-    listTrackingEnrollments(),
+    getRecentEnrollments(enrollParams),
+    getRecentCourses(courseParams),
+    listTrackingEnrollments(trackParams),
   ])
-  const recentCourses = courses.slice(0, 5)
-  const recentTracking = tracking.slice(0, 5)
 
   return (
     <div>

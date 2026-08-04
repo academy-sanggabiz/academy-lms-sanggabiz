@@ -1,4 +1,8 @@
 import type { RecentEnrollment } from "@/lib/dashboard-admin"
+import type { Paginated } from "@/lib/pagination"
+import { ListPagination } from "@/components/admin/ListPagination"
+
+const PREFIX = "enroll"
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -8,11 +12,11 @@ function formatDate(iso: string): string {
   })
 }
 
-export function RecentEnrollmentsCard({ enrollments }: { enrollments: RecentEnrollment[] }) {
+export function RecentEnrollmentsCard({ enrollments }: { enrollments: Paginated<RecentEnrollment> }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <h2 className="mb-4 text-sm font-semibold">Recent Enrollments</h2>
-      {enrollments.length === 0 ? (
+      {enrollments.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No enrollments yet</p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">
@@ -22,7 +26,7 @@ export function RecentEnrollmentsCard({ enrollments }: { enrollments: RecentEnro
             <div>Date</div>
           </div>
           <div className="max-h-[320px] overflow-y-auto">
-            {enrollments.map((e) => (
+            {enrollments.rows.map((e) => (
               <div
                 key={e.id}
                 className="grid grid-cols-[1fr_1fr_auto] items-center gap-3 border-b border-border px-3 py-3 text-sm last:border-b-0"
@@ -35,6 +39,7 @@ export function RecentEnrollmentsCard({ enrollments }: { enrollments: RecentEnro
           </div>
         </div>
       )}
+      <ListPagination meta={enrollments} prefix={PREFIX} hidePageSize />
     </div>
   )
 }
