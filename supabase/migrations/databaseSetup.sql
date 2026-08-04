@@ -24,16 +24,18 @@ create type public.lesson_content_type as enum ('video', 'text', 'quiz', 'mixed'
 create type public.enrollment_status as enum ('active', 'completed');
 create type public.transaction_status as enum ('completed', 'pending', 'refunded', 'free');
 
--- Only multiple_choice/essay are authored/graded today; the remaining values
--- are reserved so adding true_false/matching/fill_in_blank later doesn't need
--- an enum migration.
+-- multiple_choice/true_false/short_answer/essay/file_upload are authored and
+-- graded today (file_upload learners upload a PDF instead of typing, graded
+-- manually like essay); matching/fill_in_blank remain reserved so adding them
+-- later doesn't need an enum migration.
 create type public.question_type as enum (
   'multiple_choice',
   'true_false',
   'short_answer',
   'essay',
   'matching',
-  'fill_in_blank'
+  'fill_in_blank',
+  'file_upload'
 );
 
 -- Lifecycle of a quiz_attempts row. 'pending_review' is needed because essay
@@ -1570,6 +1572,50 @@ create policy "admins can update lesson content" on storage.objects
 create policy "admins can delete lesson content" on storage.objects
   for delete to authenticated
   using (bucket_id = 'lesson-content' and public.is_admin());
+
+-- Study-case file_upload question answers: private (not public-read, unlike
+-- the buckets above) since quiz submissions are learner-private data. Admins
+-- get global is_admin() access (bucket write policies stay is_admin()-gated,
+-- not owner-scoped, matching course-thumbnails/certificate-assets/
+-- lesson-content above). Learners are restricted to their own path prefix,
+-- mirroring "learners can upload own certificate pdfs" above. Path
+-- convention: {learner_id}/{attempt_id}/{question_id}.pdf
+insert into storage.buckets (id, name, public)
+values ('quiz-submissions', 'quiz-submissions', false)
+on conflict (id) do nothing;
+
+create policy "admins can read quiz submissions" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'quiz-submissions' and public.is_admin());
+
+create policy "admins can delete quiz submissions" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'quiz-submissions' and public.is_admin());
+
+create policy "learners can upload own quiz submissions" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'quiz-submissions'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+create policy "learners can read own quiz submissions" on storage.objects
+  for select to authenticated
+  using (
+    bucket_id = 'quiz-submissions'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+create policy "learners can update own quiz submissions" on storage.objects
+  for update to authenticated
+  using (
+    bucket_id = 'quiz-submissions'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  )
+  with check (
+    bucket_id = 'quiz-submissions'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
 
 -- =============================================================================
 -- 11. Public landing page content (superadmin-authored)
