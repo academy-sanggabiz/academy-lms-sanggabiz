@@ -39,6 +39,7 @@ export type QuestionType =
   | "essay"
   | "matching"
   | "fill_in_blank"
+  | "file_upload"
 
 export type QuestionOption = {
   id: string

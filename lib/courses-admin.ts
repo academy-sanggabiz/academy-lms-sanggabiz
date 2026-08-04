@@ -23,7 +23,12 @@ export type AdminQuestionOption = QuestionOption & { is_correct: boolean }
 export type AdminQuestion = Omit<Question, "options"> & { options: AdminQuestionOption[] }
 export type AdminQuiz = Omit<Quiz, "questions"> & { questions: AdminQuestion[] }
 
-export type AuthorableQuestionType = "multiple_choice" | "true_false" | "short_answer" | "essay"
+export type AuthorableQuestionType =
+  | "multiple_choice"
+  | "true_false"
+  | "short_answer"
+  | "essay"
+  | "file_upload"
 
 export type CoursePrerequisite = { id: string; title: string }
 
