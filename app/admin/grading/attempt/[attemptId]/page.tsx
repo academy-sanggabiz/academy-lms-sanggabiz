@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { getAttemptGradingDetail } from "@/lib/grading-server"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { AttemptGradingForm } from "@/components/admin/grading/AttemptGradingForm"
+import { GradingBreadcrumb } from "@/components/admin/grading/GradingBreadcrumb"
 
 export default async function AdminGradingAttemptPage({
   params,
@@ -16,6 +17,13 @@ export default async function AdminGradingAttemptPage({
 
   return (
     <div>
+      <GradingBreadcrumb
+        courseId={detail.courseId}
+        courseTitle={detail.courseTitle}
+        quizId={detail.quizId}
+        quizTitle={detail.quizTitle}
+        isAttempt
+      />
       <div className="mb-6">
         <h1 className="text-[30px] font-bold">{detail.quizTitle}</h1>
         <p className="text-sm text-muted-foreground">
