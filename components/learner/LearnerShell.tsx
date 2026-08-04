@@ -2,16 +2,22 @@
 
 import { useState } from "react"
 
+import { NotificationBell } from "@/components/learner/NotificationBell"
 import { Sidebar } from "@/components/learner/Sidebar"
 import { UserMenu } from "@/components/learner/UserMenu"
+import type { Notification } from "@/lib/notifications-server"
 
 export function LearnerShell({
   name,
   email,
+  notifications,
+  unreadCount,
   children,
 }: {
   name: string
   email: string
+  notifications: Notification[]
+  unreadCount: number
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -32,6 +38,7 @@ export function LearnerShell({
             </button>
           )}
           <div className="flex-1" />
+          <NotificationBell items={notifications} unreadCount={unreadCount} />
           <UserMenu name={name} email={email} />
         </header>
 
