@@ -1,12 +1,25 @@
 import { Receipt, ShoppingCart, Wallet } from "lucide-react"
 
-import { getAdminPurchaseList, getAdminPurchaseStats } from "@/lib/purchases-admin"
+import { getAdminPurchaseList, getAdminPurchaseStats, type AdminPurchaseFilters } from "@/lib/purchases-admin"
 import { formatPrice } from "@/lib/courses"
+import { parseListParams, type RawSearchParams } from "@/lib/pagination"
 import { PurchaseManagementClient } from "@/components/admin/purchases/PurchaseManagementClient"
 import { StatCard } from "@/components/admin/StatCard"
 
-export default async function AdminPurchasesPage() {
-  const [purchases, stats] = await Promise.all([getAdminPurchaseList(), getAdminPurchaseStats()])
+export default async function AdminPurchasesPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>
+}) {
+  const raw = await searchParams
+  const params = parseListParams<AdminPurchaseFilters>(raw, {
+    sortable: ["created_at"],
+    defaultSort: "created_at",
+    defaultDir: "desc",
+    filters: { status: ["all", "completed", "free", "pending", "refunded"] },
+  })
+
+  const [page, stats] = await Promise.all([getAdminPurchaseList(params), getAdminPurchaseStats()])
 
   return (
     <div>
@@ -23,7 +36,7 @@ export default async function AdminPurchasesPage() {
         <StatCard icon={Receipt} label="Paid Purchases" value={stats.paidPurchases} />
       </div>
 
-      <PurchaseManagementClient purchases={purchases} />
+      <PurchaseManagementClient page={page} />
     </div>
   )
 }

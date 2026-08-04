@@ -1,11 +1,12 @@
 "use client"
 
-import { useMemo, useState } from "react"
 import Link from "next/link"
 
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import type { Paginated } from "@/lib/pagination"
 import type { PendingAttemptSummary } from "@/lib/grading-server"
+import { ListPagination } from "@/components/admin/ListPagination"
+import { ListToolbar } from "@/components/admin/ListToolbar"
 import { ImportGradesDialog } from "./ImportGradesDialog"
 
 function formatDate(iso: string | null): string {
@@ -15,32 +16,17 @@ function formatDate(iso: string | null): string {
 
 export function GradingAttemptsClient({
   quizId,
-  attempts,
+  page,
 }: {
   quizId: string
-  attempts: PendingAttemptSummary[]
+  page: Paginated<PendingAttemptSummary>
 }) {
-  const [query, setQuery] = useState("")
-
-  const filtered = useMemo(() => {
-    if (!query) return attempts
-    const q = query.toLowerCase()
-    return attempts.filter(
-      (a) => a.learnerName.toLowerCase().includes(q) || a.learnerEmail.toLowerCase().includes(q)
-    )
-  }, [attempts, query])
-
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold">Learners</h2>
         <div className="flex items-center gap-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search learner..."
-            className="w-64"
-          />
+          <ListToolbar placeholder="Search learner..." />
           <Button
             size="sm"
             variant="outline"
@@ -53,9 +39,9 @@ export function GradingAttemptsClient({
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {page.rows.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
-          {attempts.length === 0 ? "No attempts awaiting review." : "No learners match your search."}
+          {page.total === 0 ? "No attempts awaiting review." : "No learners match your search."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">
@@ -65,7 +51,7 @@ export function GradingAttemptsClient({
             <div>Submitted</div>
             <div />
           </div>
-          {filtered.map((a) => (
+          {page.rows.map((a) => (
             <div
               key={a.attemptId}
               className="grid grid-cols-[2fr_1fr_1.2fr_auto] items-center gap-3 border-b border-border px-3 py-3 text-[14px] last:border-b-0"
@@ -88,6 +74,8 @@ export function GradingAttemptsClient({
           ))}
         </div>
       )}
+
+      <ListPagination meta={page} />
     </div>
   )
 }

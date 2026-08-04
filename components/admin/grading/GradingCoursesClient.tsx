@@ -1,40 +1,28 @@
 "use client"
 
-import { useMemo, useState } from "react"
 import Link from "next/link"
 
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import type { Paginated } from "@/lib/pagination"
 import type { GradingCourseSummary } from "@/lib/grading-server"
+import { ListPagination } from "@/components/admin/ListPagination"
+import { ListToolbar } from "@/components/admin/ListToolbar"
 import { ImportGradesDialog } from "./ImportGradesDialog"
 
-export function GradingCoursesClient({ courses }: { courses: GradingCourseSummary[] }) {
-  const [query, setQuery] = useState("")
-
-  const filtered = useMemo(() => {
-    if (!query) return courses
-    const q = query.toLowerCase()
-    return courses.filter((c) => c.courseTitle.toLowerCase().includes(q))
-  }, [courses, query])
-
+export function GradingCoursesClient({ page }: { page: Paginated<GradingCourseSummary> }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold">Courses</h2>
         <div className="flex items-center gap-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search course..."
-            className="w-64"
-          />
+          <ListToolbar placeholder="Search course..." />
           <ImportGradesDialog />
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {page.rows.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
-          {courses.length === 0 ? "No attempts awaiting review." : "No courses match your search."}
+          {page.total === 0 ? "No attempts awaiting review." : "No courses match your search."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">
@@ -45,7 +33,7 @@ export function GradingCoursesClient({ courses }: { courses: GradingCourseSummar
             <div>Attempts</div>
             <div />
           </div>
-          {filtered.map((c) => (
+          {page.rows.map((c) => (
             <div
               key={c.courseId}
               className="grid grid-cols-[2fr_1fr_1fr_1fr_220px] items-center gap-3 border-b border-border px-3 py-3 text-[14px] last:border-b-0"
@@ -76,6 +64,8 @@ export function GradingCoursesClient({ courses }: { courses: GradingCourseSummar
           ))}
         </div>
       )}
+
+      <ListPagination meta={page} />
     </div>
   )
 }

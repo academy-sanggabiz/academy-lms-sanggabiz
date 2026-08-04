@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { getAdminProfile } from "@/lib/auth/require-admin"
-import { getOwnedCourseIdsOrNull } from "@/lib/courses-admin"
+import { paginated, rangeFor, type ListParams, type Paginated } from "@/lib/pagination"
 
 /** Server-only admin data access for Online Tracking -- never import from a Client Component. */
 
@@ -15,151 +15,76 @@ export type TrackingEnrollment = {
   assignmentPct: number
 }
 
+type AdminTrackingRow = {
+  enrollment_id: string
+  learner_id: string
+  learner_name: string
+  learner_email: string
+  course_id: string
+  course_title: string
+  module_pct: number
+  assignment_pct: number
+}
+
 /**
  * Level 1: every scoped enrollment with module/assignment completion %.
+ * Reads the admin_tracking_enrollments view (pagination migration), which
+ * pre-computes module/assignment % in SQL via lateral subqueries -- this
+ * replaces the previous 6-query .in()-fan-out + JS percentage math.
  * Module % = completed lesson_progress rows / total lessons in the course.
  * Assignment % = distinct quizzes with a submitted quiz_attempts row for
  * that learner / total quizzes in the course (no is_assessment filter --
  * there's no distinct "assignment" entity in the schema, see CLAUDE.md).
  */
-export async function listTrackingEnrollments(): Promise<TrackingEnrollment[]> {
+export async function listTrackingEnrollments(p: ListParams): Promise<Paginated<TrackingEnrollment>> {
   const supabase = await createClient()
-  const ownedCourseIds = await getOwnedCourseIdsOrNull()
-  if (ownedCourseIds !== null && ownedCourseIds.length === 0) return []
+  const admin = await getAdminProfile()
 
-  let enrollmentQuery = supabase
-    .from("enrollments")
-    .select("id, learner_id, course_id, profiles(full_name, email), courses(title)")
-    .order("enrolled_at", { ascending: false })
-  if (ownedCourseIds !== null) {
-    enrollmentQuery = enrollmentQuery.in("course_id", ownedCourseIds)
+  let query = supabase.from("admin_tracking_enrollments").select("*", { count: "exact" })
+  if (admin && admin.role !== "superadmin") {
+    query = query.eq("course_created_by", admin.userId)
+  }
+  if (p.q) {
+    query = query.or(`learner_name.ilike.%${p.q}%,learner_email.ilike.%${p.q}%,course_title.ilike.%${p.q}%`)
   }
 
-  const { data: enrollmentRows, error: enrollmentError } = await enrollmentQuery
+  const [from, to] = rangeFor(p.page, p.pageSize)
+  query = query.order("enrolled_at", { ascending: p.dir === "asc" }).range(from, to)
 
-  if (enrollmentError || !enrollmentRows) {
-    if (enrollmentError) console.error("listTrackingEnrollments (enrollments) failed:", enrollmentError.message)
-    return []
+  const { data, error, count } = await query
+
+  if (error || !data) {
+    console.error("listTrackingEnrollments failed:", error?.message)
+    return paginated([], 0, p)
   }
-  if (enrollmentRows.length === 0) return []
 
-  const enrollments = enrollmentRows.map((e) => {
-    const profile = Array.isArray(e.profiles) ? e.profiles[0] : e.profiles
-    const course = Array.isArray(e.courses) ? e.courses[0] : e.courses
-    return {
-      id: e.id,
-      learnerId: e.learner_id,
-      courseId: e.course_id,
-      learnerName: profile?.full_name || profile?.email || "Unnamed learner",
-      learnerEmail: profile?.email ?? "",
-      courseTitle: course?.title ?? "Untitled course",
-    }
-  })
+  const rows = (data as AdminTrackingRow[]).map((row) => ({
+    enrollmentId: row.enrollment_id,
+    learnerId: row.learner_id,
+    learnerName: row.learner_name,
+    learnerEmail: row.learner_email,
+    courseId: row.course_id,
+    courseTitle: row.course_title,
+    modulePct: row.module_pct,
+    assignmentPct: row.assignment_pct,
+  }))
 
-  const courseIds = [...new Set(enrollments.map((e) => e.courseId))]
-  const enrollmentIds = enrollments.map((e) => e.id)
-  const learnerIds = [...new Set(enrollments.map((e) => e.learnerId))]
-
-  const { totalLessonsByCourse, completedByEnrollment, quizIdsByCourse, submittedQuizzesByLearner } =
-    await loadCourseProgressMaps(supabase, courseIds, enrollmentIds, learnerIds)
-
-  return enrollments.map((e) => {
-    const totalLessons = totalLessonsByCourse.get(e.courseId) ?? 0
-    const doneLessons = completedByEnrollment.get(e.id) ?? 0
-    const modulePct = totalLessons > 0 ? Math.round((doneLessons / totalLessons) * 100) : 0
-
-    const courseQuizIds = quizIdsByCourse.get(e.courseId) ?? []
-    const submittedQuizIds = submittedQuizzesByLearner.get(e.learnerId)
-    const doneQuizzes = submittedQuizIds
-      ? courseQuizIds.filter((quizId) => submittedQuizIds.has(quizId)).length
-      : 0
-    const assignmentPct = courseQuizIds.length > 0 ? Math.round((doneQuizzes / courseQuizIds.length) * 100) : 0
-
-    return {
-      enrollmentId: e.id,
-      learnerId: e.learnerId,
-      learnerName: e.learnerName,
-      learnerEmail: e.learnerEmail,
-      courseId: e.courseId,
-      courseTitle: e.courseTitle,
-      modulePct,
-      assignmentPct,
-    }
-  })
+  return paginated(rows, count, p)
 }
 
-/** Shared lesson/quiz aggregation, factored out so getTrackingDetail can reuse it for a single course/enrollment. */
-async function loadCourseProgressMaps(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  courseIds: string[],
-  enrollmentIds: string[],
-  learnerIds: string[]
-) {
-  const [{ data: sections }, { data: progress }] = await Promise.all([
-    supabase.from("course_sections").select("id, course_id").in("course_id", courseIds),
-    supabase.from("lesson_progress").select("enrollment_id").in("enrollment_id", enrollmentIds).eq("completed", true),
-  ])
+type AdminTrackingStatsRow = { total_enrollments: number; avg_module_pct: number }
 
-  const sectionToCourse = new Map((sections ?? []).map((s) => [s.id, s.course_id]))
-  const sectionIds = [...sectionToCourse.keys()]
+/** RPC-backed -- see admin_tracking_stats() (pagination migration). Replaces the page's previous .reduce() over the full array. */
+export async function getTrackingStats(): Promise<{ totalEnrollments: number; avgModulePct: number }> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc("admin_tracking_stats").single<AdminTrackingStatsRow>()
 
-  const { data: lessons } =
-    sectionIds.length > 0
-      ? await supabase.from("lessons").select("id, section_id").in("section_id", sectionIds)
-      : { data: [] as { id: string; section_id: string }[] }
-
-  const totalLessonsByCourse = new Map<string, number>()
-  for (const l of lessons ?? []) {
-    const courseId = sectionToCourse.get(l.section_id)
-    if (!courseId) continue
-    totalLessonsByCourse.set(courseId, (totalLessonsByCourse.get(courseId) ?? 0) + 1)
+  if (error || !data) {
+    console.error("getTrackingStats failed:", error?.message)
+    return { totalEnrollments: 0, avgModulePct: 0 }
   }
 
-  const completedByEnrollment = new Map<string, number>()
-  for (const p of progress ?? []) {
-    completedByEnrollment.set(p.enrollment_id, (completedByEnrollment.get(p.enrollment_id) ?? 0) + 1)
-  }
-
-  const lessonToCourse = new Map((lessons ?? []).map((l) => [l.id, sectionToCourse.get(l.section_id)]))
-  const lessonIds = [...lessonToCourse.keys()]
-
-  const { data: quizzes } =
-    lessonIds.length > 0
-      ? await supabase.from("quizzes").select("id, lesson_id").in("lesson_id", lessonIds)
-      : { data: [] as { id: string; lesson_id: string | null }[] }
-
-  const quizToCourse = new Map<string, string>()
-  for (const q of quizzes ?? []) {
-    const courseId = q.lesson_id ? lessonToCourse.get(q.lesson_id) : null
-    if (courseId) quizToCourse.set(q.id, courseId)
-  }
-
-  const quizIdsByCourse = new Map<string, string[]>()
-  for (const [quizId, courseId] of quizToCourse) {
-    const list = quizIdsByCourse.get(courseId) ?? []
-    list.push(quizId)
-    quizIdsByCourse.set(courseId, list)
-  }
-
-  const quizIds = [...quizToCourse.keys()]
-  const { data: attempts } =
-    quizIds.length > 0 && learnerIds.length > 0
-      ? await supabase
-          .from("quiz_attempts")
-          .select("quiz_id, learner_id")
-          .in("quiz_id", quizIds)
-          .in("learner_id", learnerIds)
-          .not("submitted_at", "is", null)
-      : { data: [] as { quiz_id: string; learner_id: string }[] }
-
-  const submittedQuizzesByLearner = new Map<string, Set<string>>()
-  for (const a of attempts ?? []) {
-    const set = submittedQuizzesByLearner.get(a.learner_id) ?? new Set<string>()
-    set.add(a.quiz_id)
-    submittedQuizzesByLearner.set(a.learner_id, set)
-  }
-
-  return { totalLessonsByCourse, completedByEnrollment, quizIdsByCourse, submittedQuizzesByLearner, lessonToCourse }
+  return { totalEnrollments: data.total_enrollments, avgModulePct: data.avg_module_pct }
 }
 
 export type LessonTrackingRow = {

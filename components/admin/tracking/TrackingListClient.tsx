@@ -1,41 +1,24 @@
 "use client"
 
-import { useMemo, useState } from "react"
 import Link from "next/link"
 
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import type { Paginated } from "@/lib/pagination"
 import type { TrackingEnrollment } from "@/lib/tracking-server"
+import { ListPagination } from "@/components/admin/ListPagination"
+import { ListToolbar } from "@/components/admin/ListToolbar"
 
-export function TrackingListClient({ enrollments }: { enrollments: TrackingEnrollment[] }) {
-  const [query, setQuery] = useState("")
-
-  const filtered = useMemo(() => {
-    if (!query) return enrollments
-    const q = query.toLowerCase()
-    return enrollments.filter(
-      (e) =>
-        e.learnerName.toLowerCase().includes(q) ||
-        e.learnerEmail.toLowerCase().includes(q) ||
-        e.courseTitle.toLowerCase().includes(q)
-    )
-  }, [enrollments, query])
-
+export function TrackingListClient({ page }: { page: Paginated<TrackingEnrollment> }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold">Learners</h2>
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search learner or course..."
-          className="w-64"
-        />
+        <ListToolbar placeholder="Search learner or course..." />
       </div>
 
-      {filtered.length === 0 ? (
+      {page.rows.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
-          {enrollments.length === 0 ? "No enrollments yet." : "No learners match your search."}
+          {page.total === 0 ? "No enrollments yet." : "No learners match your search."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">
@@ -46,7 +29,7 @@ export function TrackingListClient({ enrollments }: { enrollments: TrackingEnrol
             <div>Assignment</div>
             <div />
           </div>
-          {filtered.map((e) => (
+          {page.rows.map((e) => (
             <div
               key={e.enrollmentId}
               className="grid grid-cols-[2fr_2fr_1fr_1fr_100px] items-center gap-3 border-b border-border px-3 py-3 text-[14px] last:border-b-0"
@@ -72,6 +55,8 @@ export function TrackingListClient({ enrollments }: { enrollments: TrackingEnrol
           ))}
         </div>
       )}
+
+      <ListPagination meta={page} />
     </div>
   )
 }

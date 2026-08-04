@@ -1,17 +1,26 @@
 import { Activity, GraduationCap } from "lucide-react"
 
-import { listTrackingEnrollments } from "@/lib/tracking-server"
+import { getTrackingStats, listTrackingEnrollments } from "@/lib/tracking-server"
 import { requireAdmin } from "@/lib/auth/require-admin"
+import { parseListParams, type RawSearchParams } from "@/lib/pagination"
 import { StatCard } from "@/components/admin/StatCard"
 import { TrackingListClient } from "@/components/admin/tracking/TrackingListClient"
 
-export default async function AdminTrackingPage() {
+export default async function AdminTrackingPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>
+}) {
   await requireAdmin()
-  const enrollments = await listTrackingEnrollments()
 
-  const avgModulePct = enrollments.length
-    ? Math.round(enrollments.reduce((sum, e) => sum + e.modulePct, 0) / enrollments.length)
-    : 0
+  const raw = await searchParams
+  const params = parseListParams<Record<string, never>>(raw, {
+    sortable: ["enrolled_at"],
+    defaultSort: "enrolled_at",
+    defaultDir: "desc",
+  })
+
+  const [page, stats] = await Promise.all([listTrackingEnrollments(params), getTrackingStats()])
 
   return (
     <div>
@@ -23,11 +32,11 @@ export default async function AdminTrackingPage() {
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <StatCard icon={GraduationCap} label="Tracked Enrollments" value={enrollments.length} />
-        <StatCard icon={Activity} label="Avg Module Completion" value={`${avgModulePct}%`} />
+        <StatCard icon={GraduationCap} label="Tracked Enrollments" value={stats.totalEnrollments} />
+        <StatCard icon={Activity} label="Avg Module Completion" value={`${stats.avgModulePct}%`} />
       </div>
 
-      <TrackingListClient enrollments={enrollments} />
+      <TrackingListClient page={page} />
     </div>
   )
 }

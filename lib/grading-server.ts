@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { getAdminProfile } from "@/lib/auth/require-admin"
+import { paginated, rangeFor, type ListParams, type Paginated } from "@/lib/pagination"
 
 export type PendingAttemptSummary = {
   attemptId: string
@@ -29,65 +30,9 @@ export function isManuallyGraded(type: string, options: { is_correct: boolean }[
   return type === "essay" || type === "file_upload" || (type === "short_answer" && !options.some((o) => o.is_correct))
 }
 
-/**
- * Every quiz_attempts row still awaiting manual grading, newest submission
- * first. quiz_attempts has no direct course_id, so ownership is checked by
- * embedding created_by through quiz -> lesson -> section -> course and
- * post-filtering -- an app-layer guard on top of the owns_course() RLS (see
- * getOwnedCourseIdsOrNull, lib/courses-admin.ts, for why this belt-and-
- * suspenders filtering is needed even when RLS is correct).
- */
-export async function listPendingAttempts(): Promise<PendingAttemptSummary[]> {
-  const supabase = await createClient()
+async function ownerFilterOrNull(): Promise<string | null> {
   const admin = await getAdminProfile()
-  const scoped = admin && admin.role !== "superadmin"
-
-  const { data, error } = await supabase
-    .from("quiz_attempts")
-    .select(
-      `id, submitted_at,
-       learner:profiles!quiz_attempts_learner_id_fkey(id, full_name, email),
-       quiz:quizzes(
-         id, title,
-         lesson:lessons(
-           id, title,
-           section:course_sections(title, course:courses(id, title, created_by))
-         )
-       ),
-       responses:quiz_responses(is_correct)`
-    )
-    .eq("status", "pending_review")
-    .order("submitted_at", { ascending: false })
-
-  if (error || !data) return []
-
-  const summaries: PendingAttemptSummary[] = []
-  for (const attempt of data) {
-    const quiz = Array.isArray(attempt.quiz) ? attempt.quiz[0] : attempt.quiz
-    const lesson = quiz ? (Array.isArray(quiz.lesson) ? quiz.lesson[0] : quiz.lesson) : null
-    const section = lesson ? (Array.isArray(lesson.section) ? lesson.section[0] : lesson.section) : null
-    const course = section ? (Array.isArray(section.course) ? section.course[0] : section.course) : null
-    const learner = Array.isArray(attempt.learner) ? attempt.learner[0] : attempt.learner
-
-    if (scoped && course?.created_by !== admin.userId) continue
-
-    summaries.push({
-      attemptId: attempt.id,
-      quizId: quiz?.id ?? "",
-      quizTitle: quiz?.title ?? "Untitled quiz",
-      lessonId: lesson?.id ?? "",
-      lessonTitle: lesson?.title ?? "Untitled lesson",
-      sectionTitle: section?.title ?? "",
-      courseId: course?.id ?? "",
-      courseTitle: course?.title ?? "Untitled course",
-      learnerId: learner?.id ?? "",
-      learnerName: learner?.full_name ?? "Unknown learner",
-      learnerEmail: learner?.email ?? "",
-      submittedAt: attempt.submitted_at,
-      pendingCount: (attempt.responses ?? []).filter((r) => r.is_correct === null).length,
-    })
-  }
-  return summaries
+  return admin && admin.role !== "superadmin" ? admin.userId : null
 }
 
 export type GradingCourseSummary = {
@@ -99,38 +44,64 @@ export type GradingCourseSummary = {
   oldestSubmittedAt: string | null
 }
 
-/** Level 1: courses with at least one attempt still awaiting manual grading. */
-export async function listGradingCourses(): Promise<GradingCourseSummary[]> {
-  const attempts = await listPendingAttempts()
+type AdminGradingCourseRow = {
+  course_id: string
+  course_title: string
+  quiz_count: number
+  learner_count: number
+  attempt_count: number
+  oldest_submitted_at: string | null
+  total_count: number
+}
 
-  const groups = new Map<string, GradingCourseSummary & { quizIds: Set<string>; learnerIds: Set<string> }>()
-  for (const a of attempts) {
-    const key = a.courseId || "unknown"
-    let group = groups.get(key)
-    if (!group) {
-      group = {
-        courseId: key,
-        courseTitle: a.courseTitle,
-        quizCount: 0,
-        learnerCount: 0,
-        attemptCount: 0,
-        oldestSubmittedAt: a.submittedAt,
-        quizIds: new Set(),
-        learnerIds: new Set(),
-      }
-      groups.set(key, group)
-    }
-    group.quizIds.add(a.quizId)
-    group.learnerIds.add(a.learnerId)
-    group.attemptCount += 1
-    if (a.submittedAt && (!group.oldestSubmittedAt || a.submittedAt < group.oldestSubmittedAt)) {
-      group.oldestSubmittedAt = a.submittedAt
-    }
+/**
+ * Level 1: courses with at least one attempt still awaiting manual grading.
+ * RPC-backed -- see admin_grading_courses() (pagination migration), which
+ * groups public.admin_pending_attempts in SQL and re-applies the same
+ * ownership check listPendingAttempts used to do in JS (the query itself is
+ * now scoped, rather than the client post-filtering a platform-wide result).
+ */
+export async function listGradingCourses(p: ListParams): Promise<Paginated<GradingCourseSummary>> {
+  const supabase = await createClient()
+  const offset = (p.page - 1) * p.pageSize
+
+  const { data, error } = await supabase.rpc("admin_grading_courses", {
+    p_q: p.q,
+    p_limit: p.pageSize,
+    p_offset: offset,
+  })
+
+  if (error || !data) {
+    console.error("listGradingCourses failed:", error?.message)
+    return paginated([], 0, p)
   }
 
-  return [...groups.values()]
-    .map(({ quizIds, learnerIds, ...rest }) => ({ ...rest, quizCount: quizIds.size, learnerCount: learnerIds.size }))
-    .sort((a, b) => a.courseTitle.localeCompare(b.courseTitle))
+  const rows = (data as AdminGradingCourseRow[]).map((row) => ({
+    courseId: row.course_id,
+    courseTitle: row.course_title,
+    quizCount: row.quiz_count,
+    learnerCount: row.learner_count,
+    attemptCount: row.attempt_count,
+    oldestSubmittedAt: row.oldest_submitted_at,
+  }))
+  const total = data.length > 0 ? (data as AdminGradingCourseRow[])[0].total_count : 0
+
+  return paginated(rows, total, p)
+}
+
+type AdminGradingStatsRow = { attempt_count: number; course_count: number }
+
+/** RPC-backed -- see admin_grading_stats() (pagination migration). Replaces the page's previous .reduce() over the full array. */
+export async function getGradingStats(): Promise<{ attemptCount: number; courseCount: number }> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc("admin_grading_stats").single<AdminGradingStatsRow>()
+
+  if (error || !data) {
+    console.error("getGradingStats failed:", error?.message)
+    return { attemptCount: 0, courseCount: 0 }
+  }
+
+  return { attemptCount: data.attempt_count, courseCount: data.course_count }
 }
 
 export type GradingQuizSummary = {
@@ -143,61 +114,144 @@ export type GradingQuizSummary = {
   oldestSubmittedAt: string | null
 }
 
-/** Level 2: quizzes with pending attempts within one course. */
-export async function getCourseGradingQuizzes(
-  courseId: string
-): Promise<{ courseId: string; courseTitle: string; quizzes: GradingQuizSummary[] } | null> {
-  const attempts = (await listPendingAttempts()).filter((a) => a.courseId === courseId)
-  if (attempts.length === 0) return null
-
-  const groups = new Map<string, GradingQuizSummary>()
-  for (const a of attempts) {
-    let group = groups.get(a.quizId)
-    if (!group) {
-      group = {
-        quizId: a.quizId,
-        quizTitle: a.quizTitle,
-        lessonTitle: a.lessonTitle,
-        sectionTitle: a.sectionTitle,
-        attemptCount: 0,
-        pendingResponseCount: 0,
-        oldestSubmittedAt: a.submittedAt,
-      }
-      groups.set(a.quizId, group)
-    }
-    group.attemptCount += 1
-    group.pendingResponseCount += a.pendingCount
-    if (a.submittedAt && (!group.oldestSubmittedAt || a.submittedAt < group.oldestSubmittedAt)) {
-      group.oldestSubmittedAt = a.submittedAt
-    }
-  }
-
-  return {
-    courseId,
-    courseTitle: attempts[0].courseTitle,
-    quizzes: [...groups.values()].sort((a, b) => a.quizTitle.localeCompare(b.quizTitle)),
-  }
+type AdminGradingQuizRow = {
+  quiz_id: string
+  quiz_title: string
+  lesson_title: string
+  section_title: string
+  attempt_count: number
+  pending_response_count: number
+  oldest_submitted_at: string | null
+  total_count: number
 }
 
-/** Level 3: pending attempts (learners) for one quiz. */
-export async function getQuizGradingAttempts(quizId: string): Promise<{
+/**
+ * Level 2: quizzes with pending attempts within one course. Returns the
+ * course title even when the filtered quiz page is empty -- the caller
+ * should only 404 when the course has no course row at all (see
+ * app/admin/grading/course/[courseId]/page.tsx), not when a search matches
+ * nothing, or searching would 404 the page.
+ */
+export async function getCourseGradingQuizzes(
+  courseId: string,
+  p: ListParams
+): Promise<{ courseId: string; courseTitle: string; quizzes: Paginated<GradingQuizSummary> } | null> {
+  const supabase = await createClient()
+  const offset = (p.page - 1) * p.pageSize
+
+  const [{ data: course, error: courseError }, { data, error }] = await Promise.all([
+    supabase.from("courses").select("title").eq("id", courseId).maybeSingle(),
+    supabase.rpc("admin_grading_quizzes", {
+      p_course_id: courseId,
+      p_q: p.q,
+      p_limit: p.pageSize,
+      p_offset: offset,
+    }),
+  ])
+
+  if (courseError || !course) return null
+  if (error || !data) {
+    console.error("getCourseGradingQuizzes failed:", error?.message)
+    return { courseId, courseTitle: course.title, quizzes: paginated([], 0, p) }
+  }
+
+  const rows = (data as AdminGradingQuizRow[]).map((row) => ({
+    quizId: row.quiz_id,
+    quizTitle: row.quiz_title,
+    lessonTitle: row.lesson_title,
+    sectionTitle: row.section_title,
+    attemptCount: row.attempt_count,
+    pendingResponseCount: row.pending_response_count,
+    oldestSubmittedAt: row.oldest_submitted_at,
+  }))
+  const total = data.length > 0 ? (data as AdminGradingQuizRow[])[0].total_count : 0
+
+  return { courseId, courseTitle: course.title, quizzes: paginated(rows, total, p) }
+}
+
+/**
+ * Level 3: pending attempts (learners) for one quiz. Reads
+ * admin_pending_attempts directly (no grouping needed at this level) with an
+ * explicit ownership filter for non-superadmins, closing the same gap the
+ * grouped levels above close -- the query is scoped, not the JS result.
+ */
+export async function getQuizGradingAttempts(
+  quizId: string,
+  p: ListParams
+): Promise<{
   quizId: string
-  quizTitle: string
-  lessonTitle: string
-  courseId: string
-  courseTitle: string
-  attempts: PendingAttemptSummary[]
+  quizTitle: string | null
+  lessonTitle: string | null
+  courseId: string | null
+  courseTitle: string | null
+  attempts: Paginated<PendingAttemptSummary>
 } | null> {
-  const attempts = (await listPendingAttempts()).filter((a) => a.quizId === quizId)
-  if (attempts.length === 0) return null
+  const supabase = await createClient()
+  const ownerId = await ownerFilterOrNull()
+
+  const { data: quiz, error: quizError } = await supabase
+    .from("quizzes")
+    .select("id, title, lesson:lessons(title, section:course_sections(course:courses(id, title)))")
+    .eq("id", quizId)
+    .maybeSingle()
+
+  if (quizError || !quiz) return null
+
+  const lesson = Array.isArray(quiz.lesson) ? quiz.lesson[0] : quiz.lesson
+  const section = lesson ? (Array.isArray(lesson.section) ? lesson.section[0] : lesson.section) : null
+  const course = section ? (Array.isArray(section.course) ? section.course[0] : section.course) : null
+
+  let query = supabase
+    .from("admin_pending_attempts")
+    .select("*", { count: "exact" })
+    .eq("quiz_id", quizId)
+  if (ownerId) {
+    query = query.eq("course_created_by", ownerId)
+  }
+  if (p.q) {
+    query = query.or(`learner_name.ilike.%${p.q}%,learner_email.ilike.%${p.q}%`)
+  }
+
+  const [from, to] = rangeFor(p.page, p.pageSize)
+  query = query.order("submitted_at", { ascending: p.dir === "asc" }).range(from, to)
+
+  const { data, error, count } = await query
+
+  if (error || !data) {
+    console.error("getQuizGradingAttempts failed:", error?.message)
+    return {
+      quizId,
+      quizTitle: quiz.title,
+      lessonTitle: lesson?.title ?? null,
+      courseId: course?.id ?? null,
+      courseTitle: course?.title ?? null,
+      attempts: paginated([], 0, p),
+    }
+  }
+
+  const attempts = data.map((row) => ({
+    attemptId: row.attempt_id,
+    quizId: row.quiz_id,
+    quizTitle: row.quiz_title,
+    lessonId: row.lesson_id,
+    lessonTitle: row.lesson_title,
+    sectionTitle: row.section_title,
+    courseId: row.course_id,
+    courseTitle: row.course_title,
+    learnerId: row.learner_id,
+    learnerName: row.learner_name,
+    learnerEmail: row.learner_email,
+    submittedAt: row.submitted_at,
+    pendingCount: row.pending_count,
+  }))
 
   return {
     quizId,
-    quizTitle: attempts[0].quizTitle,
-    lessonTitle: attempts[0].lessonTitle,
-    courseId: attempts[0].courseId,
-    courseTitle: attempts[0].courseTitle,
-    attempts: attempts.sort((a, b) => (b.submittedAt ?? "").localeCompare(a.submittedAt ?? "")),
+    quizTitle: quiz.title,
+    lessonTitle: lesson?.title ?? null,
+    courseId: course?.id ?? null,
+    courseTitle: course?.title ?? null,
+    attempts: paginated(attempts, count, p),
   }
 }
 

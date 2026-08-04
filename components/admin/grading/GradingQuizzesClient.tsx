@@ -1,11 +1,12 @@
 "use client"
 
-import { useMemo, useState } from "react"
 import Link from "next/link"
 
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import type { Paginated } from "@/lib/pagination"
 import type { GradingQuizSummary } from "@/lib/grading-server"
+import { ListPagination } from "@/components/admin/ListPagination"
+import { ListToolbar } from "@/components/admin/ListToolbar"
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—"
@@ -14,33 +15,17 @@ function formatDate(iso: string | null): string {
 
 export function GradingQuizzesClient({
   courseId,
-  quizzes,
+  page,
 }: {
   courseId: string
-  courseTitle: string
-  quizzes: GradingQuizSummary[]
+  page: Paginated<GradingQuizSummary>
 }) {
-  const [query, setQuery] = useState("")
-
-  const filtered = useMemo(() => {
-    if (!query) return quizzes
-    const q = query.toLowerCase()
-    return quizzes.filter(
-      (z) => z.quizTitle.toLowerCase().includes(q) || z.lessonTitle.toLowerCase().includes(q)
-    )
-  }, [quizzes, query])
-
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold">Quizzes</h2>
         <div className="flex items-center gap-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search quiz or lesson..."
-            className="w-64"
-          />
+          <ListToolbar placeholder="Search quiz or lesson..." />
           <Button
             size="sm"
             variant="outline"
@@ -52,9 +37,9 @@ export function GradingQuizzesClient({
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {page.rows.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
-          {quizzes.length === 0 ? "No quizzes awaiting review." : "No quizzes match your search."}
+          {page.total === 0 ? "No quizzes awaiting review." : "No quizzes match your search."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">
@@ -65,7 +50,7 @@ export function GradingQuizzesClient({
             <div>Oldest Submission</div>
             <div />
           </div>
-          {filtered.map((z) => (
+          {page.rows.map((z) => (
             <div
               key={z.quizId}
               className="grid grid-cols-[2.4fr_1fr_1fr_1.2fr_auto] items-center gap-3 border-b border-border px-3 py-3 text-[14px] last:border-b-0"
@@ -101,6 +86,8 @@ export function GradingQuizzesClient({
           ))}
         </div>
       )}
+
+      <ListPagination meta={page} />
     </div>
   )
 }
