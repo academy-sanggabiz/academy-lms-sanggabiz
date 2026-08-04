@@ -20,7 +20,9 @@ export async function gradeAttemptAction(attemptId: string, grades: EssayGrade[]
   if ("error" in result) return { ok: false, error: result.error }
 
   revalidatePath("/admin/grading")
-  revalidatePath("/admin/grading/[attemptId]", "page")
+  revalidatePath("/admin/grading/course/[courseId]", "page")
+  revalidatePath("/admin/grading/quiz/[quizId]", "page")
+  revalidatePath("/admin/grading/attempt/[attemptId]", "page")
   return { ok: true, data: undefined }
 }
 

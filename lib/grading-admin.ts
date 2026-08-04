@@ -49,10 +49,18 @@ export async function gradeAttempt(
         })
         .eq("attempt_id", attemptId)
         .eq("question_id", grade.questionId)
+        .select("id")
     )
   )
   const failed = results.find((r) => r.error)
   if (failed?.error) return { error: failed.error.message }
+  // A mismatched attempt_id/question_id pair (e.g. a mis-pasted CSV cell from
+  // a different quiz) updates zero rows without erroring -- catch that here
+  // instead of silently dropping the grade.
+  const emptyIndex = results.findIndex((r) => (r.data?.length ?? 0) === 0)
+  if (emptyIndex !== -1) {
+    return { error: `No response found for question ${grades[emptyIndex].questionId} on this attempt` }
+  }
 
   return finalizeAttempt(attemptId)
 }

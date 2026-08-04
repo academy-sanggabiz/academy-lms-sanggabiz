@@ -7,6 +7,7 @@ export type PendingAttemptSummary = {
   quizTitle: string
   lessonId: string
   lessonTitle: string
+  sectionTitle: string
   courseId: string
   courseTitle: string
   learnerId: string
@@ -15,6 +16,17 @@ export type PendingAttemptSummary = {
   submittedAt: string | null
   /** Responses still needing manual grading -- essays plus any keyless short_answer. */
   pendingCount: number
+}
+
+/**
+ * Whether a question type is left ungraded by public.grade_attempt() and
+ * therefore needs a human score: essays, file uploads, and short_answer
+ * questions authored with no accepted-keyword option. Kept in one place so
+ * the CSV export and the drill-down aggregators can't drift from what the SQL
+ * function actually does.
+ */
+export function isManuallyGraded(type: string, options: { is_correct: boolean }[]): boolean {
+  return type === "essay" || type === "file_upload" || (type === "short_answer" && !options.some((o) => o.is_correct))
 }
 
 /**
@@ -39,7 +51,7 @@ export async function listPendingAttempts(): Promise<PendingAttemptSummary[]> {
          id, title,
          lesson:lessons(
            id, title,
-           section:course_sections(course:courses(id, title, created_by))
+           section:course_sections(title, course:courses(id, title, created_by))
          )
        ),
        responses:quiz_responses(is_correct)`
@@ -65,6 +77,7 @@ export async function listPendingAttempts(): Promise<PendingAttemptSummary[]> {
       quizTitle: quiz?.title ?? "Untitled quiz",
       lessonId: lesson?.id ?? "",
       lessonTitle: lesson?.title ?? "Untitled lesson",
+      sectionTitle: section?.title ?? "",
       courseId: course?.id ?? "",
       courseTitle: course?.title ?? "Untitled course",
       learnerId: learner?.id ?? "",
@@ -75,6 +88,117 @@ export async function listPendingAttempts(): Promise<PendingAttemptSummary[]> {
     })
   }
   return summaries
+}
+
+export type GradingCourseSummary = {
+  courseId: string
+  courseTitle: string
+  quizCount: number
+  learnerCount: number
+  attemptCount: number
+  oldestSubmittedAt: string | null
+}
+
+/** Level 1: courses with at least one attempt still awaiting manual grading. */
+export async function listGradingCourses(): Promise<GradingCourseSummary[]> {
+  const attempts = await listPendingAttempts()
+
+  const groups = new Map<string, GradingCourseSummary & { quizIds: Set<string>; learnerIds: Set<string> }>()
+  for (const a of attempts) {
+    const key = a.courseId || "unknown"
+    let group = groups.get(key)
+    if (!group) {
+      group = {
+        courseId: key,
+        courseTitle: a.courseTitle,
+        quizCount: 0,
+        learnerCount: 0,
+        attemptCount: 0,
+        oldestSubmittedAt: a.submittedAt,
+        quizIds: new Set(),
+        learnerIds: new Set(),
+      }
+      groups.set(key, group)
+    }
+    group.quizIds.add(a.quizId)
+    group.learnerIds.add(a.learnerId)
+    group.attemptCount += 1
+    if (a.submittedAt && (!group.oldestSubmittedAt || a.submittedAt < group.oldestSubmittedAt)) {
+      group.oldestSubmittedAt = a.submittedAt
+    }
+  }
+
+  return [...groups.values()]
+    .map(({ quizIds, learnerIds, ...rest }) => ({ ...rest, quizCount: quizIds.size, learnerCount: learnerIds.size }))
+    .sort((a, b) => a.courseTitle.localeCompare(b.courseTitle))
+}
+
+export type GradingQuizSummary = {
+  quizId: string
+  quizTitle: string
+  lessonTitle: string
+  sectionTitle: string
+  attemptCount: number
+  pendingResponseCount: number
+  oldestSubmittedAt: string | null
+}
+
+/** Level 2: quizzes with pending attempts within one course. */
+export async function getCourseGradingQuizzes(
+  courseId: string
+): Promise<{ courseId: string; courseTitle: string; quizzes: GradingQuizSummary[] } | null> {
+  const attempts = (await listPendingAttempts()).filter((a) => a.courseId === courseId)
+  if (attempts.length === 0) return null
+
+  const groups = new Map<string, GradingQuizSummary>()
+  for (const a of attempts) {
+    let group = groups.get(a.quizId)
+    if (!group) {
+      group = {
+        quizId: a.quizId,
+        quizTitle: a.quizTitle,
+        lessonTitle: a.lessonTitle,
+        sectionTitle: a.sectionTitle,
+        attemptCount: 0,
+        pendingResponseCount: 0,
+        oldestSubmittedAt: a.submittedAt,
+      }
+      groups.set(a.quizId, group)
+    }
+    group.attemptCount += 1
+    group.pendingResponseCount += a.pendingCount
+    if (a.submittedAt && (!group.oldestSubmittedAt || a.submittedAt < group.oldestSubmittedAt)) {
+      group.oldestSubmittedAt = a.submittedAt
+    }
+  }
+
+  return {
+    courseId,
+    courseTitle: attempts[0].courseTitle,
+    quizzes: [...groups.values()].sort((a, b) => a.quizTitle.localeCompare(b.quizTitle)),
+  }
+}
+
+/** Level 3: pending attempts (learners) for one quiz. */
+export async function getQuizGradingAttempts(quizId: string): Promise<{
+  quizId: string
+  quizTitle: string
+  lessonTitle: string
+  courseId: string
+  courseTitle: string
+  attempts: PendingAttemptSummary[]
+} | null> {
+  const attempts = (await listPendingAttempts()).filter((a) => a.quizId === quizId)
+  if (attempts.length === 0) return null
+
+  return {
+    quizId,
+    quizTitle: attempts[0].quizTitle,
+    lessonTitle: attempts[0].lessonTitle,
+    courseId: attempts[0].courseId,
+    courseTitle: attempts[0].courseTitle,
+    attempts: attempts.sort((a, b) => (b.submittedAt ?? "").localeCompare(a.submittedAt ?? "")),
+  }
 }
 
 export type GradingQuestion = {
@@ -89,7 +213,9 @@ export type GradingQuestion = {
 
 export type AttemptGradingDetail = {
   attemptId: string
+  quizId: string
   quizTitle: string
+  courseId: string
   courseTitle: string
   lessonTitle: string
   learnerName: string
@@ -116,7 +242,7 @@ export async function getAttemptGradingDetail(attemptId: string): Promise<Attemp
          title,
          lesson:lessons(
            title,
-           section:course_sections(course:courses(title, created_by))
+           section:course_sections(course:courses(id, title, created_by))
          )
        )`
     )
@@ -154,7 +280,9 @@ export async function getAttemptGradingDetail(attemptId: string): Promise<Attemp
 
   return {
     attemptId: attempt.id,
+    quizId: attempt.quiz_id,
     quizTitle: quiz?.title ?? "Untitled quiz",
+    courseId: course?.id ?? "",
     courseTitle: course?.title ?? "Untitled course",
     lessonTitle: lesson?.title ?? "Untitled lesson",
     learnerName: learner?.full_name ?? "Unknown learner",
