@@ -263,7 +263,8 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
 
           {question.type === "file_upload" && (
             <p className="text-xs text-muted-foreground">
-              Learners upload a PDF instead of typing an answer; these responses aren&apos;t auto-graded.
+              Learners submit a link to their file (e.g. Google Drive) instead of typing an answer; these
+              responses aren&apos;t auto-graded.
             </p>
           )}
         </div>

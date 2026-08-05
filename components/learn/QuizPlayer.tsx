@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import type { Quiz } from "@/lib/courses"
 import type { QuizAttemptInfo } from "@/lib/learn-server"
 import { startQuiz, submitQuiz, type SubmitQuizResult } from "@/app/learn/[courseId]/quiz-actions"
-import { uploadQuizSubmission } from "@/lib/storage"
 import { FileUploadAnswer } from "@/components/learn/EssayAssessmentPlayer"
 import { QuestionPrompt } from "@/components/learn/QuestionPrompt"
 
@@ -172,7 +171,6 @@ export function QuizPlayer({
             <FileUploadAnswer
               value={answers[question.id] ?? ""}
               onChange={(value) => setAnswers((a) => ({ ...a, [question.id]: value }))}
-              onUploadFile={(file) => uploadQuizSubmission(file, attemptId!, question.id)}
             />
           </div>
         ) : (
@@ -245,7 +243,7 @@ export function QuizPlayer({
                     .join(", ") || "—"
                 : question.type === "file_upload"
                   ? answer
-                    ? "PDF submitted"
+                    ? "Link submitted"
                     : "—"
                   : answer || "—"
 

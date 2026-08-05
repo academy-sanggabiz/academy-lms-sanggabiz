@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useTransition } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { AttemptGradingDetail, GradingQuestion } from "@/lib/grading-server"
 import { gradeAttemptAction } from "@/app/admin/grading/actions"
-import { getQuizSubmissionUrl } from "@/lib/storage"
 import { QuestionPrompt } from "@/components/learn/QuestionPrompt"
 
 export function AttemptGradingForm({ detail }: { detail: AttemptGradingDetail }) {
@@ -105,29 +104,18 @@ export function AttemptGradingForm({ detail }: { detail: AttemptGradingDetail })
   )
 }
 
-// question.response for a file_upload question holds the quiz-submissions
-// storage object path, not a URL (the bucket is private) -- resolve a
-// short-lived signed URL for the admin to view/download it, same as
-// components/learn/EssayAssessmentPlayer.tsx's FileUploadAnswer.
+// question.response for a file_upload question holds the learner-submitted
+// link (a plain URL, not an uploaded file) -- render it directly.
 function FileUploadResponse({ question }: { question: GradingQuestion }) {
-  const [url, setUrl] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    if (!question.response) return
-    getQuizSubmissionUrl(question.response).then((res) => {
-      if (!cancelled && "url" in res) setUrl(res.url)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [question.response])
-
   if (!question.response) return "—"
-  if (!url) return "Loading PDF…"
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="font-medium text-ring hover:underline">
-      View submitted PDF
+    <a
+      href={question.response}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-medium text-ring hover:underline"
+    >
+      View submitted link
     </a>
   )
 }
