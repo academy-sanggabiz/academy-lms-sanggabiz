@@ -22,17 +22,8 @@ function csvRow(values: string[]): string {
 
 type QuestionRow = { id: string; prompt: string; type: string; options: { is_correct: boolean }[] }
 
-async function resolveAnswerCell(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  type: string,
-  response: unknown
-): Promise<string> {
-  if (typeof response !== "string" || !response) return ""
-  if (type !== "file_upload") return response
-  // response is a private quiz-submissions storage path, not a URL --
-  // mint a signed link so the CSV is actually usable for offline grading.
-  const { data, error } = await supabase.storage.from("quiz-submissions").createSignedUrl(response, 60 * 60 * 24 * 7)
-  return error || !data ? response : data.signedUrl
+function resolveAnswerCell(response: unknown): string {
+  return typeof response === "string" ? response : ""
 }
 
 async function loadQuizForExport(
@@ -85,7 +76,7 @@ async function buildQuizCsv(
     const row = [learner?.full_name ?? "Unknown learner", attempt.learner_id, attempt.id]
     for (const q of manualQuestions) {
       const response = responseByQuestion.get(q.id)
-      const answer = await resolveAnswerCell(supabase, q.type, response?.response)
+      const answer = resolveAnswerCell(response?.response)
       const score =
         response?.points_awarded !== null && response?.points_awarded !== undefined
           ? String(response.points_awarded)
