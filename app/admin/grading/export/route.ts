@@ -151,30 +151,42 @@ export async function GET(request: Request) {
     return new NextResponse("Course not found", { status: 404 })
   }
 
-  const { data: quizzes, error: quizzesError } = await supabase
+  // Scoped by the join rather than selecting every quiz on the platform and
+  // post-filtering in JS -- same filter lib/grading-server.ts uses.
+  const { data: courseQuizzes, error: quizzesError } = await supabase
     .from("quizzes")
-    .select("id, title, lesson:lessons(section:course_sections(course_id))")
+    .select("id, title, lesson:lessons!inner(section:course_sections!inner(course_id))")
+    .eq("lesson.section.course_id", course.id)
     .order("title", { ascending: true })
 
-  if (quizzesError || !quizzes) return new NextResponse("Could not load quizzes", { status: 500 })
+  if (quizzesError || !courseQuizzes) return new NextResponse("Could not load quizzes", { status: 500 })
 
-  const courseQuizzes = quizzes.filter((q) => {
-    const lesson = Array.isArray(q.lesson) ? q.lesson[0] : q.lesson
-    const section = lesson ? (Array.isArray(lesson.section) ? lesson.section[0] : lesson.section) : null
-    return section?.course_id === course.id
-  })
+  // One questions query for the whole course instead of one per quiz.
+  const { data: allQuestions, error: questionsError } = await supabase
+    .from("questions")
+    .select("id, quiz_id, prompt, type, options:question_options(id, is_correct)")
+    .in(
+      "quiz_id",
+      courseQuizzes.map((quiz) => quiz.id)
+    )
+    .order("position", { ascending: true })
+
+  if (questionsError || !allQuestions) return new NextResponse("Could not load questions", { status: 500 })
+
+  const questionsByQuiz = new Map<string, QuestionRow[]>()
+  for (const question of allQuestions) {
+    if (!isManuallyGraded(question.type, question.options)) continue
+    const bucket = questionsByQuiz.get(question.quiz_id) ?? []
+    bucket.push(question)
+    questionsByQuiz.set(question.quiz_id, bucket)
+  }
 
   const perQuizQuestions: { quizId: string; quizTitle: string; questions: QuestionRow[] }[] = []
   for (const quiz of courseQuizzes) {
-    const { data: questions, error: questionsError } = await supabase
-      .from("questions")
-      .select("id, prompt, type, options:question_options(id, is_correct)")
-      .eq("quiz_id", quiz.id)
-      .order("position", { ascending: true })
-
-    if (questionsError || !questions) continue
-    const manualQuestions = questions.filter((q) => isManuallyGraded(q.type, q.options))
-    if (manualQuestions.length > 0) perQuizQuestions.push({ quizId: quiz.id, quizTitle: quiz.title, questions: manualQuestions })
+    const manualQuestions = questionsByQuiz.get(quiz.id)
+    if (manualQuestions?.length) {
+      perQuizQuestions.push({ quizId: quiz.id, quizTitle: quiz.title, questions: manualQuestions })
+    }
   }
 
   if (perQuizQuestions.length === 0) {

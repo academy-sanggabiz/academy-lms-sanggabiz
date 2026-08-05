@@ -110,7 +110,7 @@ export type TrackingDetail = TrackingEnrollment & {
 
 /**
  * Level 2: full lesson + quiz breakdown for one enrollment. Same ownership
- * guard as getAttemptGradingDetail (lib/grading-server.ts) -- returns null
+ * guard as getCourseGradingMatrix (lib/grading-server.ts) -- returns null
  * (treated as not found) if the enrollment's course belongs to a different
  * admin.
  */
