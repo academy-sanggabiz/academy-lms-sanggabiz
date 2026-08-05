@@ -48,6 +48,14 @@ export function formatCourseAccess(course: Pick<Course, "price" | "is_private">)
 
 export type LessonContentType = "video" | "text" | "quiz" | "mixed" | "ppt"
 
+/**
+ * Hard cap on attempts for regular (non-study-case) quizzes -- always 3,
+ * regardless of a quiz's `max_attempts` column (which still governs
+ * study-case/is_assessment quizzes only). Shared so the server-side enforcement
+ * in quiz-actions.ts and the learner-facing display in QuizPlayer.tsx can't drift.
+ */
+export const REGULAR_QUIZ_MAX_ATTEMPTS = 3
+
 export type QuestionType =
   | "multiple_choice"
   | "true_false"

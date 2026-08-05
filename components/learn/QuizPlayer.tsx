@@ -5,7 +5,7 @@ import { CheckCircle2, CircleHelp, XCircle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import type { Quiz } from "@/lib/courses"
+import { REGULAR_QUIZ_MAX_ATTEMPTS, type Quiz } from "@/lib/courses"
 import type { QuizAttemptInfo } from "@/lib/learn-server"
 import { startQuiz, submitQuiz, type SubmitQuizResult } from "@/app/learn/[courseId]/quiz-actions"
 import { FileUploadAnswer } from "@/components/learn/EssayAssessmentPlayer"
@@ -30,8 +30,8 @@ export function QuizPlayer({
   const [error, setError] = useState<string | null>(null)
 
   const attemptsUsed = attemptInfo?.attemptsUsed ?? 0
-  const attemptsRemaining = quiz.max_attempts === null ? null : quiz.max_attempts - attemptsUsed
-  const canAttempt = attemptsRemaining === null || attemptsRemaining > 0
+  const attemptsRemaining = REGULAR_QUIZ_MAX_ATTEMPTS - attemptsUsed
+  const canAttempt = attemptsRemaining > 0
   const alreadyPassed = attemptInfo?.lastPassed === true
 
   function handleStart() {
@@ -129,11 +129,9 @@ export function QuizPlayer({
             <div className="text-2xl font-bold">
               Question {questionIndex + 1} of {quiz.questions.length}
             </div>
-            {quiz.max_attempts !== null && (
-              <div className="shrink-0 rounded-full bg-secondary px-4 py-2 text-[13.5px] font-semibold whitespace-nowrap">
-                Attempt {attemptNumber} of {quiz.max_attempts}
-              </div>
-            )}
+            <div className="shrink-0 rounded-full bg-secondary px-4 py-2 text-[13.5px] font-semibold whitespace-nowrap">
+              Attempt {attemptNumber} of {REGULAR_QUIZ_MAX_ATTEMPTS}
+            </div>
           </div>
           <QuestionPrompt prompt={question.prompt} className="mt-4 text-[17px]" />
         </div>
@@ -199,7 +197,7 @@ export function QuizPlayer({
   }
 
   if (stage === "results" && result) {
-    const canRetry = attemptsRemaining === null || attemptsRemaining > 0
+    const canRetry = attemptsRemaining > 0
 
     return (
       <div className="mx-auto flex max-w-2xl flex-col gap-5 p-10">

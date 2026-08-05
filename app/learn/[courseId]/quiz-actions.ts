@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 
 import { createClient } from "@/lib/supabase/server"
 import { checkAndIssueCertificate } from "@/lib/certificates"
+import { REGULAR_QUIZ_MAX_ATTEMPTS } from "@/lib/courses"
 
 export type SubmitQuizResult = {
   pending: boolean
@@ -24,7 +25,7 @@ export async function startQuiz(
 
   const { data: quiz, error: quizError } = await supabase
     .from("quizzes")
-    .select("max_attempts, lesson_id")
+    .select("lesson_id")
     .eq("id", quizId)
     .single()
 
@@ -66,7 +67,7 @@ export async function startQuiz(
   if (existingError) return { error: existingError.message }
 
   const attemptsUsed = existing?.[0]?.attempt_number ?? 0
-  if (quiz.max_attempts !== null && attemptsUsed >= quiz.max_attempts) {
+  if (attemptsUsed >= REGULAR_QUIZ_MAX_ATTEMPTS) {
     return { error: "No attempts remaining." }
   }
 

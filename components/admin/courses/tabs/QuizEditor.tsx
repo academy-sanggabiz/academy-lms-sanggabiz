@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 import { RichTextEditor } from "../RichTextEditor"
 import type { AuthorableQuestionType } from "@/lib/courses-admin"
 import type { DraftOption, DraftQuestion, DraftQuiz } from "@/lib/course-draft"
+import { REGULAR_QUIZ_MAX_ATTEMPTS } from "@/lib/courses"
 import { useCourseDraft } from "../CourseDraftContext"
 
 const QUESTION_TYPES: { value: AuthorableQuestionType; label: string }[] = [
@@ -128,15 +129,21 @@ function QuizSettings({ lessonId, quiz }: { lessonId: string; quiz: DraftQuiz })
       </div>
       <div className="w-32 space-y-1.5">
         <Label htmlFor={`max-attempts-${quiz.id}`}>Max Attempts</Label>
-        <Input
-          id={`max-attempts-${quiz.id}`}
-          type="number"
-          min={0}
-          placeholder="Unlimited"
-          value={maxAttempts}
-          onChange={(e) => setMaxAttempts(e.target.value)}
-          onBlur={() => save({ max_attempts: maxAttempts.trim() ? Number(maxAttempts) : null })}
-        />
+        {quiz.is_assessment ? (
+          <Input
+            id={`max-attempts-${quiz.id}`}
+            type="number"
+            min={0}
+            placeholder="Unlimited"
+            value={maxAttempts}
+            onChange={(e) => setMaxAttempts(e.target.value)}
+            onBlur={() => save({ max_attempts: maxAttempts.trim() ? Number(maxAttempts) : null })}
+          />
+        ) : (
+          <p className="flex h-9 items-center text-sm text-muted-foreground">
+            {REGULAR_QUIZ_MAX_ATTEMPTS} (fixed)
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <Switch
