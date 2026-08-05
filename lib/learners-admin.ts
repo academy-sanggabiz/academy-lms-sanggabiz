@@ -244,6 +244,156 @@ export async function getAdminLearnerCourseProgress(
   })
 }
 
+export type AdminLearnerCertificate = {
+  id: string
+  courseId: string
+  courseTitle: string
+  serial: string
+  issuedAt: string
+  pdfUrl: string | null
+}
+
+/** Mirrors lib/certificates-server.ts's getLearnerCertificates() but for an arbitrary learner, owner-scoped. */
+export async function getAdminLearnerCertificates(learnerId: string): Promise<AdminLearnerCertificate[]> {
+  const supabase = await createClient()
+  const ownedCourseIds = await getOwnedCourseIdsOrNull()
+  if (ownedCourseIds !== null && ownedCourseIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from("certificates")
+    .select("id, serial, issued_at, pdf_url, enrollment:enrollments!inner(learner_id, course:courses(id, title))")
+    .eq("enrollment.learner_id", learnerId)
+    .order("issued_at", { ascending: false })
+
+  if (error || !data) {
+    if (error) console.error("getAdminLearnerCertificates failed:", error.message)
+    return []
+  }
+
+  const ownedSet = ownedCourseIds !== null ? new Set(ownedCourseIds) : null
+
+  return data
+    .map((row) => {
+      const enrollment = Array.isArray(row.enrollment) ? row.enrollment[0] : row.enrollment
+      const course = enrollment ? (Array.isArray(enrollment.course) ? enrollment.course[0] : enrollment.course) : null
+      if (!course) return null
+      if (ownedSet !== null && !ownedSet.has(course.id)) return null
+      return {
+        id: row.id,
+        courseId: course.id,
+        courseTitle: course.title,
+        serial: row.serial,
+        issuedAt: row.issued_at,
+        pdfUrl: row.pdf_url,
+      }
+    })
+    .filter((c): c is AdminLearnerCertificate => c !== null)
+}
+
+export type AdminLearnerQuizScore = {
+  attemptId: string
+  quizId: string
+  quizTitle: string
+  courseTitle: string
+  attemptNumber: number
+  score: number | null
+  passed: boolean
+  status: string
+  submittedAt: string | null
+  passScore: number
+}
+
+type QuizScoreRow = {
+  id: string
+  quiz_id: string
+  attempt_number: number
+  score: number | null
+  passed: boolean
+  status: string
+  submitted_at: string | null
+  quiz:
+    | {
+        title: string
+        pass_score: number
+        lesson:
+          | {
+              section:
+                | { course_id: string; course: { title: string } | { title: string }[] | null }
+                | { course_id: string; course: { title: string } | { title: string }[] | null }[]
+                | null
+            }
+          | { section: unknown }[]
+          | null
+      }
+    | { title: string; pass_score: number; lesson: unknown }[]
+    | null
+}
+
+function toOne<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null)
+}
+
+/**
+ * One row per quiz the learner has attempted (latest attempt only), across
+ * every course -- cross-course, unlike getCourseGradingMatrix which is
+ * course-centric. Owner-scoped in JS since quiz_attempts carries no
+ * course_id column directly (has to resolve through quiz -> lesson ->
+ * section -> course).
+ */
+export async function getAdminLearnerQuizScores(learnerId: string): Promise<AdminLearnerQuizScore[]> {
+  const supabase = await createClient()
+  const ownedCourseIds = await getOwnedCourseIdsOrNull()
+  if (ownedCourseIds !== null && ownedCourseIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from("quiz_attempts")
+    .select(
+      `id, quiz_id, attempt_number, score, passed, status, submitted_at,
+       quiz:quizzes(title, pass_score, lesson:lessons(section:course_sections(course_id, course:courses(title))))`
+    )
+    .eq("learner_id", learnerId)
+    .neq("status", "in_progress")
+    .order("submitted_at", { ascending: false })
+
+  if (error || !data) {
+    if (error) console.error("getAdminLearnerQuizScores failed:", error.message)
+    return []
+  }
+
+  const ownedSet = ownedCourseIds !== null ? new Set(ownedCourseIds) : null
+  const seenQuizIds = new Set<string>()
+  const rows: AdminLearnerQuizScore[] = []
+
+  for (const row of data as unknown as QuizScoreRow[]) {
+    if (seenQuizIds.has(row.quiz_id)) continue
+
+    const quiz = toOne(row.quiz)
+    const lesson = quiz ? toOne(quiz.lesson as never) : null
+    const section = lesson ? toOne((lesson as { section: unknown }).section as never) : null
+    const courseId = (section as { course_id?: string } | null)?.course_id
+    const course = section ? toOne((section as { course: unknown }).course as never) : null
+
+    if (!quiz || !courseId) continue
+    if (ownedSet !== null && !ownedSet.has(courseId)) continue
+
+    seenQuizIds.add(row.quiz_id)
+    rows.push({
+      attemptId: row.id,
+      quizId: row.quiz_id,
+      quizTitle: (quiz as { title: string }).title,
+      courseTitle: (course as { title?: string } | null)?.title ?? "",
+      attemptNumber: row.attempt_number,
+      score: row.score,
+      passed: row.passed,
+      status: row.status,
+      submittedAt: row.submitted_at,
+      passScore: (quiz as { pass_score: number }).pass_score,
+    })
+  }
+
+  return rows
+}
+
 export type LearnerSearchResult = {
   id: string
   name: string
@@ -338,6 +488,7 @@ export async function getCourseRoster(courseId: string, p: ListParams): Promise<
     .from("enrollments")
     .select("learner_id, status, enrolled_at, profiles!inner(id, full_name, email)", { count: "exact" })
     .eq("course_id", courseId)
+    .eq("profiles.role", "learner")
   if (p.q) {
     query = query.or(`full_name.ilike.%${p.q}%,email.ilike.%${p.q}%`, { referencedTable: "profiles" })
   }

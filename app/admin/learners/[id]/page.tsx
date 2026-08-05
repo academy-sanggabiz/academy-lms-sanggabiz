@@ -2,7 +2,12 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, BookOpen, Mail, Trophy } from "lucide-react"
 
-import { getAdminLearnerCourseProgress, getAdminLearnerDetail } from "@/lib/learners-admin"
+import {
+  getAdminLearnerCertificates,
+  getAdminLearnerCourseProgress,
+  getAdminLearnerDetail,
+  getAdminLearnerQuizScores,
+} from "@/lib/learners-admin"
 import { LearnerDetailTabs } from "@/components/admin/learners/LearnerDetailTabs"
 
 export default async function AdminLearnerDetailPage({
@@ -11,9 +16,11 @@ export default async function AdminLearnerDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [learner, courseProgress] = await Promise.all([
+  const [learner, courseProgress, certificates, quizScores] = await Promise.all([
     getAdminLearnerDetail(id),
     getAdminLearnerCourseProgress(id),
+    getAdminLearnerCertificates(id),
+    getAdminLearnerQuizScores(id),
   ])
 
   if (!learner) notFound()
@@ -59,7 +66,11 @@ export default async function AdminLearnerDetailPage({
         <StatCard icon={BookOpen} label="Avg Progress" value={`${avgProgress}%`} />
       </div>
 
-      <LearnerDetailTabs courseProgress={courseProgress} />
+      <LearnerDetailTabs
+        courseProgress={courseProgress}
+        certificates={certificates}
+        quizScores={quizScores}
+      />
     </div>
   )
 }
