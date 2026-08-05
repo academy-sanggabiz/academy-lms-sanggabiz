@@ -1983,7 +1983,7 @@ join public.quizzes q on q.id = qa.quiz_id
 join public.lessons l on l.id = q.lesson_id
 join public.course_sections cs on cs.id = l.section_id
 join public.courses c on c.id = cs.course_id
-join public.profiles p on p.id = qa.learner_id
+join public.profiles p on p.id = qa.learner_id and p.role = 'learner'
 where qa.status = 'pending_review';
 
 grant select on public.admin_pending_attempts to authenticated;
@@ -2031,7 +2031,7 @@ as $$
       count(*) as enrolled_count,
       count(*) filter (where s.status = 'completed') as completed_count
     from scoped s
-    join public.profiles pr on pr.id = s.learner_id
+    join public.profiles pr on pr.id = s.learner_id and pr.role = 'learner'
     group by s.learner_id, pr.full_name, pr.email
   ),
   filtered as (
@@ -2072,6 +2072,7 @@ as $$
     count(*) filter (where e.status = 'completed')
   from public.enrollments e
   join public.courses c on c.id = e.course_id
+  join public.profiles pr on pr.id = e.learner_id and pr.role = 'learner'
   where c.created_by = (select auth.uid()) or public.is_superadmin();
 $$;
 
