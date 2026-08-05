@@ -4,7 +4,7 @@ import { ArrowLeft, FileText, Globe, Users } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { CourseCurriculum } from "@/components/learner/CourseCurriculum"
+import { CourseCurriculumGate } from "@/components/learner/CourseCurriculumGate"
 import { getCourseDetail } from "@/lib/courses-server"
 import { isEnrolled } from "@/lib/enrollments-server"
 import { formatCourseAccess } from "@/lib/courses"
@@ -13,15 +13,19 @@ import { enroll } from "@/app/learner/courses/actions"
 
 export default async function CourseDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ enroll?: string }>
 }) {
   const { id } = await params
+  const { enroll: enrollParam } = await searchParams
   const course = await getCourseDetail(id)
   if (!course) notFound()
 
   const enrolled = await isEnrolled(course.id)
   const price = formatCourseAccess(course)
+  const initialOpen = enrollParam === "required"
 
   return (
     <div className="space-y-6">
@@ -49,7 +53,12 @@ export default async function CourseDetailPage({
           <Card>
             <CardContent>
               <div className="mb-2 text-lg font-bold">Course Content</div>
-              <CourseCurriculum sections={course.sections} courseId={course.id} />
+              <CourseCurriculumGate
+                sections={course.sections}
+                courseId={course.id}
+                enrolled={enrolled}
+                initialOpen={initialOpen}
+              />
             </CardContent>
           </Card>
 
