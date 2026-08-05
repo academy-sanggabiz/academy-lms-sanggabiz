@@ -3,6 +3,7 @@
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { Paginated } from "@/lib/pagination"
 import type { TrackingEnrollment } from "@/lib/tracking-server"
 import { ListPagination } from "@/components/admin/ListPagination"
@@ -22,37 +23,40 @@ export function TrackingListClient({ page }: { page: Paginated<TrackingEnrollmen
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">
-          <div className="grid grid-cols-[2fr_2fr_1fr_1fr_100px] gap-3 border-b border-border bg-muted/50 px-3 py-2.5 text-[13px] font-semibold text-muted-foreground">
-            <div>Learner</div>
-            <div>Course</div>
-            <div>Module</div>
-            <div>Assignment</div>
-            <div />
-          </div>
-          {page.rows.map((e) => (
-            <div
-              key={e.enrollmentId}
-              className="grid grid-cols-[2fr_2fr_1fr_1fr_100px] items-center gap-3 border-b border-border px-3 py-3 text-[14px] last:border-b-0"
-            >
-              <div>
-                <div className="font-semibold">{e.learnerName}</div>
-                <div className="text-xs text-muted-foreground">{e.learnerEmail}</div>
-              </div>
-              <div className="min-w-0 truncate text-muted-foreground">{e.courseTitle}</div>
-              <div className="text-muted-foreground">{e.modulePct}%</div>
-              <div className="text-muted-foreground">{e.assignmentPct}%</div>
-              <div className="flex shrink-0 justify-end">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  render={<Link href={`/admin/tracking/${e.enrollmentId}`} />}
-                  nativeButton={false}
-                >
-                  Open
-                </Button>
-              </div>
-            </div>
-          ))}
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead>Learner</TableHead>
+                <TableHead>Course</TableHead>
+                <TableHead>Module</TableHead>
+                <TableHead>Assignment</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {page.rows.map((e) => (
+                <TableRow key={e.enrollmentId} className="text-[14px]">
+                  <TableCell>
+                    <div className="font-semibold">{e.learnerName}</div>
+                    <div className="text-xs text-muted-foreground">{e.learnerEmail}</div>
+                  </TableCell>
+                  <TableCell className="max-w-0 truncate text-muted-foreground">{e.courseTitle}</TableCell>
+                  <TableCell className="text-muted-foreground">{e.modulePct}%</TableCell>
+                  <TableCell className="text-muted-foreground">{e.assignmentPct}%</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      render={<Link href={`/admin/tracking/${e.enrollmentId}`} />}
+                      nativeButton={false}
+                    >
+                      Open
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 

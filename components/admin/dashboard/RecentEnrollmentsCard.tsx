@@ -1,5 +1,6 @@
 import type { RecentEnrollment } from "@/lib/dashboard-admin"
 import type { Paginated } from "@/lib/pagination"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ListPagination } from "@/components/admin/ListPagination"
 
 const PREFIX = "enroll"
@@ -19,24 +20,25 @@ export function RecentEnrollmentsCard({ enrollments }: { enrollments: Paginated<
       {enrollments.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No enrollments yet</p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
-          <div className="grid grid-cols-[1fr_1fr_auto] gap-3 border-b border-border bg-muted/50 px-3 py-2.5 text-[13px] font-semibold text-muted-foreground">
-            <div>Learner</div>
-            <div>Course</div>
-            <div>Date</div>
-          </div>
-          <div className="max-h-[320px] overflow-y-auto">
-            {enrollments.rows.map((e) => (
-              <div
-                key={e.id}
-                className="grid grid-cols-[1fr_1fr_auto] items-center gap-3 border-b border-border px-3 py-3 text-sm last:border-b-0"
-              >
-                <div className="min-w-0 truncate font-medium">{e.learnerName}</div>
-                <div className="min-w-0 truncate text-muted-foreground">{e.courseTitle}</div>
-                <div className="shrink-0 text-xs text-muted-foreground">{formatDate(e.enrolledAt)}</div>
-              </div>
-            ))}
-          </div>
+        <div className="max-h-[320px] overflow-y-auto rounded-xl border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow className="sticky top-0 z-10 bg-muted/50 hover:bg-muted/50">
+                <TableHead>Learner</TableHead>
+                <TableHead>Course</TableHead>
+                <TableHead>Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {enrollments.rows.map((e) => (
+                <TableRow key={e.id}>
+                  <TableCell className="max-w-0 truncate font-medium">{e.learnerName}</TableCell>
+                  <TableCell className="max-w-0 truncate text-muted-foreground">{e.courseTitle}</TableCell>
+                  <TableCell className="text-xs whitespace-nowrap text-muted-foreground">{formatDate(e.enrolledAt)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
       <ListPagination meta={enrollments} prefix={PREFIX} hidePageSize />

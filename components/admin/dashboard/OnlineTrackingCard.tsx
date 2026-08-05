@@ -3,6 +3,7 @@ import Link from "next/link"
 import type { TrackingEnrollment } from "@/lib/tracking-server"
 import type { Paginated } from "@/lib/pagination"
 import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ListPagination } from "@/components/admin/ListPagination"
 
 const PREFIX = "track"
@@ -24,26 +25,27 @@ export function OnlineTrackingCard({ rows }: { rows: Paginated<TrackingEnrollmen
       {rows.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No enrollments yet</p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
-          <div className="grid grid-cols-[2fr_2fr_1fr_1fr] gap-3 border-b border-border bg-muted/50 px-3 py-2.5 text-[13px] font-semibold text-muted-foreground">
-            <div>Learner</div>
-            <div>Course</div>
-            <div>Module</div>
-            <div>Assignment</div>
-          </div>
-          <div className="max-h-[320px] overflow-y-auto">
-            {rows.rows.map((r) => (
-              <div
-                key={r.enrollmentId}
-                className="grid grid-cols-[2fr_2fr_1fr_1fr] items-center gap-3 border-b border-border px-3 py-3 text-sm last:border-b-0"
-              >
-                <div className="min-w-0 truncate font-medium">{r.learnerName}</div>
-                <div className="min-w-0 truncate text-muted-foreground">{r.courseTitle}</div>
-                <div className="text-muted-foreground">{r.modulePct}%</div>
-                <div className="text-muted-foreground">{r.assignmentPct}%</div>
-              </div>
-            ))}
-          </div>
+        <div className="max-h-[320px] overflow-y-auto rounded-xl border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow className="sticky top-0 z-10 bg-muted/50 hover:bg-muted/50">
+                <TableHead>Learner</TableHead>
+                <TableHead>Course</TableHead>
+                <TableHead>Module</TableHead>
+                <TableHead>Assignment</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.rows.map((r) => (
+                <TableRow key={r.enrollmentId}>
+                  <TableCell className="max-w-0 truncate font-medium">{r.learnerName}</TableCell>
+                  <TableCell className="max-w-0 truncate text-muted-foreground">{r.courseTitle}</TableCell>
+                  <TableCell className="text-muted-foreground">{r.modulePct}%</TableCell>
+                  <TableCell className="text-muted-foreground">{r.assignmentPct}%</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
       <ListPagination meta={rows} prefix={PREFIX} hidePageSize />
