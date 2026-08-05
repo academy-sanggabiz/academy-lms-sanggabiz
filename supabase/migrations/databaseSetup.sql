@@ -1661,49 +1661,12 @@ create policy "admins can delete lesson content" on storage.objects
   for delete to authenticated
   using (bucket_id = 'lesson-content' and public.is_admin());
 
--- Study-case file_upload question answers: private (not public-read, unlike
--- the buckets above) since quiz submissions are learner-private data. Admins
--- get global is_admin() access (bucket write policies stay is_admin()-gated,
--- not owner-scoped, matching course-thumbnails/certificate-assets/
--- lesson-content above). Learners are restricted to their own path prefix,
--- mirroring "learners can upload own certificate pdfs" above. Path
--- convention: {learner_id}/{attempt_id}/{question_id}.pdf
-insert into storage.buckets (id, name, public)
-values ('quiz-submissions', 'quiz-submissions', false)
-on conflict (id) do nothing;
-
-create policy "admins can read quiz submissions" on storage.objects
-  for select to authenticated
-  using (bucket_id = 'quiz-submissions' and public.is_admin());
-
-create policy "admins can delete quiz submissions" on storage.objects
-  for delete to authenticated
-  using (bucket_id = 'quiz-submissions' and public.is_admin());
-
-create policy "learners can upload own quiz submissions" on storage.objects
-  for insert to authenticated
-  with check (
-    bucket_id = 'quiz-submissions'
-    and (storage.foldername(name))[1] = (select auth.uid())::text
-  );
-
-create policy "learners can read own quiz submissions" on storage.objects
-  for select to authenticated
-  using (
-    bucket_id = 'quiz-submissions'
-    and (storage.foldername(name))[1] = (select auth.uid())::text
-  );
-
-create policy "learners can update own quiz submissions" on storage.objects
-  for update to authenticated
-  using (
-    bucket_id = 'quiz-submissions'
-    and (storage.foldername(name))[1] = (select auth.uid())::text
-  )
-  with check (
-    bucket_id = 'quiz-submissions'
-    and (storage.foldername(name))[1] = (select auth.uid())::text
-  );
+-- Note: file_upload quiz questions used to have learners upload a PDF into a
+-- private `quiz-submissions` bucket here; they now submit a plain link
+-- instead (quiz_responses.response is an untyped jsonb string, so no schema
+-- change was needed), so that bucket + its policies are no longer created.
+-- See supabase/migrations/20260804010000_drop_quiz_submissions_bucket.sql for
+-- the incremental removal from an already-provisioned database.
 
 -- =============================================================================
 -- 11. Public landing page content (superadmin-authored)
