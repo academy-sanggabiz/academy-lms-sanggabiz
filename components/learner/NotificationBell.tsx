@@ -8,6 +8,7 @@ import { Bell } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -15,19 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import type { Notification } from "@/lib/notifications-server"
 import { markNotificationsReadAction } from "@/app/learner/notifications-actions"
-
-/** "just now" / "3h ago" / "2d ago" -- enough precision for a notification list. */
-function relativeTime(iso: string): string {
-  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
-  if (seconds < 60) return "just now"
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
-  return new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
-}
+import { relativeTime } from "@/lib/notification-format"
 
 export function NotificationBell({
   items,
@@ -66,9 +55,11 @@ export function NotificationBell({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel className="px-2 py-1.5 text-sm font-semibold">
-          Notifications
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="px-2 py-1.5 text-sm font-semibold">
+            Notifications
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
 
         {items.length === 0 ? (
@@ -104,6 +95,18 @@ export function NotificationBell({
               </DropdownMenuItem>
             )
           })
+        )}
+
+        {items.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="justify-center text-sm font-medium text-ring"
+              render={<Link href="/learner/notifications" />}
+            >
+              See all notifications
+            </DropdownMenuItem>
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

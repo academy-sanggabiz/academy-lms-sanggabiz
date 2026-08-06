@@ -19,7 +19,7 @@ export default async function LearnerLayout({ children }: { children: React.Reac
 
   const [{ data: profile }, notifications] = await Promise.all([
     supabase.from("profiles").select("full_name, email").eq("id", claims?.sub ?? "").single(),
-    getNotifications(),
+    getNotifications(5),
   ])
 
   const name = profile?.full_name || profile?.email || "there"
