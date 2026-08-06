@@ -32,7 +32,7 @@ export type CourseDraftAction =
   | { type: "patchResource"; id: string; patch: Partial<DraftResource> }
   | { type: "deleteResource"; id: string }
   | { type: "patchQuiz"; lessonId: string; patch: Partial<Omit<DraftQuiz, "id" | "questions">> }
-  | { type: "addQuestion"; lessonId: string; questionType: AuthorableQuestionType }
+  | { type: "addQuestion"; lessonId: string; questionType: AuthorableQuestionType; isAssessment?: boolean }
   | { type: "patchQuestion"; id: string; patch: Partial<DraftQuestion> }
   | { type: "deleteQuestion"; id: string }
   | { type: "addOption"; questionId: string; option?: Partial<Omit<DraftOption, "id">> }
@@ -225,7 +225,6 @@ function reducer(state: State, action: CourseDraftAction): State {
         id: newId(),
         type: action.questionType,
         prompt: "",
-        points: 1,
         allow_multiple: false,
         case_sensitive: false,
         options:
@@ -245,7 +244,7 @@ function reducer(state: State, action: CourseDraftAction): State {
             pass_score: 70,
             max_attempts: null,
             shuffle: false,
-            is_assessment: false,
+            is_assessment: action.isAssessment ?? false,
             questions: [],
           }
           return { ...l, quiz: { ...quiz, questions: [...quiz.questions, question] } }
@@ -262,10 +261,13 @@ function reducer(state: State, action: CourseDraftAction): State {
     case "deleteQuestion":
       return {
         ...state,
-        draft: mapQuizzes(draft, (quiz) => ({
-          ...quiz,
-          questions: quiz.questions.filter((q) => q.id !== action.id),
-        })),
+        draft: mapLessons(draft, (lesson) => {
+          if (!lesson.quiz) return lesson
+          const questions = lesson.quiz.questions.filter((q) => q.id !== action.id)
+          // Deleting a quiz's last question drops the quiz entirely so its mode
+          // (normal vs. study case) can be re-chosen from the empty-quiz state.
+          return { ...lesson, quiz: questions.length === 0 ? null : { ...lesson.quiz, questions } }
+        }),
       }
 
     case "addOption":

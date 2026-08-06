@@ -20,16 +20,37 @@ import { cn } from "@/lib/utils"
 import { RichTextEditor } from "../RichTextEditor"
 import type { AuthorableQuestionType } from "@/lib/courses-admin"
 import type { DraftOption, DraftQuestion, DraftQuiz } from "@/lib/course-draft"
-import { REGULAR_QUIZ_MAX_ATTEMPTS } from "@/lib/courses"
+import { QUESTION_TYPE_POINTS, REGULAR_QUIZ_MAX_ATTEMPTS } from "@/lib/courses"
+import { ASSESSMENT_GRADE_WEIGHT } from "@/lib/course-grade"
 import { useCourseDraft } from "../CourseDraftContext"
+import { useQuestionQuizIssue } from "../QuizIssuesContext"
 
+// Only auto-gradable types are offered for a normal quiz. Essay/file_upload
+// only exist inside a study case (see "Add Study Case" below) -- a normal
+// quiz must always resolve to an immediate score, never `pending_review`.
 const QUESTION_TYPES: { value: AuthorableQuestionType; label: string }[] = [
   { value: "multiple_choice", label: "Multiple Choice" },
   { value: "true_false", label: "True / False" },
   { value: "short_answer", label: "Short Answer" },
-  { value: "essay", label: "Long Answer" },
-  { value: "file_upload", label: "File Upload" },
 ]
+
+/** Both map to Essay in the UI; the stored `type` is what selects the answer widget. */
+const ANSWER_FORMATS: { value: "essay" | "file_upload"; label: string; hint: string }[] = [
+  {
+    value: "essay",
+    label: "Written answer",
+    hint: "Learners type their answer in a rich-text box.",
+  },
+  {
+    value: "file_upload",
+    label: "File or link upload",
+    hint: "Learners submit a link to their file (e.g. Google Drive) instead of typing.",
+  },
+]
+
+function isEssayQuestion(type: AuthorableQuestionType): type is "essay" | "file_upload" {
+  return type === "essay" || type === "file_upload"
+}
 
 export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: DraftQuiz | null }) {
   const { dispatch } = useCourseDraft()
@@ -47,7 +68,12 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: DraftQu
     setPickerOpen(false)
   }
 
+  function handleAddStudyCase() {
+    dispatch({ type: "addQuestion", lessonId, questionType: "essay", isAssessment: true })
+  }
+
   const questions = quiz?.questions ?? []
+  const isAssessment = quiz?.is_assessment ?? false
 
   return (
     <div>
@@ -55,7 +81,7 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: DraftQu
 
       {questions.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-          No questions yet — click Add Question to build the quiz.
+          No questions yet — add a question, or make this a study case.
         </p>
       ) : (
         <div className="flex flex-col gap-2.5">
@@ -65,10 +91,20 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: DraftQu
         </div>
       )}
 
-      <Button type="button" variant="outline" size="sm" className="mt-3" onClick={openPicker}>
-        <Plus className="size-3.5" />
-        Add Question
-      </Button>
+      {!isAssessment && (
+        <div className="mt-3 flex gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={openPicker}>
+            <Plus className="size-3.5" />
+            Add Question
+          </Button>
+          {questions.length === 0 && (
+            <Button type="button" variant="outline" size="sm" onClick={handleAddStudyCase}>
+              <Plus className="size-3.5" />
+              Add Study Case
+            </Button>
+          )}
+        </div>
+      )}
 
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogContent className="max-w-[420px]">
@@ -154,18 +190,22 @@ function QuizSettings({ lessonId, quiz }: { lessonId: string; quiz: DraftQuiz })
         <Label htmlFor={`shuffle-${quiz.id}`}>Shuffle Questions</Label>
       </div>
       <div className="flex w-full items-start gap-2 border-t border-border pt-3">
-        <Switch
-          id={`assessment-${quiz.id}`}
-          checked={quiz.is_assessment}
-          onCheckedChange={(checked) => save({ is_assessment: checked })}
-        />
-        <div className="space-y-0.5">
-          <Label htmlFor={`assessment-${quiz.id}`}>Study-case assessment</Label>
-          <p className="text-xs text-muted-foreground">
-            No start gate or timer; learners save drafts and submit when done. Grade manually in
-            Admin › Grading.
-          </p>
-        </div>
+        <span
+          className={cn(
+            "mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
+            quiz.is_assessment
+              ? "bg-secondary text-secondary-foreground"
+              : "bg-muted text-muted-foreground"
+          )}
+        >
+          {quiz.is_assessment ? "Study Case" : "Normal Quiz"}
+        </span>
+        <p className="text-xs text-muted-foreground">
+          {quiz.is_assessment
+            ? `No start gate or timer; learners save drafts and submit when done. Grade manually in Admin › Grading. Counts ${ASSESSMENT_GRADE_WEIGHT}× a regular quiz toward the final course grade.`
+            : "Auto-graded and scored instantly on submit."}{" "}
+          To switch modes, delete all questions in this quiz first.
+        </p>
       </div>
     </div>
   )
@@ -175,7 +215,7 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
   const { dispatch } = useCourseDraft()
   const [expanded, setExpanded] = useState(false)
   const [prompt, setPrompt] = useState(question.prompt)
-  const [points, setPoints] = useState(String(question.points))
+  const points = QUESTION_TYPE_POINTS[question.type]
 
   function save(patch: Partial<DraftQuestion>) {
     dispatch({ type: "patchQuestion", id: question.id, patch })
@@ -185,14 +225,29 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
     dispatch({ type: "deleteQuestion", id: question.id })
   }
 
-  const typeLabel = QUESTION_TYPES.find((t) => t.value === question.type)?.label ?? question.type
+  // file_upload has no QUESTION_TYPES entry any more -- it reads as "Essay".
+  const typeLabel = isEssayQuestion(question.type)
+    ? "Essay"
+    : (QUESTION_TYPES.find((t) => t.value === question.type)?.label ?? question.type)
+
+  const issue = useQuestionQuizIssue(question.id)
+  // Render-time adjustment rather than an effect: a failed Save must open the
+  // offending question immediately, without a second paint.
+  const [seenIssue, setSeenIssue] = useState(issue)
+  if (issue !== seenIssue) {
+    setSeenIssue(issue)
+    if (issue) setExpanded(true)
+  }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className={cn("overflow-hidden rounded-lg border border-border", issue && "border-destructive")}>
       <div className="flex items-center gap-2.5 bg-muted/30 px-3 py-2">
         <span className="text-sm font-semibold whitespace-nowrap">Question {index + 1}</span>
         <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-semibold text-secondary-foreground">
           {typeLabel}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {points} {points === 1 ? "pt" : "pts"}
         </span>
         <div className="flex-1" />
         <Button type="button" variant="ghost" size="icon-sm" onClick={handleDelete}>
@@ -205,6 +260,11 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
 
       {expanded && (
         <div className="space-y-3.5 p-3.5">
+          {issue && (
+            <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+              {issue.message}
+            </p>
+          )}
           <div className="space-y-1.5">
             <Label>Prompt</Label>
             <RichTextEditor
@@ -216,18 +276,6 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
               }}
             />
           </div>
-          <div className="w-24 space-y-1.5">
-            <Label htmlFor={`question-points-${question.id}`}>Points</Label>
-            <Input
-              id={`question-points-${question.id}`}
-              type="number"
-              min={0}
-              value={points}
-              onChange={(e) => setPoints(e.target.value)}
-              onBlur={() => save({ points: Number(points) || 0 })}
-            />
-          </div>
-
           {question.type === "multiple_choice" && (
             <>
               <div className="flex items-center gap-2">
@@ -259,20 +307,33 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
                 <Label htmlFor={`case-sensitive-${question.id}`}>Case sensitive</Label>
               </div>
               <OptionsEditor questionId={question.id} options={question.options} variant="keyword" />
+              {question.options.every((o) => !o.is_correct) && (
+                <p className="text-xs text-destructive">
+                  Add at least one accepted answer — a normal quiz must be auto-graded.
+                </p>
+              )}
             </>
           )}
 
-          {question.type === "essay" && (
-            <p className="text-xs text-muted-foreground">
-              Learners answer in free text; these responses aren&apos;t auto-graded.
-            </p>
-          )}
-
-          {question.type === "file_upload" && (
-            <p className="text-xs text-muted-foreground">
-              Learners submit a link to their file (e.g. Google Drive) instead of typing an answer; these
-              responses aren&apos;t auto-graded.
-            </p>
+          {isEssayQuestion(question.type) && (
+            <div className="space-y-2">
+              <Label>Answer format</Label>
+              <RadioGroup
+                value={question.type}
+                onValueChange={(value) => save({ type: value as AuthorableQuestionType })}
+              >
+                {ANSWER_FORMATS.map((f) => (
+                  <label key={f.value} className="flex items-start gap-2.5 text-sm">
+                    <RadioGroupItem value={f.value} className="mt-0.5" />
+                    <span>
+                      {f.label}
+                      <span className="block text-xs text-muted-foreground">{f.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </RadioGroup>
+              <p className="text-xs text-muted-foreground">These responses aren&apos;t auto-graded.</p>
+            </div>
           )}
         </div>
       )}

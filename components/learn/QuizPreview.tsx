@@ -71,7 +71,15 @@ export function QuizPreview({ quiz }: { quiz: AdminQuiz }) {
             )}
 
             {question.type === "essay" && (
-              <p className="mt-4 text-sm text-muted-foreground">Long answer response — graded manually, no answer key.</p>
+              <p className="mt-4 text-sm text-muted-foreground">
+                Essay — written answer, graded manually, no answer key.
+              </p>
+            )}
+
+            {question.type === "file_upload" && (
+              <p className="mt-4 text-sm text-muted-foreground">
+                Essay — file or link upload, graded manually, no answer key.
+              </p>
             )}
           </div>
         )

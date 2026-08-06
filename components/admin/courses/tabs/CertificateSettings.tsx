@@ -40,6 +40,7 @@ export function CertificateSettings() {
   const [signerName, setSignerName] = useState(settings.signer_name ?? "")
   const [signerTitle, setSignerTitle] = useState(settings.signer_title ?? "")
   const [additionalText, setAdditionalText] = useState(settings.additional_text ?? "")
+  const [passingGrade, setPassingGrade] = useState(String(draft.passingGrade))
 
   function save(patch: Partial<CourseCertificateSettings>) {
     dispatch({ type: "setField", patch: { certificate: { ...settings, ...patch } } })
@@ -56,6 +57,28 @@ export function CertificateSettings() {
           </div>
         </div>
         <Switch checked={settings.enabled} onCheckedChange={(checked) => save({ enabled: checked })} />
+      </div>
+
+      <div className="max-w-sm space-y-1.5">
+        <Label htmlFor="cert-passing-grade">Passing Grade (%)</Label>
+        <Input
+          id="cert-passing-grade"
+          type="number"
+          min={0}
+          max={100}
+          value={passingGrade}
+          onChange={(e) => setPassingGrade(e.target.value)}
+          onBlur={() =>
+            dispatch({
+              type: "setField",
+              patch: { passingGrade: Math.min(100, Math.max(0, Number(passingGrade) || 0)) },
+            })
+          }
+        />
+        <p className="text-xs text-muted-foreground">
+          Minimum weighted course grade a learner must reach, on top of passing every quiz
+          individually, before completion/certificate is granted.
+        </p>
       </div>
 
       {settings.enabled && (

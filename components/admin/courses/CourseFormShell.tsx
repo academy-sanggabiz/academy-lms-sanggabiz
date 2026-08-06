@@ -23,7 +23,14 @@ import type { AdminCourseDetail, CoursePrerequisite } from "@/lib/courses-admin"
 import type { CourseRosterEntry } from "@/lib/learners-admin"
 import type { Paginated } from "@/lib/pagination"
 import { saveCourseDraftAction } from "@/app/admin/courses/actions"
-import { countDestructiveChanges, courseDraftSchema, type CourseDraft } from "@/lib/course-draft"
+import {
+  countDestructiveChanges,
+  courseDraftSchema,
+  describeQuizIssue,
+  validateQuizzes,
+  type CourseDraft,
+  type QuizIssue,
+} from "@/lib/course-draft"
 
 import { CourseDraftProvider, useCourseDraft } from "./CourseDraftContext"
 import { RestoreDraftDialog } from "./RestoreDraftDialog"
@@ -55,6 +62,8 @@ function CourseFormShellInner({ course, instructors, availableCoursesForPrerequi
   const [isPending, startTransition] = useTransition()
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)
   const [basicInfoErrors, setBasicInfoErrors] = useState<Record<string, string>>({})
+  const [quizIssues, setQuizIssues] = useState<QuizIssue[]>([])
+  const [tab, setTab] = useState("basic")
   const [pendingSave, setPendingSave] = useState<{
     status: "draft" | "published"
     data: CourseDraft
@@ -111,10 +120,27 @@ function CourseFormShellInner({ course, instructors, availableCoursesForPrerequi
         if (key && !fieldErrors[key]) fieldErrors[key] = issue.message
       }
       setBasicInfoErrors(fieldErrors)
+      setTab("basic")
       toast.error("Please fix the highlighted fields")
       return
     }
     setBasicInfoErrors({})
+
+    // Blocks Save to Draft as well as Publish -- a question with no correct
+    // answer is broken either way, and the localStorage autosave means
+    // refusing the save loses nothing.
+    const issues = validateQuizzes(parsed.data)
+    if (issues.length > 0) {
+      setQuizIssues(issues)
+      setTab("lessons")
+      toast.error(
+        issues.length === 1
+          ? describeQuizIssue(issues[0])
+          : `${describeQuizIssue(issues[0])} (+${issues.length - 1} more)`
+      )
+      return
+    }
+    setQuizIssues([])
 
     const destructive = countDestructiveChanges(parsed.data, baseline)
     if (destructive.lessons > 0 || destructive.questions > 0) {
@@ -209,7 +235,7 @@ function CourseFormShellInner({ course, instructors, availableCoursesForPrerequi
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6">
-        <Tabs defaultValue="basic">
+        <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="lessons">Lessons</TabsTrigger>
@@ -223,7 +249,7 @@ function CourseFormShellInner({ course, instructors, availableCoursesForPrerequi
           </TabsContent>
 
           <TabsContent value="lessons">
-            <LessonsTab />
+            <LessonsTab quizIssues={quizIssues} />
           </TabsContent>
 
           <TabsContent value="settings">

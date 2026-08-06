@@ -23,11 +23,12 @@ export type DraftOption = {
   is_correct: boolean
 }
 
+// No `points`: points are derived from `type` (see QUESTION_TYPE_POINTS in
+// lib/courses.ts) rather than authored -- the save layer assigns them.
 export type DraftQuestion = {
   id: string
   type: AuthorableQuestionType
   prompt: string
-  points: number
   allow_multiple: boolean
   case_sensitive: boolean
   options: DraftOption[]
@@ -41,6 +42,8 @@ export type DraftQuiz = {
   max_attempts: number | null
   shuffle: boolean
   is_assessment: boolean
+  // No `weight`: a quiz's weight in the final course grade is derived from
+  // is_assessment (see quizGradeWeight in lib/course-grade.ts), not authored.
   questions: DraftQuestion[]
 }
 
@@ -79,6 +82,8 @@ export type CourseDraft = {
   enrollmentMode: "free" | "paid"
   price: number
   isPrivate: boolean
+  // Minimum weighted final course grade for certificate eligibility.
+  passingGrade: number
   // A real courses column, previously written outside the form by
   // setRequirePrerequisites -- folded into the same batch save now.
   requirePrerequisites: boolean
@@ -147,6 +152,111 @@ export function countDestructiveChanges(
   }
 }
 
+/**
+ * A quiz question that can't be graded as authored. Deliberately NOT expressed
+ * as a zod .superRefine on questionSchema: CourseFormShell flattens zod issues
+ * to issue.path[0], so a sections[i].lessons[j].quiz.questions[k] path would
+ * collapse to the key "sections" and render nowhere. A separate pass keeps the
+ * message locatable (which lesson, which question number).
+ */
+export type QuizIssue = {
+  lessonId: string
+  questionId: string
+  questionIndex: number
+  lessonTitle: string
+  message: string
+}
+
+function hasText(html: string): boolean {
+  return html.replace(/<[^>]*>/g, "").trim().length > 0
+}
+
+/**
+ * Semantic validation of every quiz in a draft. The rules mirror what
+ * public.grade_attempt() actually does: an MC/TF question with no is_correct
+ * option is marked WRONG for every learner while still counting its points in
+ * the denominator, so saving one is never intentional.
+ *
+ * A quiz is either a normal quiz (auto-graded only, always resolves to an
+ * immediate score) or a study case (exactly one essay/file_upload question,
+ * always manually graded) -- never a mix. That split is what lets
+ * grade_attempt()'s pending_review path stay a pure legacy/backstop branch
+ * for new content: short_answer with no accepted answers used to be the
+ * documented route into manual grading inside a normal quiz (see
+ * isManuallyGraded in lib/grading-server.ts) but is now an error here, and a
+ * normal quiz can no longer contain essay/file_upload at all -- QuizEditor's
+ * "Add Question" picker doesn't offer them; only "Add Study Case" does.
+ *
+ * Shared by CourseFormShell (blocks Save) and saveCourseDraft (backstop
+ * against a stale client), so the two can't drift.
+ */
+export function validateQuizzes(draft: CourseDraft): QuizIssue[] {
+  const issues: QuizIssue[] = []
+
+  for (const section of draft.sections) {
+    for (const lesson of section.lessons) {
+      const lessonTitle = lesson.title.trim() || "Untitled lesson"
+      const quiz = lesson.quiz
+      if (!quiz) continue
+
+      quiz.questions.forEach((question, index) => {
+        const add = (message: string) =>
+          issues.push({
+            lessonId: lesson.id,
+            questionId: question.id,
+            questionIndex: index,
+            lessonTitle,
+            message,
+          })
+
+        if (!hasText(question.prompt)) {
+          add("This question has no prompt.")
+          return
+        }
+
+        const isEssay = question.type === "essay" || question.type === "file_upload"
+
+        if (quiz.is_assessment) {
+          if (index > 0) {
+            add("A study case can only have one question.")
+          } else if (!isEssay) {
+            add("A study case must be an essay or file upload question.")
+          }
+          return
+        }
+
+        if (isEssay) {
+          add("Essay questions belong in a study case, not a normal quiz.")
+          return
+        }
+
+        const correct = question.options.filter((o) => o.is_correct)
+
+        if (question.type === "multiple_choice") {
+          if (question.options.length < 2) {
+            add("Multiple choice needs at least two options.")
+          } else if (question.options.some((o) => !o.text.trim())) {
+            add("Every option needs text.")
+          } else if (correct.length === 0) {
+            add("No correct answer selected.")
+          }
+        } else if (question.type === "true_false" && correct.length === 0) {
+          add("No correct answer selected.")
+        } else if (question.type === "short_answer" && correct.length === 0) {
+          add("Short answer needs at least one accepted answer.")
+        }
+      })
+    }
+  }
+
+  return issues
+}
+
+/** First issue phrased for a toast, e.g. `Question 2 in "Intro" — No correct answer selected.` */
+export function describeQuizIssue(issue: QuizIssue): string {
+  return `Question ${issue.questionIndex + 1} in "${issue.lessonTitle}" — ${issue.message}`
+}
+
 export function draftFromDetail(course: AdminCourseDetail): CourseDraft {
   return {
     title: course.title,
@@ -158,6 +268,7 @@ export function draftFromDetail(course: AdminCourseDetail): CourseDraft {
     enrollmentMode: course.price > 0 ? "paid" : "free",
     price: course.price ?? 0,
     isPrivate: course.is_private,
+    passingGrade: course.passing_grade,
     requirePrerequisites: course.require_prerequisites,
     prerequisiteIds: course.prerequisites.map((p) => p.id),
     certificate: course.certificate_settings,
@@ -195,7 +306,6 @@ export function draftFromDetail(course: AdminCourseDetail): CourseDraft {
                   id: q.id,
                   type: q.type as AuthorableQuestionType,
                   prompt: q.prompt,
-                  points: q.points,
                   allow_multiple: q.allow_multiple,
                   case_sensitive: q.case_sensitive,
                   options: q.options.map((o) => ({
@@ -239,7 +349,6 @@ const questionSchema = z.object({
   id: z.string().uuid(),
   type: authorableQuestionType,
   prompt: z.string().max(50_000),
-  points: z.number().min(0),
   allow_multiple: z.boolean(),
   case_sensitive: z.boolean(),
   options: z.array(optionSchema).max(50),
@@ -304,6 +413,7 @@ export const courseDraftSchema = z.object({
   enrollmentMode: z.enum(["free", "paid"]),
   price: z.number().min(0, "Price can't be negative"),
   isPrivate: z.boolean(),
+  passingGrade: z.number().int().min(0).max(100),
   requirePrerequisites: z.boolean(),
   prerequisiteIds: z.array(z.string().uuid()).max(50),
   certificate: certificateSettingsSchema.nullable(),

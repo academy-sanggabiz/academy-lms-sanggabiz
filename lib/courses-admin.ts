@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server"
 import { getAdminProfile } from "@/lib/auth/require-admin"
 import { paginated, rangeFor, type ListParams, type Paginated } from "@/lib/pagination"
-import { linesToArray, type CourseDraft } from "@/lib/course-draft"
+import { describeQuizIssue, linesToArray, validateQuizzes, type CourseDraft } from "@/lib/course-draft"
+import { QUESTION_TYPE_POINTS } from "@/lib/courses"
 import type {
+  AuthorableQuestionType,
   Course,
   CourseDetail,
   CourseSection,
@@ -26,12 +28,7 @@ export type AdminQuestionOption = QuestionOption & { is_correct: boolean }
 export type AdminQuestion = Omit<Question, "options"> & { options: AdminQuestionOption[] }
 export type AdminQuiz = Omit<Quiz, "questions"> & { questions: AdminQuestion[] }
 
-export type AuthorableQuestionType =
-  | "multiple_choice"
-  | "true_false"
-  | "short_answer"
-  | "essay"
-  | "file_upload"
+export type { AuthorableQuestionType }
 
 export type CoursePrerequisite = { id: string; title: string }
 
@@ -472,6 +469,14 @@ export async function saveCourseDraft(
   if (draft.prerequisiteIds.includes(courseId)) {
     return { error: "A course cannot be its own prerequisite" }
   }
+
+  // Backstop for the same check CourseFormShell runs before submitting -- a
+  // stale client must not be able to write a question grade_attempt() would
+  // mark wrong for everyone.
+  const quizIssues = validateQuizzes(draft)
+  if (quizIssues.length > 0) {
+    return { error: describeQuizIssue(quizIssues[0]) }
+  }
   const prerequisiteIds = Array.from(new Set(draft.prerequisiteIds))
 
   const supabase = await createClient()
@@ -638,12 +643,13 @@ export async function saveCourseDraft(
         lesson.quiz.questions.forEach((question, questionIndex) => {
           seenQuestionIds.add(question.id)
           const existingQuestion = questionsById.get(question.id)
+          const points = QUESTION_TYPE_POINTS[question.type]
           if (
             !existingQuestion ||
             existingQuestion.quiz_id !== quizId ||
             existingQuestion.type !== question.type ||
             existingQuestion.prompt !== question.prompt ||
-            existingQuestion.points !== question.points ||
+            existingQuestion.points !== points ||
             existingQuestion.allow_multiple !== question.allow_multiple ||
             existingQuestion.case_sensitive !== question.case_sensitive ||
             existingQuestion.position !== questionIndex
@@ -653,7 +659,7 @@ export async function saveCourseDraft(
               quiz_id: quizId,
               type: question.type,
               prompt: question.prompt,
-              points: question.points,
+              points,
               allow_multiple: question.allow_multiple,
               case_sensitive: question.case_sensitive,
               position: questionIndex,
@@ -727,6 +733,7 @@ export async function saveCourseDraft(
       level: draft.level || null,
       status,
       is_private: draft.isPrivate,
+      passing_grade: draft.passingGrade,
       who_for: linesToArray(draft.audienceText),
       requirements: linesToArray(draft.requirementsText),
       require_prerequisites: draft.requirePrerequisites,

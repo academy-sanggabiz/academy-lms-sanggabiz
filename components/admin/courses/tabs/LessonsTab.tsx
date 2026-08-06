@@ -41,7 +41,14 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import type { LessonContentType } from "@/lib/courses"
-import { newId, stripEmptyHtml, type DraftLesson, type DraftResource, type DraftSection } from "@/lib/course-draft"
+import {
+  newId,
+  stripEmptyHtml,
+  type DraftLesson,
+  type DraftResource,
+  type DraftSection,
+  type QuizIssue,
+} from "@/lib/course-draft"
 import {
   ChevronDown,
   Clock,
@@ -58,6 +65,7 @@ import {
 } from "lucide-react"
 
 import { useCourseDraft } from "../CourseDraftContext"
+import { QuizIssuesProvider, useLessonQuizIssues } from "../QuizIssuesContext"
 import { QuizEditor } from "./QuizEditor"
 import { RichTextEditor } from "../RichTextEditor"
 
@@ -76,12 +84,27 @@ const TYPE_ICON: Record<LessonContentType, React.ComponentType<{ className?: str
   ppt: Presentation,
 }
 
-export function LessonsTab() {
+export function LessonsTab({ quizIssues = [] }: { quizIssues?: QuizIssue[] }) {
   const { draft, dispatch } = useCourseDraft()
   const sections = draft.sections
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedSectionId, setExpandedSectionId] = useState<string | null>(sections[0]?.id ?? null)
   const [activeId, setActiveId] = useState<string | null>(null)
+
+  // A blocked Save lands the admin on this tab; open straight to the first
+  // offending lesson rather than making them hunt through collapsed modules.
+  // Adjusted during render (not in an effect) so the tab paints already open
+  // -- the sanctioned pattern for reacting to a changed prop.
+  const firstIssueLessonId = quizIssues[0]?.lessonId ?? null
+  const [seenIssueLessonId, setSeenIssueLessonId] = useState(firstIssueLessonId)
+  if (firstIssueLessonId !== seenIssueLessonId) {
+    setSeenIssueLessonId(firstIssueLessonId)
+    if (firstIssueLessonId) {
+      setExpandedId(firstIssueLessonId)
+      const section = sections.find((s) => s.lessons.some((l) => l.id === firstIssueLessonId))
+      if (section) setExpandedSectionId(section.id)
+    }
+  }
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
@@ -123,7 +146,7 @@ export function LessonsTab() {
     : null
 
   return (
-    <div>
+    <QuizIssuesProvider issues={quizIssues}>
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-[17px] font-bold">Course Lessons</h3>
         <Button onClick={handleAddSection} className="bg-brand-gradient text-white hover:brightness-105">
@@ -168,7 +191,7 @@ export function LessonsTab() {
           </DragOverlay>
         </DndContext>
       )}
-    </div>
+    </QuizIssuesProvider>
   )
 }
 
@@ -352,12 +375,22 @@ const LessonCard = memo(function LessonCard({
     id: lesson.id,
   })
 
+  const issues = useLessonQuizIssues(lesson.id)
+  // Same render-time adjustment as LessonsTab above: a failed Save must reveal
+  // the Quiz sub-section holding the offending question.
+  const [seenIssues, setSeenIssues] = useState(issues)
+  if (issues !== seenIssues) {
+    setSeenIssues(issues)
+    if (issues.length > 0) setQuizOpen(true)
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
         "overflow-hidden rounded-xl border border-border bg-card",
+        issues.length > 0 && "border-destructive",
         isDragging && "opacity-50"
       )}
     >
@@ -385,6 +418,11 @@ const LessonCard = memo(function LessonCard({
         >
           {isComplete ? "Complete" : "Incomplete"}
         </span>
+        {issues.length > 0 && (
+          <span className="rounded-full bg-destructive/10 px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-destructive">
+            {issues.length} quiz {issues.length === 1 ? "issue" : "issues"}
+          </span>
+        )}
         {durationMin && (
           <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground">
             <Clock className="size-3" />

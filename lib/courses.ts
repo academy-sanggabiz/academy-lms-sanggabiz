@@ -18,6 +18,10 @@ export type Course = {
    * Orthogonal to `status` -- a private course can still be draft or published.
    */
   is_private: boolean
+  // Minimum weighted final course grade (see lib/course-grade.ts) a learner
+  // must reach, on top of completing every lesson and passing every quiz
+  // individually, before checkAndIssueCertificate() will issue one.
+  passing_grade: number
   created_by: string | null
   created_at: string
   updated_at: string
@@ -64,6 +68,28 @@ export type QuestionType =
   | "matching"
   | "fill_in_blank"
   | "file_upload"
+
+export type AuthorableQuestionType =
+  | "multiple_choice"
+  | "true_false"
+  | "short_answer"
+  | "essay"
+  | "file_upload"
+
+/**
+ * Points are standardized by question type rather than authored per-question:
+ * objective (auto-graded) questions are worth 1, manually-graded written work
+ * is worth 20 so a single essay/study-case question meaningfully outweighs a
+ * true/false inside a mixed quiz. A `Record` over the full union means adding
+ * a question type forces a compile error here until it's given a weight.
+ */
+export const QUESTION_TYPE_POINTS: Record<AuthorableQuestionType, number> = {
+  multiple_choice: 1,
+  true_false: 1,
+  short_answer: 1,
+  essay: 20,
+  file_upload: 20,
+}
 
 export type QuestionOption = {
   id: string
