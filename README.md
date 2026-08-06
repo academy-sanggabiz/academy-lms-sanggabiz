@@ -18,7 +18,7 @@
 
 ## 🎯 Overview
 
-Sanggabiz LMS (internally "EaseLMS") is a Learning Management System built with **Next.js 16**, **React 19**, **TypeScript**, and **Supabase**. It provides a complete flow for creating, managing, and delivering online courses — rich video/text/slides lessons, an interactive quiz & essay-assessment engine, per-lesson progress tracking, and automated completion certificates.
+Sanggabiz LMS is a Learning Management System built with **Next.js 16**, **React 19**, **TypeScript**, and **Supabase**. It provides a complete flow for creating, managing, and delivering online courses — rich video/text/slides lessons, an interactive quiz & essay-assessment engine, per-lesson progress tracking, and automated completion certificates.
 
 Access is organized around three roles: **learner**, **admin**, and **superadmin**, enforced end-to-end by Supabase Row-Level Security.
 
@@ -42,7 +42,7 @@ Access is organized around three roles: **learner**, **admin**, and **superadmin
 - ✅ Per-lesson completion checkbox with real-time progress bar
 - 📝 Interactive quizzes (multiple choice, short answer)
 - 🧠 Essay / study-case assessments with resumable server-side drafts
-- 🏆 Automated certificate issued on course completion
+- 🏆 Certificate issued automatically on course completion
 
 ### Assessment Engine
 - ❓ Multiple question types (multiple choice single/multi, short answer, essay)
@@ -54,7 +54,7 @@ Access is organized around three roles: **learner**, **admin**, and **superadmin
 - 📚 Full course management (create, edit, publish, delete)
 - 👥 Learner management — enroll / unenroll any learner
 - 💳 Purchase management (free-only records today; see [Roadmap](#️-roadmap))
-- 🎓 Automated PDF certificates with custom templates, signers, and types
+- 🎓 Certificate template management — design, signer, and type (see [Certificates](#certificates))
 - 🖊️ Editable public landing page (superadmin)
 - 🔐 Role-based access control enforced via Postgres RLS
 
