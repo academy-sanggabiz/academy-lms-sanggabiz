@@ -21,6 +21,10 @@ export function AssignmentColumnHeader({ column }: { column: GradingColumn }) {
               {column.sectionTitle} · {column.lessonTitle}
             </p>
             <p className="text-xs text-muted-foreground">Pass score: {column.passScore}%</p>
+            {/* Derived from is_assessment, not authored -- see quizGradeWeight. */}
+            <p className="text-xs text-muted-foreground">
+              Counts {column.weight}× toward the course grade
+            </p>
             {column.questionPrompts.length > 0 && (
               <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-muted-foreground">
                 {/* Already sliced server-side -- see COLUMN_PROMPT_PREVIEW in lib/grading-server.ts. */}

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/require-admin"
-import { isManuallyGraded } from "@/lib/grading-server"
+import { getCourseGradingMatrix, isManuallyGraded } from "@/lib/grading-server"
 
 // Spreadsheet apps (Excel/Sheets) treat a cell starting with = + - @ as a
 // formula, so learner-controlled text (essay answers, full_name) could
@@ -50,6 +50,9 @@ async function loadQuizForExport(
   return quiz
 }
 
+/** Fixed leading columns every row carries, before the per-question pairs. */
+const FIXED_HEADERS = ["Nama Peserta", "Learner ID", "Attempt ID", "Quiz Score"]
+
 async function buildQuizCsv(
   supabase: Awaited<ReturnType<typeof createClient>>,
   quizId: string,
@@ -58,7 +61,7 @@ async function buildQuizCsv(
   const { data: attempts, error } = await supabase
     .from("quiz_attempts")
     .select(
-      `id, learner_id, submitted_at,
+      `id, learner_id, submitted_at, score,
        learner:profiles!quiz_attempts_learner_id_fkey(full_name),
        responses:quiz_responses(question_id, response, points_awarded)`
     )
@@ -73,7 +76,12 @@ async function buildQuizCsv(
     const learner = Array.isArray(attempt.learner) ? attempt.learner[0] : attempt.learner
     const responseByQuestion = new Map((attempt.responses ?? []).map((r) => [r.question_id, r]))
 
-    const row = [learner?.full_name ?? "Unknown learner", attempt.learner_id, attempt.id]
+    const row = [
+      learner?.full_name ?? "Unknown learner",
+      attempt.learner_id,
+      attempt.id,
+      attempt.score !== null ? String(attempt.score) : "",
+    ]
     for (const q of manualQuestions) {
       const response = responseByQuestion.get(q.id)
       const answer = resolveAnswerCell(response?.response)
@@ -115,15 +123,14 @@ export async function GET(request: Request) {
 
     if (questionsError || !allQuestions) return new NextResponse("Could not load questions", { status: 500 })
 
+    // An all-objective quiz exports too -- it just has no per-question
+    // answer/score pairs, only the attempt-level Quiz Score column.
     const manualQuestions = allQuestions.filter((q) => isManuallyGraded(q.type, q.options))
-    if (manualQuestions.length === 0) {
-      return new NextResponse("This quiz has no manually-graded questions", { status: 400 })
-    }
 
     // Header cells encode each question's id in parentheses so the import path
     // can map "Q N Score (<question_id>)" columns back to the right question
     // without relying on column order staying stable.
-    const header = ["Nama Peserta", "Learner ID", "Attempt ID"]
+    const header = [...FIXED_HEADERS]
     manualQuestions.forEach((q, i) => header.push(`Q${i + 1} Answer (${q.id})`, `Q${i + 1} Score (${q.id})`))
 
     const rows = await buildQuizCsv(supabase, quizId, manualQuestions)
@@ -181,19 +188,16 @@ export async function GET(request: Request) {
     questionsByQuiz.set(question.quiz_id, bucket)
   }
 
-  const perQuizQuestions: { quizId: string; quizTitle: string; questions: QuestionRow[] }[] = []
-  for (const quiz of courseQuizzes) {
-    const manualQuestions = questionsByQuiz.get(quiz.id)
-    if (manualQuestions?.length) {
-      perQuizQuestions.push({ quizId: quiz.id, quizTitle: quiz.title, questions: manualQuestions })
-    }
-  }
+  // Every quiz gets rows, including all-objective ones -- they contribute no
+  // answer/score pairs, only the attempt-level Quiz Score column. Gating this
+  // on having manual questions is what made an auto-graded course export a 400.
+  const perQuizQuestions = courseQuizzes.map((quiz) => ({
+    quizId: quiz.id,
+    quizTitle: quiz.title,
+    questions: questionsByQuiz.get(quiz.id) ?? [],
+  }))
 
-  if (perQuizQuestions.length === 0) {
-    return new NextResponse("This course has no manually-graded questions", { status: 400 })
-  }
-
-  const header = ["Quiz", "Nama Peserta", "Learner ID", "Attempt ID"]
+  const header = ["Quiz", ...FIXED_HEADERS]
   const columnsByQuiz = new Map<string, { index: number; questionId: string; type: string }[]>()
   for (const { quizId: qId, questions } of perQuizQuestions) {
     const columns = questions.map((q, i) => {
@@ -203,6 +207,24 @@ export async function GET(request: Request) {
     })
     columnsByQuiz.set(qId, columns)
   }
+  const courseGradeIndex = header.length
+  header.push("Course Grade")
+
+  // One weighted grade per learner across every quiz in the course (not just
+  // the manually-graded ones above) -- same computeCourseGrade rollup the
+  // admin grading matrix shows, fetched unpaginated so every learner gets a
+  // row here regardless of matrix page size.
+  const gradeMatrix = await getCourseGradingMatrix(course.id, {
+    page: 1,
+    pageSize: 100_000,
+    q: "",
+    sort: "learner",
+    dir: "asc",
+    filters: {},
+  })
+  const courseGradeByLearner = new Map(
+    (gradeMatrix?.rows.rows ?? []).map((row) => [row.learnerId, row.courseGrade.grade])
+  )
 
   let csv = csvRow(header)
   for (const { quizId: qId, quizTitle } of perQuizQuestions) {
@@ -212,16 +234,19 @@ export async function GET(request: Request) {
       qId,
       columns.map((c) => ({ id: c.questionId, prompt: "", type: c.type, options: [] }))
     )
-    for (const [learnerName, learnerId, attemptId, ...cells] of rows) {
+    for (const [learnerName, learnerId, attemptId, quizScore, ...cells] of rows) {
       const fullRow = new Array(header.length).fill("")
       fullRow[0] = quizTitle
       fullRow[1] = learnerName
       fullRow[2] = learnerId
       fullRow[3] = attemptId
+      fullRow[4] = quizScore
       columns.forEach((col, i) => {
         fullRow[col.index] = cells[i * 2]
         fullRow[col.index + 1] = cells[i * 2 + 1]
       })
+      const grade = courseGradeByLearner.get(learnerId)
+      fullRow[courseGradeIndex] = grade !== undefined ? `${grade}%` : ""
       csv += csvRow(fullRow)
     }
   }

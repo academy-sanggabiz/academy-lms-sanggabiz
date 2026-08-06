@@ -8,6 +8,7 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ListToolbar } from "@/components/admin/ListToolbar"
 import { ListPagination } from "@/components/admin/ListPagination"
@@ -37,6 +38,8 @@ type GradingTableMeta = {
 
 const LEARNER_HEAD_CLASS = "sticky left-0 z-10 bg-muted whitespace-nowrap border-r border-border"
 const LEARNER_CELL_CLASS = "sticky left-0 z-10 bg-card whitespace-nowrap border-r border-border"
+const GRADE_HEAD_CLASS = "sticky right-0 z-10 bg-muted whitespace-nowrap border-l border-border"
+const GRADE_CELL_CLASS = "sticky right-0 z-10 bg-card whitespace-nowrap border-l border-border"
 
 const NO_EDITS: CellEdits = {}
 
@@ -175,6 +178,22 @@ export function GradingCourseMatrix({ matrix }: { matrix: CourseGradingMatrix })
         },
         meta: { headClassName: "min-w-[180px] align-middle font-normal", cellClassName: "" },
       })),
+      {
+        id: "courseGrade",
+        header: "Course Grade",
+        cell: ({ row }) => {
+          const { grade, pendingCount } = row.original.courseGrade
+          return (
+            <div className="flex flex-col">
+              <span className="font-semibold">{grade}%</span>
+              {pendingCount > 0 && (
+                <span className="text-xs text-muted-foreground">{pendingCount} pending</span>
+              )}
+            </div>
+          )
+        },
+        meta: { headClassName: GRADE_HEAD_CLASS, cellClassName: GRADE_CELL_CLASS },
+      },
     ]
     // Deliberately depends only on matrix.columns: pendingEdits/isSaving change on
     // every keystroke, and including them here would rebuild the whole column model (and
@@ -319,54 +338,55 @@ const CellView = memo(function CellView({
 }) {
   const hasAttempt = cell.status !== "no_attempt"
   const scoreText = cell.score !== null ? String(cell.score) : "–"
-  const gradable = (cell.status === "pending_review" || cell.status === "graded") && !!cell.attemptId
+
+  if (!hasAttempt) {
+    return <span className="text-xs text-muted-foreground">No submission</span>
+  }
 
   return (
     <div className="flex items-center gap-2">
-      {column.isAssessment ? (
-        !gradable ? (
-          <span className="text-xs text-muted-foreground">
-            {cell.status === "in_progress" ? "In progress" : "No submission"}
-          </span>
-        ) : cell.grades.length === 0 ? (
-          <span className="text-sm text-muted-foreground">{scoreText}</span>
-        ) : (
-          <div className="flex flex-col gap-1">
-            {cell.grades.map((grade, i) => {
-              const baseline = String(grade.pointsAwarded ?? 0)
-              const value = edits[grade.questionId] ?? baseline
-              return (
-                <div key={grade.questionId} className="flex items-center gap-1">
-                  {cell.grades.length > 1 && (
-                    <span className="w-6 shrink-0 text-xs font-medium text-muted-foreground">Q{i + 1}</span>
-                  )}
-                  <Input
-                    type="number"
-                    min={0}
-                    max={grade.points}
-                    disabled={disabled}
-                    value={value}
-                    onChange={(e) =>
-                      onScoreChange(
-                        cell.attemptId as string,
-                        grade.questionId,
-                        grade.points,
-                        baseline,
-                        e.target.value
-                      )
-                    }
-                    className="h-7 w-16"
-                  />
-                  <span className="text-xs text-muted-foreground">/ {grade.points}</span>
-                </div>
-              )
-            })}
-          </div>
-        )
-      ) : (
-        <span className="text-sm text-muted-foreground">{scoreText}</span>
-      )}
-      {column.isAssessment && hasAttempt && cell.attemptId && (
+      {/* The score always renders, for every quiz. It used to be an exclusive
+          either/or with the manual inputs, which meant a mixed quiz (objective
+          + essay) showed only the point boxes and never its actual score.
+          cell.grades is server-scoped to essay/file_upload/unkeyed
+          short_answer via isManuallyGraded -- a cell with none of those is
+          read-only, which is the whole auto-graded case. */}
+      <div className="flex flex-col gap-1">
+        <span
+          className={cn(
+            "text-sm",
+            cell.status === "pending_review" ? "text-muted-foreground italic" : "text-foreground"
+          )}
+          title={cell.status === "pending_review" ? "Provisional — auto-graded questions only" : undefined}
+        >
+          {scoreText}
+          {cell.status === "pending_review" && <span className="ml-1 text-xs">pending</span>}
+        </span>
+        {cell.grades.map((grade, i) => {
+          const baseline = String(grade.pointsAwarded ?? 0)
+          const value = edits[grade.questionId] ?? baseline
+          return (
+            <div key={grade.questionId} className="flex items-center gap-1">
+              {cell.grades.length > 1 && (
+                <span className="w-6 shrink-0 text-xs font-medium text-muted-foreground">Q{i + 1}</span>
+              )}
+              <Input
+                type="number"
+                min={0}
+                max={grade.points}
+                disabled={disabled}
+                value={value}
+                onChange={(e) =>
+                  onScoreChange(cell.attemptId as string, grade.questionId, grade.points, baseline, e.target.value)
+                }
+                className="h-7 w-16"
+              />
+              <span className="text-xs text-muted-foreground">/ {grade.points}</span>
+            </div>
+          )
+        })}
+      </div>
+      {cell.attemptId && (
         <button
           type="button"
           onClick={() =>

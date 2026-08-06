@@ -27,13 +27,13 @@ export default async function AdminGradingPage({
       <div className="mb-6">
         <h1 className="text-[30px] font-bold">Grading</h1>
         <p className="text-sm text-muted-foreground">
-          Review and score questions that can&apos;t be graded automatically
+          Every course with a quiz submission — auto-graded scores are read-only, essays take a grade
         </p>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatCard icon={ClipboardCheck} label="Attempts Pending Review" value={stats.attemptCount} />
-        <StatCard icon={ClipboardCheck} label="Courses Affected" value={stats.courseCount} />
+        <StatCard icon={ClipboardCheck} label="Courses with Submissions" value={stats.courseCount} />
       </div>
 
       <GradingCoursesClient page={page} />

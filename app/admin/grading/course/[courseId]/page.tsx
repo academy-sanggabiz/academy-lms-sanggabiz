@@ -35,7 +35,7 @@ export default async function AdminGradingCoursePage({
         <div>
           <h1 className="text-[30px] font-bold">{matrix.courseTitle}</h1>
           <p className="text-sm text-muted-foreground">
-            Essay and case study submissions (PDF) — click a cell to enter a grade
+            Every quiz score for this course — auto-graded cells are read-only, essay cells take a grade
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getAdminProfile } from "@/lib/auth/require-admin"
 import { escapeForOrFilter, paginated, rangeFor, type ListParams, type Paginated } from "@/lib/pagination"
 import { pickRepresentativeAttempt } from "@/lib/quiz-attempt-selection"
+import { computeCourseGrade, quizGradeWeight, type CourseGrade } from "@/lib/course-grade"
 
 /**
  * Whether a question type is left ungraded by public.grade_attempt() and
@@ -34,7 +35,9 @@ type AdminGradingCourseRow = {
 }
 
 /**
- * Level 1: courses with at least one attempt still awaiting manual grading.
+ * Level 1: courses with at least one submitted quiz attempt, graded or not.
+ * (It was pending-review-only, which hid every auto-graded course from the
+ * grading screens entirely -- see 20260807000000_grading_all_attempts.sql.)
  * RPC-backed -- see admin_grading_courses() (pagination migration), which
  * groups public.admin_pending_attempts in SQL and re-applies the same
  * ownership check listPendingAttempts used to do in JS (the query itself is
@@ -94,6 +97,8 @@ export type GradingColumn = {
   passScore: number
   /** false for regular auto-graded quizzes -- read-only column, no click-to-grade, no eye. */
   isAssessment: boolean
+  /** Derived from isAssessment, not stored -- see quizGradeWeight in lib/course-grade.ts. */
+  weight: number
   /** Sliced to COLUMN_PROMPT_PREVIEW server-side -- AssignmentColumnHeader never renders more. */
   questionPrompts: string[]
   extraPromptCount: number
@@ -127,6 +132,7 @@ export type GradingMatrixRow = {
   learnerName: string
   learnerEmail: string
   cells: Record<string, GradingCell>
+  courseGrade: CourseGrade
 }
 
 export type CourseGradingMatrix = {
@@ -272,6 +278,7 @@ export async function getCourseGradingMatrix(
       sectionTitle: (section as { title?: string } | null)?.title ?? "",
       passScore: quiz.pass_score,
       isAssessment: quiz.is_assessment,
+      weight: quizGradeWeight(quiz.is_assessment),
       questionPrompts: questions.slice(0, COLUMN_PROMPT_PREVIEW).map((qq) => qq.prompt),
       extraPromptCount: Math.max(0, questions.length - COLUMN_PROMPT_PREVIEW),
     }
@@ -347,7 +354,18 @@ export async function getCourseGradingMatrix(
       }
     }
 
-    return { learnerId, learnerName, learnerEmail, cells }
+    const courseGrade = computeCourseGrade(
+      columns.map((column) => {
+        const cell = cells[column.quizId]
+        return {
+          score: cell.score,
+          weight: column.weight,
+          pending: cell.status === "pending_review",
+        }
+      })
+    )
+
+    return { learnerId, learnerName, learnerEmail, cells, courseGrade }
   })
 
   return { courseId, courseTitle: course.title, columns, rows: paginated(rows, count ?? 0, p) }

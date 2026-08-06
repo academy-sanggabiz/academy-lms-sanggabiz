@@ -22,7 +22,7 @@ export function GradingCoursesClient({ page }: { page: Paginated<GradingCourseSu
 
       {page.rows.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
-          {page.total === 0 ? "No attempts awaiting review." : "No courses match your search."}
+          {page.total === 0 ? "No quiz submissions yet." : "No courses match your search."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">
