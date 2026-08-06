@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { getCourseDetail } from "@/lib/courses-server"
 import type { CourseDetail } from "@/lib/courses"
+import { pickRepresentativeAttempt } from "@/lib/quiz-attempt-selection"
 
 export type QuizAttemptInfo = {
   attemptsUsed: number
@@ -59,8 +60,9 @@ export async function getLearnData(courseId: string): Promise<LearnData> {
 
   const completedLessonIds = new Set((progress ?? []).map((row) => row.lesson_id))
 
-  const quizIds =
-    course?.sections.flatMap((s) => s.lessons.flatMap((l) => (l.quiz ? [l.quiz.id] : []))) ?? []
+  const quizzes = course?.sections.flatMap((s) => s.lessons.flatMap((l) => (l.quiz ? [l.quiz] : []))) ?? []
+  const quizIds = quizzes.map((q) => q.id)
+  const isAssessmentByQuiz = new Map(quizzes.map((q) => [q.id, q.is_assessment]))
 
   const quizAttempts = new Map<string, QuizAttemptInfo>()
   if (quizIds.length > 0) {
@@ -74,19 +76,26 @@ export async function getLearnData(courseId: string): Promise<LearnData> {
     if (attemptsError) {
       console.error("getLearnData quiz attempts lookup failed:", attemptsError.message)
     } else {
+      const byQuiz = new Map<string, NonNullable<typeof attempts>>()
       for (const attempt of attempts ?? []) {
-        const existing = quizAttempts.get(attempt.quiz_id)
-        const inProgress = attempt.status === "in_progress"
-        quizAttempts.set(attempt.quiz_id, {
-          attemptsUsed: Math.max(existing?.attemptsUsed ?? 0, attempt.attempt_number),
-          lastScore: attempt.score,
-          lastPassed: attempt.passed,
-          pendingReview: attempt.status === "pending_review",
-          // Attempts are ordered ascending, so the last in_progress row wins.
-          inProgressAttemptId: inProgress ? attempt.id : existing?.inProgressAttemptId ?? null,
-          draftAnswers: inProgress
-            ? (attempt.draft_answers as Record<string, string> | null)
-            : existing?.draftAnswers ?? null,
+        const bucket = byQuiz.get(attempt.quiz_id) ?? []
+        bucket.push(attempt)
+        byQuiz.set(attempt.quiz_id, bucket)
+      }
+
+      for (const [quizId, quizAttemptsAscending] of byQuiz) {
+        const isAssessment = isAssessmentByQuiz.get(quizId) ?? false
+        const latest = quizAttemptsAscending[quizAttemptsAscending.length - 1]
+        const representative = pickRepresentativeAttempt(quizAttemptsAscending, isAssessment)
+        const inProgress = latest.status === "in_progress"
+
+        quizAttempts.set(quizId, {
+          attemptsUsed: Math.max(...quizAttemptsAscending.map((a) => a.attempt_number)),
+          lastScore: representative?.score ?? null,
+          lastPassed: representative?.passed ?? null,
+          pendingReview: latest.status === "pending_review",
+          inProgressAttemptId: inProgress ? latest.id : null,
+          draftAnswers: inProgress ? (latest.draft_answers as Record<string, string> | null) : null,
         })
       }
     }

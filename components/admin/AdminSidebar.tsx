@@ -2,7 +2,16 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, BookOpen, Users, ShoppingCart, PanelLeftClose, Layout, ClipboardCheck } from "lucide-react"
+import {
+  LayoutDashboard,
+  BookOpen,
+  Users,
+  ShoppingCart,
+  PanelLeftClose,
+  Layout,
+  ClipboardCheck,
+  Activity,
+} from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { useNavigationBlocker } from "@/components/admin/NavigationBlockerContext"
@@ -11,6 +20,7 @@ const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/courses", label: "Course Management", icon: BookOpen },
   { href: "/admin/grading", label: "Grading", icon: ClipboardCheck },
+  { href: "/admin/tracking", label: "Online Tracking", icon: Activity },
   { href: "/admin/learners", label: "Learners", icon: Users },
   { href: "/admin/purchases", label: "Purchase", icon: ShoppingCart },
 ]

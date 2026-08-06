@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 
 import { LearnerShell } from "@/components/learner/LearnerShell"
 import { createClient } from "@/lib/supabase/server"
+import { getNotifications } from "@/lib/notifications-server"
 import { resolveUserRole, roleHomePath } from "@/lib/auth/require-admin"
 
 export default async function LearnerLayout({ children }: { children: React.ReactNode }) {
@@ -16,17 +17,21 @@ export default async function LearnerLayout({ children }: { children: React.Reac
   const { data } = await supabase.auth.getClaims()
   const claims = data?.claims
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, email")
-    .eq("id", claims?.sub ?? "")
-    .single()
+  const [{ data: profile }, notifications] = await Promise.all([
+    supabase.from("profiles").select("full_name, email").eq("id", claims?.sub ?? "").single(),
+    getNotifications(5),
+  ])
 
   const name = profile?.full_name || profile?.email || "there"
   const email = profile?.email || String(claims?.email ?? "")
 
   return (
-    <LearnerShell name={name} email={email}>
+    <LearnerShell
+      name={name}
+      email={email}
+      notifications={notifications.items}
+      unreadCount={notifications.unreadCount}
+    >
       {children}
     </LearnerShell>
   )

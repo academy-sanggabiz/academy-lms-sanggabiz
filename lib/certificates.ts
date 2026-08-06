@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { renderToBuffer } from "@react-pdf/renderer"
 
 import { CertificateDocument } from "@/components/certificates/CertificateDocument"
+import { computeCourseGrade, quizGradeWeight } from "@/lib/course-grade"
+import { pickRepresentativeAttempt } from "@/lib/quiz-attempt-selection"
 
 export type Certificate = {
   id: string
@@ -42,7 +44,7 @@ export async function checkAndIssueCertificate(
 
   const { data: sections, error: sectionsError } = await supabase
     .from("course_sections")
-    .select("lessons(id, quiz:quizzes(id))")
+    .select("lessons(id, quiz:quizzes(id, is_assessment))")
     .eq("course_id", courseId)
 
   if (sectionsError || !sections) {
@@ -50,14 +52,17 @@ export async function checkAndIssueCertificate(
     return null
   }
 
-  const lessons = (sections as { lessons: { id: string; quiz: { id: string } | { id: string }[] | null }[] }[])
+  type SectionQuiz = { id: string; is_assessment: boolean }
+  const lessons = (sections as { lessons: { id: string; quiz: SectionQuiz | SectionQuiz[] | null }[] }[])
     .flatMap((s) => s.lessons ?? [])
     .map((l) => ({
       id: l.id,
-      quizId: (Array.isArray(l.quiz) ? l.quiz[0] : l.quiz)?.id ?? null,
+      quiz: (Array.isArray(l.quiz) ? l.quiz[0] : l.quiz) ?? null,
     }))
 
   if (lessons.length === 0) return null
+
+  const quizzes = lessons.map((l) => l.quiz).filter((q): q is SectionQuiz => q !== null)
 
   const { data: progressRows, error: progressError } = await supabase
     .from("lesson_progress")
@@ -74,9 +79,9 @@ export async function checkAndIssueCertificate(
   const allLessonsComplete = lessons.every((l) => completedLessonIds.has(l.id))
   if (!allLessonsComplete) return null
 
-  const quizIds = lessons.map((l) => l.quizId).filter((id): id is string => id !== null)
+  const quizIds = quizzes.map((q) => q.id)
   if (quizIds.length > 0) {
-    const { data: attempts, error: attemptsError } = await supabase
+    const { data: passAttempts, error: attemptsError } = await supabase
       .from("quiz_attempts")
       .select("quiz_id")
       .eq("learner_id", learnerId)
@@ -88,9 +93,54 @@ export async function checkAndIssueCertificate(
       return null
     }
 
-    const passedQuizIds = new Set((attempts ?? []).map((a) => a.quiz_id as string))
+    const passedQuizIds = new Set((passAttempts ?? []).map((a) => a.quiz_id as string))
     const allQuizzesPassed = quizIds.every((id) => passedQuizIds.has(id))
     if (!allQuizzesPassed) return null
+
+    const { data: course, error: courseError } = await supabase
+      .from("courses")
+      .select("passing_grade")
+      .eq("id", courseId)
+      .single()
+
+    if (courseError || !course) {
+      console.error("checkAndIssueCertificate: course lookup failed", courseError?.message)
+      return null
+    }
+
+    const { data: gradeAttempts, error: gradeAttemptsError } = await supabase
+      .from("quiz_attempts")
+      .select("quiz_id, attempt_number, score, status")
+      .eq("learner_id", learnerId)
+      .in("quiz_id", quizIds)
+      .neq("status", "in_progress")
+      .order("attempt_number", { ascending: true })
+
+    if (gradeAttemptsError) {
+      console.error("checkAndIssueCertificate: grade attempts lookup failed", gradeAttemptsError.message)
+      return null
+    }
+
+    type GradeAttempt = { quiz_id: string; attempt_number: number; score: number | null; status: string }
+    const attemptsByQuiz = new Map<string, GradeAttempt[]>()
+    for (const attempt of (gradeAttempts ?? []) as GradeAttempt[]) {
+      const bucket = attemptsByQuiz.get(attempt.quiz_id) ?? []
+      bucket.push(attempt)
+      attemptsByQuiz.set(attempt.quiz_id, bucket)
+    }
+
+    const { grade } = computeCourseGrade(
+      quizzes.map((quiz) => {
+        const representative = pickRepresentativeAttempt(attemptsByQuiz.get(quiz.id) ?? [], quiz.is_assessment)
+        return {
+          score: representative?.score ?? null,
+          weight: quizGradeWeight(quiz.is_assessment),
+          pending: representative?.status === "pending_review",
+        }
+      })
+    )
+
+    if (grade < course.passing_grade) return null
   }
 
   const { error: enrollmentUpdateError } = await supabase

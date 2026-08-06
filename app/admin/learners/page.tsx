@@ -1,15 +1,28 @@
 import { BookOpen, Trophy, Users } from "lucide-react"
 
-import { getAdminCourseList } from "@/lib/courses-admin"
-import { getAdminLearnerList, getAdminLearnerStats } from "@/lib/learners-admin"
+import { getAllAdminCourses } from "@/lib/courses-admin"
+import { getAdminLearnerList, getAdminLearnerStats, type AdminLearnerFilters } from "@/lib/learners-admin"
+import { parseListParams, type RawSearchParams } from "@/lib/pagination"
 import { LearnerManagementClient } from "@/components/admin/learners/LearnerManagementClient"
 import { StatCard } from "@/components/admin/StatCard"
 
-export default async function AdminLearnersPage() {
-  const [learners, stats, courses] = await Promise.all([
-    getAdminLearnerList(),
+export default async function AdminLearnersPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>
+}) {
+  const raw = await searchParams
+  const params = parseListParams<AdminLearnerFilters>(raw, {
+    sortable: ["name", "enrolled"],
+    defaultSort: "name",
+    defaultDir: "asc",
+    filters: { filter: ["all", "enrolled", "completed"] },
+  })
+
+  const [page, stats, courses] = await Promise.all([
+    getAdminLearnerList(params),
     getAdminLearnerStats(),
-    getAdminCourseList(),
+    getAllAdminCourses(),
   ])
 
   return (
@@ -27,7 +40,7 @@ export default async function AdminLearnersPage() {
         <StatCard icon={Trophy} label="Completed Courses" value={stats.totalCompleted} />
       </div>
 
-      <LearnerManagementClient learners={learners} courses={courses} />
+      <LearnerManagementClient page={page} courses={courses} />
     </div>
   )
 }

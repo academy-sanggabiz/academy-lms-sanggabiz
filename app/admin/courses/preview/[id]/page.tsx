@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { CourseCurriculum } from "@/components/learner/CourseCurriculum"
 import { getCourseDetailForAdmin } from "@/lib/courses-admin"
-import { formatPrice } from "@/lib/courses"
+import { formatCourseAccess } from "@/lib/courses"
 import { cn } from "@/lib/utils"
 
 export default async function AdminCoursePreviewPage({
@@ -19,7 +19,7 @@ export default async function AdminCoursePreviewPage({
   const course = await getCourseDetailForAdmin(id)
   if (!course) notFound()
 
-  const price = formatPrice(course.price)
+  const price = formatCourseAccess(course)
 
   return (
     <div className="space-y-6">

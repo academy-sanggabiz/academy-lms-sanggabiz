@@ -2,10 +2,25 @@
 
 import { revalidatePath } from "next/cache"
 
-import { enrollLearnerInCourse, unenrollLearnerFromCourse } from "@/lib/learners-admin"
+import {
+  enrollLearnerInCourse,
+  getLearnerEnrolledCourseIds,
+  unenrollLearnerFromCourse,
+} from "@/lib/learners-admin"
 import { requireAdmin } from "@/lib/auth/require-admin"
 
 export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string }
+
+export async function getLearnerEnrolledCourseIdsAction(learnerId: string): Promise<ActionResult<string[]>> {
+  try {
+    await requireAdmin()
+  } catch {
+    return { ok: false, error: "Not authorized" }
+  }
+
+  const ids = await getLearnerEnrolledCourseIds(learnerId)
+  return { ok: true, data: ids }
+}
 
 export async function toggleLearnerEnrollmentAction(
   learnerId: string,

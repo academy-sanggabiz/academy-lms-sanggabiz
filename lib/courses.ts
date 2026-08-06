@@ -12,6 +12,16 @@ export type Course = {
   who_for: string[]
   requirements: string[]
   language: string
+  /**
+   * Invite-only: hidden from the catalog and from anon visitors, readable only
+   * by the owning admin and learners an admin has explicitly enrolled.
+   * Orthogonal to `status` -- a private course can still be draft or published.
+   */
+  is_private: boolean
+  // Minimum weighted final course grade (see lib/course-grade.ts) a learner
+  // must reach, on top of completing every lesson and passing every quiz
+  // individually, before checkAndIssueCertificate() will issue one.
+  passing_grade: number
   created_by: string | null
   created_at: string
   updated_at: string
@@ -25,12 +35,30 @@ export type Instructor = {
   avatar_url: string | null
 }
 
+/** Money only -- a zero amount is `Rp 0`, never a word. */
 export function formatPrice(price: number): string {
-  if (price <= 0) return "Free"
   return `Rp ${price.toLocaleString("id-ID")}`
 }
 
+/**
+ * Course-facing access label: invite-only reads "Private", an open zero-price
+ * course reads "Public", anything else shows the price.
+ */
+export function formatCourseAccess(course: Pick<Course, "price" | "is_private">): string {
+  if (course.is_private) return "Private"
+  if (course.price <= 0) return "Public"
+  return formatPrice(course.price)
+}
+
 export type LessonContentType = "video" | "text" | "quiz" | "mixed" | "ppt"
+
+/**
+ * Hard cap on attempts for regular (non-study-case) quizzes -- always 3,
+ * regardless of a quiz's `max_attempts` column (which still governs
+ * study-case/is_assessment quizzes only). Shared so the server-side enforcement
+ * in quiz-actions.ts and the learner-facing display in QuizPlayer.tsx can't drift.
+ */
+export const REGULAR_QUIZ_MAX_ATTEMPTS = 3
 
 export type QuestionType =
   | "multiple_choice"
@@ -39,6 +67,29 @@ export type QuestionType =
   | "essay"
   | "matching"
   | "fill_in_blank"
+  | "file_upload"
+
+export type AuthorableQuestionType =
+  | "multiple_choice"
+  | "true_false"
+  | "short_answer"
+  | "essay"
+  | "file_upload"
+
+/**
+ * Points are standardized by question type rather than authored per-question:
+ * objective (auto-graded) questions are worth 1, manually-graded written work
+ * is worth 20 so a single essay/study-case question meaningfully outweighs a
+ * true/false inside a mixed quiz. A `Record` over the full union means adding
+ * a question type forces a compile error here until it's given a weight.
+ */
+export const QUESTION_TYPE_POINTS: Record<AuthorableQuestionType, number> = {
+  multiple_choice: 1,
+  true_false: 1,
+  short_answer: 1,
+  essay: 20,
+  file_upload: 20,
+}
 
 export type QuestionOption = {
   id: string

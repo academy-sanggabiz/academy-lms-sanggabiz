@@ -1,17 +1,24 @@
 "use client"
 
 import { useState } from "react"
+import { Toaster } from "sonner"
 
+import { NotificationBell } from "@/components/learner/NotificationBell"
 import { Sidebar } from "@/components/learner/Sidebar"
 import { UserMenu } from "@/components/learner/UserMenu"
+import type { Notification } from "@/lib/notifications-server"
 
 export function LearnerShell({
   name,
   email,
+  notifications,
+  unreadCount,
   children,
 }: {
   name: string
   email: string
+  notifications: Notification[]
+  unreadCount: number
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -32,11 +39,14 @@ export function LearnerShell({
             </button>
           )}
           <div className="flex-1" />
+          <NotificationBell items={notifications} unreadCount={unreadCount} />
           <UserMenu name={name} email={email} />
         </header>
 
         <main className="mx-auto w-full max-w-6xl p-8">{children}</main>
       </div>
+
+      <Toaster richColors position="top-right" />
     </div>
   )
 }

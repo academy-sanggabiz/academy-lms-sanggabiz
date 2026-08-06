@@ -5,9 +5,11 @@ import { CheckCircle2, CircleHelp, XCircle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import type { Quiz } from "@/lib/courses"
+import { REGULAR_QUIZ_MAX_ATTEMPTS, type Quiz } from "@/lib/courses"
 import type { QuizAttemptInfo } from "@/lib/learn-server"
 import { startQuiz, submitQuiz, type SubmitQuizResult } from "@/app/learn/[courseId]/quiz-actions"
+import { FileUploadAnswer } from "@/components/learn/EssayAssessmentPlayer"
+import { QuestionPrompt } from "@/components/learn/QuestionPrompt"
 
 type Stage = "intro" | "active" | "results"
 
@@ -28,8 +30,8 @@ export function QuizPlayer({
   const [error, setError] = useState<string | null>(null)
 
   const attemptsUsed = attemptInfo?.attemptsUsed ?? 0
-  const attemptsRemaining = quiz.max_attempts === null ? null : quiz.max_attempts - attemptsUsed
-  const canAttempt = attemptsRemaining === null || attemptsRemaining > 0
+  const attemptsRemaining = REGULAR_QUIZ_MAX_ATTEMPTS - attemptsUsed
+  const canAttempt = attemptsRemaining > 0
   const alreadyPassed = attemptInfo?.lastPassed === true
 
   function handleStart() {
@@ -127,17 +129,11 @@ export function QuizPlayer({
             <div className="text-2xl font-bold">
               Question {questionIndex + 1} of {quiz.questions.length}
             </div>
-            {quiz.max_attempts !== null && (
-              <div className="shrink-0 rounded-full bg-secondary px-4 py-2 text-[13.5px] font-semibold whitespace-nowrap">
-                Attempt {attemptNumber} of {quiz.max_attempts}
-              </div>
-            )}
+            <div className="shrink-0 rounded-full bg-secondary px-4 py-2 text-[13.5px] font-semibold whitespace-nowrap">
+              Attempt {attemptNumber} of {REGULAR_QUIZ_MAX_ATTEMPTS}
+            </div>
           </div>
-          {question.type === "essay" ? (
-            <div className="lesson-prose mt-4" dangerouslySetInnerHTML={{ __html: question.prompt }} />
-          ) : (
-            <div className="mt-4 text-[17px]">{question.prompt}</div>
-          )}
+          <QuestionPrompt prompt={question.prompt} className="mt-4 text-[17px]" />
         </div>
 
         {isChoice ? (
@@ -168,6 +164,13 @@ export function QuizPlayer({
               )
             })}
           </div>
+        ) : question.type === "file_upload" ? (
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <FileUploadAnswer
+              value={answers[question.id] ?? ""}
+              onChange={(value) => setAnswers((a) => ({ ...a, [question.id]: value }))}
+            />
+          </div>
         ) : (
           <div className="rounded-2xl border border-border bg-card p-6">
             <textarea
@@ -194,7 +197,7 @@ export function QuizPlayer({
   }
 
   if (stage === "results" && result) {
-    const canRetry = attemptsRemaining === null || attemptsRemaining > 0
+    const canRetry = attemptsRemaining > 0
 
     return (
       <div className="mx-auto flex max-w-2xl flex-col gap-5 p-10">
@@ -236,7 +239,11 @@ export function QuizPlayer({
                     .filter(Boolean)
                     .map((id) => question.options.find((o) => o.id === id)?.text ?? "—")
                     .join(", ") || "—"
-                : answer || "—"
+                : question.type === "file_upload"
+                  ? answer
+                    ? "Link submitted"
+                    : "—"
+                  : answer || "—"
 
             return (
               <div
@@ -253,11 +260,7 @@ export function QuizPlayer({
                   <CircleHelp className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
                 )}
                 <div className="min-w-0 flex-1">
-                  {question.type === "essay" ? (
-                    <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: question.prompt }} />
-                  ) : (
-                    <div className="text-[14.5px] font-semibold">{question.prompt}</div>
-                  )}
+                  <QuestionPrompt prompt={question.prompt} className="text-[14.5px] font-semibold" />
                   <div className="mt-1 text-[13px] text-muted-foreground">Your answer: {answerText}</div>
                   {isCorrect === null && (
                     <div className="mt-1 text-[13px] font-medium text-muted-foreground">Pending review</div>

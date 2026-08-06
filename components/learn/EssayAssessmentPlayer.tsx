@@ -1,14 +1,16 @@
 "use client"
 
 import { useRef, useState, useTransition, type ReactNode } from "react"
-import { CheckCircle2, Clock } from "lucide-react"
+import { CheckCircle2, Clock, LinkIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import type { Question, Quiz } from "@/lib/courses"
 import type { QuizAttemptInfo } from "@/lib/learn-server"
 import { saveDraft, startAssessmentAttempt, submitQuiz } from "@/app/learn/[courseId]/quiz-actions"
 import { RichTextEditor } from "@/components/admin/courses/RichTextEditor"
+import { QuestionPrompt } from "@/components/learn/QuestionPrompt"
 
 type Phase = "form" | "pending" | "graded"
 
@@ -32,10 +34,10 @@ export function EssayAssessmentPlayer({
   const [phase, setPhase] = useState<Phase>(initialPhase)
   const [attemptId, setAttemptId] = useState<string | null>(attemptInfo?.inProgressAttemptId ?? null)
   const [answers, setAnswers] = useState<Record<string, string>>(attemptInfo?.draftAnswers ?? {})
-  // RichTextEditor only fires onBlur, so a click that blurs the editor and
-  // triggers Save/Submit in the same tick can race the state update -- this ref
-  // is the source of truth save/submit actually read from, kept in lockstep
-  // with `answers` on every change.
+  // RichTextEditor's onChange is debounced, so a click that blurs the editor
+  // and triggers Save/Submit in the same tick can still race the state
+  // update -- this ref is the source of truth save/submit actually read
+  // from, kept in lockstep with `answers` on every change.
   const answersRef = useRef(answers)
   const [error, setError] = useState<string | null>(null)
   const [savedAt, setSavedAt] = useState<string | null>(null)
@@ -228,11 +230,7 @@ function QuestionCard({
     <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-7">
       <div className="text-sm font-semibold text-muted-foreground">Question {index + 1}</div>
 
-      {question.type === "essay" ? (
-        <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: question.prompt }} />
-      ) : (
-        <div className="text-[17px] whitespace-pre-line">{question.prompt}</div>
-      )}
+      <QuestionPrompt prompt={question.prompt} className="text-[17px]" />
 
       {isChoice ? (
         <div className="flex flex-col gap-3">
@@ -264,7 +262,9 @@ function QuestionCard({
           })}
         </div>
       ) : question.type === "essay" ? (
-        <RichTextEditor value={value} onBlur={onChange} />
+        <RichTextEditor value={value} onChange={onChange} />
+      ) : question.type === "file_upload" ? (
+        <FileUploadAnswer value={value} onChange={onChange} />
       ) : (
         <textarea
           value={value}
@@ -272,6 +272,39 @@ function QuestionCard({
           placeholder="Type your answer..."
           className="min-h-[120px] w-full resize-y rounded-lg border border-input bg-card p-3.5 text-[15px] outline-none focus:border-ring"
         />
+      )}
+    </div>
+  )
+}
+
+// Renders a file_upload answer as a plain link field -- the learner pastes a
+// URL to their file (e.g. a Google Drive share link) instead of uploading a
+// binary, so `value` is always a plain URL string, viewable directly.
+export function FileUploadAnswer({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-2.5">
+      <Input
+        type="url"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="https://drive.google.com/... (link to your PDF or document)"
+      />
+      {value && (
+        <a
+          href={value}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-fit items-center gap-2 text-sm text-ring hover:underline"
+        >
+          <LinkIcon className="size-4" />
+          Open submitted link
+        </a>
       )}
     </div>
   )

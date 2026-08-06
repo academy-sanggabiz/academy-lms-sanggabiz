@@ -1,12 +1,28 @@
 import { Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { getAdminCourseList } from "@/lib/courses-admin"
+import { getAdminCourseList, type AdminCourseFilters } from "@/lib/courses-admin"
+import { parseListParams, type RawSearchParams } from "@/lib/pagination"
 import { createDraftCourseAction } from "@/app/admin/courses/actions"
 import { CourseManagementClient } from "@/components/admin/courses/CourseManagementClient"
 
-export default async function AdminCoursesPage() {
-  const courses = await getAdminCourseList()
+export default async function AdminCoursesPage({
+  searchParams,
+}: {
+  searchParams: Promise<RawSearchParams>
+}) {
+  const raw = await searchParams
+  const params = parseListParams<AdminCourseFilters>(raw, {
+    sortable: ["created_at", "title", "price"],
+    defaultSort: "created_at",
+    defaultDir: "desc",
+    defaultPageSize: 12,
+    filters: {
+      status: ["all", "published", "draft"],
+      price: ["all", "free", "paid"],
+    },
+  })
+  const page = await getAdminCourseList(params)
 
   return (
     <div>
@@ -25,7 +41,7 @@ export default async function AdminCoursesPage() {
         </form>
       </div>
 
-      <CourseManagementClient courses={courses} />
+      <CourseManagementClient page={page} />
     </div>
   )
 }

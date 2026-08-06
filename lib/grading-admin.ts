@@ -13,7 +13,7 @@ export async function gradeAttempt(
   attemptId: string,
   graderId: string,
   grades: EssayGrade[]
-): Promise<{ ok: true } | { error: string }> {
+): Promise<{ ok: true; score: number; status: "graded" } | { error: string }> {
   const supabase = await createClient()
 
   const { data: questions, error: questionsError } = await supabase
@@ -49,10 +49,18 @@ export async function gradeAttempt(
         })
         .eq("attempt_id", attemptId)
         .eq("question_id", grade.questionId)
+        .select("id")
     )
   )
   const failed = results.find((r) => r.error)
   if (failed?.error) return { error: failed.error.message }
+  // A mismatched attempt_id/question_id pair (e.g. a mis-pasted CSV cell from
+  // a different quiz) updates zero rows without erroring -- catch that here
+  // instead of silently dropping the grade.
+  const emptyIndex = results.findIndex((r) => (r.data?.length ?? 0) === 0)
+  if (emptyIndex !== -1) {
+    return { error: `No response found for question ${grades[emptyIndex].questionId} on this attempt` }
+  }
 
   return finalizeAttempt(attemptId)
 }
@@ -62,7 +70,9 @@ export async function gradeAttempt(
  * graded), marks the attempt 'graded', and — on pass — completes the lesson,
  * mirroring the auto-grade completion write in submitQuiz.
  */
-async function finalizeAttempt(attemptId: string): Promise<{ ok: true } | { error: string }> {
+async function finalizeAttempt(
+  attemptId: string
+): Promise<{ ok: true; score: number; status: "graded" } | { error: string }> {
   const supabase = await createClient()
 
   const { data: attempt, error: attemptError } = await supabase
@@ -103,6 +113,8 @@ async function finalizeAttempt(attemptId: string): Promise<{ ok: true } | { erro
     .eq("id", attemptId)
 
   if (updateError) return { error: updateError.message }
+
+  const result = { ok: true as const, score, status: "graded" as const }
 
   // Runs on every re-grade, not just a pass, so a re-import that moves an
   // attempt from pass to fail (a corrected/lower score) un-completes the
@@ -145,5 +157,5 @@ async function finalizeAttempt(attemptId: string): Promise<{ ok: true } | { erro
     }
   }
 
-  return { ok: true }
+  return result
 }

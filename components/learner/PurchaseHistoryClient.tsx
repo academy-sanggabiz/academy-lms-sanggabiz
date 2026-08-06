@@ -5,6 +5,7 @@ import { Search } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Select,
   SelectContent,
@@ -18,8 +19,8 @@ import type { LearnerPurchase, TransactionStatus } from "@/lib/purchases-server"
 type StatusFilter = "all" | TransactionStatus
 
 const STATUS_LABEL: Record<TransactionStatus, string> = {
-  completed: "Completed",
-  free: "Free",
+  completed: "Paid",
+  free: "Public",
   pending: "Pending",
   refunded: "Refunded",
 }
@@ -71,8 +72,8 @@ export function PurchaseHistoryClient({ purchases }: { purchases: LearnerPurchas
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="free">Free</SelectItem>
+              <SelectItem value="completed">Paid</SelectItem>
+              <SelectItem value="free">Public</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="refunded">Refunded</SelectItem>
             </SelectContent>
@@ -85,26 +86,29 @@ export function PurchaseHistoryClient({ purchases }: { purchases: LearnerPurchas
           {purchases.length === 0 ? "No purchases yet." : "No purchases match your search."}
         </div>
       ) : (
-        <div>
-          <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-3 border-b border-border px-3 py-2.5 text-[13px] font-semibold text-muted-foreground">
-            <div>Course</div>
-            <div>Amount</div>
-            <div>Status</div>
-            <div>Date</div>
-          </div>
-          {filtered.map((p) => (
-            <div
-              key={p.id}
-              className="grid grid-cols-[2fr_1fr_1fr_1fr] items-center gap-3 border-b border-border px-3 py-3.5"
-            >
-              <div className="truncate text-[13.5px] font-medium">{p.courseTitle}</div>
-              <div className="text-[13.5px] font-medium">{formatPrice(p.amount)}</div>
-              <div>
-                <Badge variant={STATUS_VARIANT[p.status]}>{STATUS_LABEL[p.status]}</Badge>
-              </div>
-              <div className="text-[13px] text-muted-foreground">{formatDate(p.createdAt)}</div>
-            </div>
-          ))}
+        <div className="overflow-hidden rounded-xl border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead>Course</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell className="max-w-0 truncate text-[13.5px] font-medium">{p.courseTitle}</TableCell>
+                  <TableCell className="text-[13.5px] font-medium whitespace-nowrap">{formatPrice(p.amount)}</TableCell>
+                  <TableCell>
+                    <Badge variant={STATUS_VARIANT[p.status]}>{STATUS_LABEL[p.status]}</Badge>
+                  </TableCell>
+                  <TableCell className="text-[13px] whitespace-nowrap text-muted-foreground">{formatDate(p.createdAt)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

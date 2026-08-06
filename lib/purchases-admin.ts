@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
-import { getOwnedCourseIdsOrNull } from "@/lib/courses-admin"
+import { getAdminProfile } from "@/lib/auth/require-admin"
+import { paginated, rangeFor, type ListParams, type Paginated } from "@/lib/pagination"
 
 /** Server-only admin data access for Purchase Management -- never import from a Client Component. */
 
@@ -23,77 +24,83 @@ export type AdminPurchaseStats = {
   paidPurchases: number
 }
 
+export type AdminPurchaseFilters = { status: "all" | TransactionStatus }
+
 function initialOf(name: string): string {
   return name.trim().charAt(0).toUpperCase() || "?"
 }
 
 /**
- * RLS scoping on transactions depends entirely on owns_course() being live --
- * unlike courses, there's no separate public-read policy to worry about, but
- * this app-layer filter also protects against the RLS migration simply not
- * having been applied yet. See getOwnedCourseIdsOrNull (lib/courses-admin.ts).
+ * Reads the admin_transactions_list view (pagination migration), which
+ * flattens learner name/email + course title onto each transaction row so a
+ * single .or() can search across both -- PostgREST can't OR-filter across
+ * two different embedded relations. course_created_by on the view replaces
+ * the getOwnedCourseIdsOrNull() id-list filter used elsewhere in this file.
  */
-export async function getAdminPurchaseList(): Promise<AdminPurchase[]> {
+export async function getAdminPurchaseList(p: ListParams<AdminPurchaseFilters>): Promise<Paginated<AdminPurchase>> {
   const supabase = await createClient()
-  const ownedCourseIds = await getOwnedCourseIdsOrNull()
-  if (ownedCourseIds !== null && ownedCourseIds.length === 0) return []
+  const admin = await getAdminProfile()
 
-  let query = supabase
-    .from("transactions")
-    .select(
-      "id, amount, currency, status, created_at, learner:profiles(full_name, email), course:courses(title)"
-    )
-    .order("created_at", { ascending: false })
-  if (ownedCourseIds !== null) {
-    query = query.in("course_id", ownedCourseIds)
+  let query = supabase.from("admin_transactions_list").select("*", { count: "exact" })
+  if (admin && admin.role !== "superadmin") {
+    query = query.eq("course_created_by", admin.userId)
+  }
+  if (p.q) {
+    query = query.or(`learner_name.ilike.%${p.q}%,learner_email.ilike.%${p.q}%,course_title.ilike.%${p.q}%`)
+  }
+  if (p.filters.status !== "all") {
+    query = query.eq("status", p.filters.status)
   }
 
-  const { data, error } = await query
+  const [from, to] = rangeFor(p.page, p.pageSize)
+  query = query.order("created_at", { ascending: p.dir === "asc" }).range(from, to)
+
+  const { data, error, count } = await query
 
   if (error || !data) {
     console.error("getAdminPurchaseList failed:", error?.message)
-    return []
+    return paginated([], 0, p)
   }
 
-  return data.map((row) => {
-    const learner = Array.isArray(row.learner) ? row.learner[0] : row.learner
-    const course = Array.isArray(row.course) ? row.course[0] : row.course
-    const name = learner?.full_name || learner?.email || "Unnamed learner"
+  const rows = data.map((row) => {
+    const name = row.learner_name
     return {
       id: row.id,
       learnerName: name,
-      learnerEmail: learner?.email ?? "",
+      learnerEmail: row.learner_email,
       initial: initialOf(name),
-      courseTitle: course?.title ?? "Untitled course",
+      courseTitle: row.course_title,
       amount: row.amount,
       currency: row.currency,
-      status: row.status,
+      status: row.status as TransactionStatus,
       createdAt: row.created_at,
     }
   })
+
+  return paginated(rows, count, p)
+}
+
+/** RPC-backed -- see admin_purchase_stats() (pagination migration). Replaces the previous JS reduce() over every completed row's amount. */
+type AdminPurchaseStatsRow = {
+  total_revenue: number
+  total_purchases: number
+  paid_purchases: number
 }
 
 export async function getAdminPurchaseStats(): Promise<AdminPurchaseStats> {
   const supabase = await createClient()
-  const ownedCourseIds = await getOwnedCourseIdsOrNull()
-  if (ownedCourseIds !== null && ownedCourseIds.length === 0) {
+  const { data, error } = await supabase
+    .rpc("admin_purchase_stats")
+    .single<AdminPurchaseStatsRow>()
+
+  if (error || !data) {
+    console.error("getAdminPurchaseStats failed:", error?.message)
     return { totalRevenue: 0, totalPurchases: 0, paidPurchases: 0 }
   }
 
-  let totalQuery = supabase.from("transactions").select("*", { count: "exact", head: true })
-  let completedQuery = supabase.from("transactions").select("amount").eq("status", "completed")
-  if (ownedCourseIds !== null) {
-    totalQuery = totalQuery.in("course_id", ownedCourseIds)
-    completedQuery = completedQuery.in("course_id", ownedCourseIds)
-  }
-
-  const [{ count: totalPurchases }, { data: completed }] = await Promise.all([totalQuery, completedQuery])
-
-  const totalRevenue = (completed ?? []).reduce((sum, t) => sum + t.amount, 0)
-
   return {
-    totalRevenue,
-    totalPurchases: totalPurchases ?? 0,
-    paidPurchases: completed?.length ?? 0,
+    totalRevenue: data.total_revenue,
+    totalPurchases: data.total_purchases,
+    paidPurchases: data.paid_purchases,
   }
 }

@@ -7,7 +7,7 @@ import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatPrice, type Course } from "@/lib/courses"
+import { formatCourseAccess, type Course } from "@/lib/courses"
 import { cn } from "@/lib/utils"
 import { toggleCourseStatusAction } from "@/app/admin/courses/actions"
 
@@ -15,7 +15,7 @@ import { DeleteCourseDialog } from "./DeleteCourseDialog"
 
 export function CourseListCard({ course }: { course: Course }) {
   const [isPending, startTransition] = useTransition()
-  const price = formatPrice(course.price)
+  const price = formatCourseAccess(course)
   const isPublished = course.status === "published"
 
   function handleToggleStatus() {
@@ -84,15 +84,15 @@ export function CourseListCard({ course }: { course: Course }) {
         </span>
       </div>
 
-      {course.description && (
-        <div className="mb-4 min-h-0 flex-1">
+      <div className="mb-4 min-h-0 flex-1">
+        {course.description && (
           <p className="line-clamp-2 text-[13.5px] leading-relaxed text-muted-foreground">
             {course.description}
           </p>
-        </div>
-      )}
+        )}
+      </div>
 
-      <div className="flex gap-2">
+      <div className="mt-auto flex gap-2">
         <Button
           variant="outline"
           className="h-9 flex-1"

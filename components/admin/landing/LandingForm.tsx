@@ -115,7 +115,7 @@ export function LandingForm({
             control={form.control}
             name="subheading"
             render={({ field }) => (
-              <RichTextEditor value={field.value} onBlur={field.onChange} />
+              <RichTextEditor value={field.value} onChange={field.onChange} />
             )}
           />
         </div>
@@ -192,7 +192,7 @@ export function LandingForm({
                 control={form.control}
                 name={`features.${index}.description` as const}
                 render={({ field }) => (
-                  <RichTextEditor value={field.value} onBlur={field.onChange} />
+                  <RichTextEditor value={field.value} onChange={field.onChange} />
                 )}
               />
             </div>

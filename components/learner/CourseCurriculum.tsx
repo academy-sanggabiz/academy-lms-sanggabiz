@@ -27,10 +27,14 @@ export function CourseCurriculum({
   sections,
   courseId,
   basePath = "/learn",
+  enrolled = true,
+  onLockedLessonClick,
 }: {
   sections: CourseSection[]
   courseId: string
   basePath?: string
+  enrolled?: boolean
+  onLockedLessonClick?: () => void
 }) {
   const [openId, setOpenId] = useState<string | null>(sections[0]?.id ?? null)
 
@@ -53,12 +57,8 @@ export function CourseCurriculum({
               <div className="flex flex-col gap-1 pb-3.5 pl-1">
                 {section.lessons.map((lesson) => {
                   const Icon = typeIcon[lesson.content_type]
-                  return (
-                    <Link
-                      key={lesson.id}
-                      href={`${basePath}/${courseId}?lesson=${lesson.id}`}
-                      className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] text-foreground/80 hover:bg-muted"
-                    >
+                  const lessonContent = (
+                    <>
                       <Icon className="size-4 shrink-0 text-primary" />
                       <span className="flex-1 truncate">{lesson.title}</span>
                       <span className="text-xs text-muted-foreground">
@@ -66,6 +66,29 @@ export function CourseCurriculum({
                           ? `${lesson.quiz.questions.length} questions`
                           : typeLabel[lesson.content_type]}
                       </span>
+                    </>
+                  )
+
+                  if (!enrolled) {
+                    return (
+                      <button
+                        key={lesson.id}
+                        type="button"
+                        onClick={onLockedLessonClick}
+                        className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13.5px] text-foreground/80 hover:bg-muted"
+                      >
+                        {lessonContent}
+                      </button>
+                    )
+                  }
+
+                  return (
+                    <Link
+                      key={lesson.id}
+                      href={`${basePath}/${courseId}?lesson=${lesson.id}`}
+                      className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] text-foreground/80 hover:bg-muted"
+                    >
+                      {lessonContent}
                     </Link>
                   )
                 })}

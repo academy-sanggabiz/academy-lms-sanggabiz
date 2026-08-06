@@ -28,7 +28,7 @@ export default async function LearnPage({
 
   const { course, enrollmentId, completedLessonIds, quizAttempts } = await getLearnData(courseId)
   if (!course) notFound()
-  if (!enrollmentId) redirect(`/learner/courses/${courseId}`)
+  if (!enrollmentId) redirect(`/learner/courses/${courseId}?enroll=required`)
 
   const allLessons = course.sections.flatMap((s) => s.lessons)
   if (allLessons.length === 0) {
