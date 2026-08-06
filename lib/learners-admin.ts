@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { recordEnrollmentTransaction } from "@/lib/transactions-server"
 import { getOwnedCourseIdsOrNull } from "@/lib/courses-admin"
 import { escapeForOrFilter, paginated, rangeFor, type ListParams, type Paginated } from "@/lib/pagination"
+import { pickRepresentativeAttempt } from "@/lib/quiz-attempt-selection"
 
 /** Server-only admin data access for Learner Management -- never import from a Client Component. */
 
@@ -315,6 +316,7 @@ type QuizScoreRow = {
     | {
         title: string
         pass_score: number
+        is_assessment: boolean
         lesson:
           | {
               section:
@@ -325,7 +327,7 @@ type QuizScoreRow = {
           | { section: unknown }[]
           | null
       }
-    | { title: string; pass_score: number; lesson: unknown }[]
+    | { title: string; pass_score: number; is_assessment: boolean; lesson: unknown }[]
     | null
 }
 
@@ -334,11 +336,12 @@ function toOne<T>(value: T | T[] | null | undefined): T | null {
 }
 
 /**
- * One row per quiz the learner has attempted (latest attempt only), across
- * every course -- cross-course, unlike getCourseGradingMatrix which is
- * course-centric. Owner-scoped in JS since quiz_attempts carries no
- * course_id column directly (has to resolve through quiz -> lesson ->
- * section -> course).
+ * One row per quiz the learner has attempted (the representative attempt,
+ * via the same pickRepresentativeAttempt rule getCourseGradingMatrix uses --
+ * so the two admin views can't disagree), across every course -- cross-course,
+ * unlike getCourseGradingMatrix which is course-centric. Owner-scoped in JS
+ * since quiz_attempts carries no course_id column directly (has to resolve
+ * through quiz -> lesson -> section -> course).
  */
 export async function getAdminLearnerQuizScores(learnerId: string): Promise<AdminLearnerQuizScore[]> {
   const supabase = await createClient()
@@ -349,11 +352,11 @@ export async function getAdminLearnerQuizScores(learnerId: string): Promise<Admi
     .from("quiz_attempts")
     .select(
       `id, quiz_id, attempt_number, score, passed, status, submitted_at,
-       quiz:quizzes(title, pass_score, lesson:lessons(section:course_sections(course_id, course:courses(title))))`
+       quiz:quizzes(title, pass_score, is_assessment, lesson:lessons(section:course_sections(course_id, course:courses(title))))`
     )
     .eq("learner_id", learnerId)
     .neq("status", "in_progress")
-    .order("submitted_at", { ascending: false })
+    .order("attempt_number", { ascending: true })
 
   if (error || !data) {
     if (error) console.error("getAdminLearnerQuizScores failed:", error.message)
@@ -361,13 +364,17 @@ export async function getAdminLearnerQuizScores(learnerId: string): Promise<Admi
   }
 
   const ownedSet = ownedCourseIds !== null ? new Set(ownedCourseIds) : null
-  const seenQuizIds = new Set<string>()
+  const attemptsByQuizId = new Map<string, QuizScoreRow[]>()
+  for (const row of data as unknown as QuizScoreRow[]) {
+    const bucket = attemptsByQuizId.get(row.quiz_id) ?? []
+    bucket.push(row)
+    attemptsByQuizId.set(row.quiz_id, bucket)
+  }
+
   const rows: AdminLearnerQuizScore[] = []
 
-  for (const row of data as unknown as QuizScoreRow[]) {
-    if (seenQuizIds.has(row.quiz_id)) continue
-
-    const quiz = toOne(row.quiz)
+  for (const [quizId, quizAttempts] of attemptsByQuizId) {
+    const quiz = toOne(quizAttempts[0].quiz)
     const lesson = quiz ? toOne(quiz.lesson as never) : null
     const section = lesson ? toOne((lesson as { section: unknown }).section as never) : null
     const courseId = (section as { course_id?: string } | null)?.course_id
@@ -376,17 +383,20 @@ export async function getAdminLearnerQuizScores(learnerId: string): Promise<Admi
     if (!quiz || !courseId) continue
     if (ownedSet !== null && !ownedSet.has(courseId)) continue
 
-    seenQuizIds.add(row.quiz_id)
+    const isAssessment = (quiz as { is_assessment: boolean }).is_assessment
+    const representative = pickRepresentativeAttempt(quizAttempts, isAssessment)
+    if (!representative) continue
+
     rows.push({
-      attemptId: row.id,
-      quizId: row.quiz_id,
+      attemptId: representative.id,
+      quizId,
       quizTitle: (quiz as { title: string }).title,
       courseTitle: (course as { title?: string } | null)?.title ?? "",
-      attemptNumber: row.attempt_number,
-      score: row.score,
-      passed: row.passed,
-      status: row.status,
-      submittedAt: row.submitted_at,
+      attemptNumber: representative.attempt_number,
+      score: representative.score,
+      passed: representative.passed,
+      status: representative.status,
+      submittedAt: representative.submitted_at,
       passScore: (quiz as { pass_score: number }).pass_score,
     })
   }
