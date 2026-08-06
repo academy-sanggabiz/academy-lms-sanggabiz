@@ -195,6 +195,10 @@ create table public.courses (
   -- draft or published. Only the owning admin and learners an admin has
   -- explicitly enrolled can read it -- see can_read_course() below.
   is_private boolean not null default false,
+  -- passing_grade: minimum weighted final course grade (0-100, see quizzes.weight)
+  -- a learner must reach, in addition to completing every lesson and passing
+  -- every quiz individually, before checkAndIssueCertificate() will issue one.
+  passing_grade int not null default 70 check (passing_grade between 0 and 100),
   created_by uuid references public.profiles (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -712,6 +716,10 @@ create table public.quizzes (
   -- of the normal timed quiz -- no "Start Quiz" gate, a wide multi-question
   -- layout, server-side drafts (quiz_attempts.draft_answers), and no timer.
   -- Grading stays manual (Admin > Grading), same as any essay question.
+  -- No `weight` column: a quiz's weight in the final course grade
+  -- (sum(score * weight) / sum(100 * weight)) is derived from is_assessment by
+  -- quizGradeWeight() in lib/course-grade.ts, not stored. It was briefly an
+  -- authored per-quiz number; see 20260808000000_drop_quiz_weight.sql.
   is_assessment boolean not null default false
 );
 
@@ -960,9 +968,18 @@ begin
     );
   end loop;
 
+  v_score := case when v_total > 0 then round(v_award / v_total * 100) else 100 end;
+
   if v_ungraded then
+    -- Persist the objective portion instead of leaving score null. Without
+    -- it computeCourseGrade() (lib/course-grade.ts) counts a mixed quiz as 0
+    -- until a human grades the essay, and the grading matrix shows nothing
+    -- for a learner who already answered every auto-gradable question.
+    -- `passed` stays null, so checkAndIssueCertificate's `passed = true` gate
+    -- still withholds the certificate; finalizeAttempt (lib/grading-admin.ts)
+    -- overwrites this provisional score on manual grading.
     update public.quiz_attempts
-      set submitted_at = now(), status = 'pending_review'
+      set submitted_at = now(), score = v_score, passed = null, status = 'pending_review'
       where id = p_attempt_id;
 
     return jsonb_build_object(
@@ -975,7 +992,6 @@ begin
     );
   end if;
 
-  v_score := case when v_total > 0 then round(v_award / v_total * 100) else 100 end;
   v_passed := v_score >= v_pass;
 
   update public.quiz_attempts
@@ -1955,14 +1971,21 @@ cross join lateral (
 
 grant select on public.admin_tracking_enrollments to authenticated;
 
--- Flat source for every level (course/quiz/attempt) of pending manual-grading
--- review. Replaces listPendingAttempts()'s deep embed + JS-side ownership
+-- Flat source for every level (course/quiz/attempt) of the grading screens.
+-- Replaces listPendingAttempts()'s deep embed + JS-side ownership
 -- post-filter, which otherwise returns platform-wide rows to a scoped admin.
+--
+-- Covers EVERY submitted attempt, not just pending_review ones: gating the
+-- view on pending_review made the whole /admin/grading entry point invisible
+-- for a course whose quizzes are all auto-graded, so scores that existed in
+-- the DB were unreachable in the UI. Rows needing a human are the ones with
+-- pending_count > 0 (equivalently status = 'pending_review').
 create view public.admin_pending_attempts
 with (security_invoker = true) as
 select
   qa.id as attempt_id,
   qa.submitted_at,
+  qa.status,
   q.id as quiz_id,
   q.title as quiz_title,
   l.id as lesson_id,
@@ -1984,7 +2007,7 @@ join public.lessons l on l.id = q.lesson_id
 join public.course_sections cs on cs.id = l.section_id
 join public.courses c on c.id = cs.course_id
 join public.profiles p on p.id = qa.learner_id and p.role = 'learner'
-where qa.status = 'pending_review';
+where qa.status <> 'in_progress';
 
 grant select on public.admin_pending_attempts to authenticated;
 
@@ -2200,6 +2223,9 @@ $$;
 
 grant execute on function public.admin_grading_quizzes(uuid, text, int, int) to authenticated;
 
+-- attempt_count stays pending-only (it fronts the "Attempts Pending Review"
+-- card); course_count spans every course with a submission now that the view
+-- is no longer gated on pending_review.
 create function public.admin_grading_stats()
 returns table (attempt_count bigint, course_count bigint)
 language sql
@@ -2207,7 +2233,9 @@ stable
 security invoker
 set search_path = ''
 as $$
-  select count(*), count(distinct a.course_id)
+  select
+    count(*) filter (where a.status = 'pending_review'),
+    count(distinct a.course_id)
   from public.admin_pending_attempts a
   where a.course_created_by = (select auth.uid()) or public.is_superadmin();
 $$;
