@@ -5,11 +5,11 @@ import { ArrowLeft, FileText, Globe, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { CourseCurriculumGate } from "@/components/learner/CourseCurriculumGate"
+import { EnrollButton } from "@/components/learner/EnrollButton"
 import { getCourseDetail } from "@/lib/courses-server"
-import { isEnrolled } from "@/lib/enrollments-server"
+import { getEnrollmentProgress, getLearnerCourseGrade } from "@/lib/enrollments-server"
 import { formatCourseAccess } from "@/lib/courses"
 import { cn } from "@/lib/utils"
-import { enroll } from "@/app/learner/courses/actions"
 
 export default async function CourseDetailPage({
   params,
@@ -23,7 +23,8 @@ export default async function CourseDetailPage({
   const course = await getCourseDetail(id)
   if (!course) notFound()
 
-  const enrolled = await isEnrolled(course.id)
+  const { enrolled, started } = await getEnrollmentProgress(course.id)
+  const courseGrade = enrolled ? await getLearnerCourseGrade(course.id) : null
   const price = formatCourseAccess(course)
   const initialOpen = enrollParam === "required"
 
@@ -118,27 +119,26 @@ export default async function CourseDetailPage({
             <span className="rounded-full bg-[#35b5c6] px-3 py-1 text-xs font-semibold text-white">{price}</span>
           </div>
 
-          {enrolled ? (
-            <Button
-              size="xl"
-              variant="outline"
-              className="w-full border-ring bg-secondary text-primary hover:bg-secondary/80 hover:text-primary"
-              render={<Link href={`/learn/${course.id}`} />}
-              nativeButton={false}
-            >
-              Enrolled ✓ Start Learning
-            </Button>
-          ) : (
-            <form action={enroll}>
-              <input type="hidden" name="courseId" value={course.id} />
-              <Button
-                type="submit"
-                size="xl"
-                className="w-full bg-brand-gradient text-white hover:brightness-105"
-              >
-                Enroll Now
-              </Button>
-            </form>
+          <EnrollButton
+            courseId={course.id}
+            state={!enrolled ? "not_enrolled" : started ? "in_progress" : "not_started"}
+            size="xl"
+            className="w-full"
+          />
+
+          {courseGrade && courseGrade.available > 0 && (
+            <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm font-semibold">Course Grade</span>
+                <span className="text-lg font-bold">{courseGrade.grade}%</span>
+              </div>
+              {courseGrade.pendingCount > 0 && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {courseGrade.pendingCount} assessment{courseGrade.pendingCount === 1 ? "" : "s"} awaiting
+                  instructor review — grade may still rise.
+                </p>
+              )}
+            </div>
           )}
 
           <div className="mt-4 flex flex-col gap-3 text-[13.5px] text-muted-foreground">

@@ -1,16 +1,17 @@
 import { CoursesBrowser } from "@/components/learner/CoursesBrowser"
 import { getEnrolledCourses, getPublishedCourses } from "@/lib/courses-server"
-import { getCompletedCourseIds, getEnrolledCourseIds } from "@/lib/enrollments-server"
+import { getCompletedCourseIds, getEnrolledCourseIds, getStartedCourseIds } from "@/lib/enrollments-server"
 
 export default async function LearnerCoursesPage() {
   // Two separate lists on purpose: the catalog (`courses`, public only) drives
   // the All tab, while `enrolledCourses` drives Enrolled/Completed so private
   // courses the learner was invited to still show up there.
-  const [courses, enrolledCourses, enrolledIds, completedIds] = await Promise.all([
+  const [courses, enrolledCourses, enrolledIds, completedIds, startedIds] = await Promise.all([
     getPublishedCourses(),
     getEnrolledCourses(),
     getEnrolledCourseIds(),
     getCompletedCourseIds(),
+    getStartedCourseIds(),
   ])
 
   return (
@@ -21,6 +22,7 @@ export default async function LearnerCoursesPage() {
         enrolledCourses={enrolledCourses}
         enrolledIds={enrolledIds}
         completedIds={completedIds}
+        startedIds={startedIds}
       />
     </div>
   )

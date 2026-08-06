@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { Toaster } from "sonner"
 
 import { NotificationBell } from "@/components/learner/NotificationBell"
 import { Sidebar } from "@/components/learner/Sidebar"
@@ -44,6 +45,8 @@ export function LearnerShell({
 
         <main className="mx-auto w-full max-w-6xl p-8">{children}</main>
       </div>
+
+      <Toaster richColors position="top-right" />
     </div>
   )
 }

@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { enroll } from "@/app/learner/courses/actions"
+import { EnrollButton } from "@/components/learner/EnrollButton"
 import type { CourseSection } from "@/lib/courses"
 
 export function CourseCurriculumGate({
@@ -56,15 +56,7 @@ export function CourseCurriculumGate({
           </DialogHeader>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-            <form action={enroll}>
-              <input type="hidden" name="courseId" value={courseId} />
-              <Button
-                type="submit"
-                className="w-full bg-brand-gradient text-white hover:brightness-105"
-              >
-                Enroll Now
-              </Button>
-            </form>
+            <EnrollButton courseId={courseId} state="not_enrolled" onEnrolled={() => setOpen(false)} />
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,12 +1,20 @@
 import Link from "next/link"
-import { BookOpen, Check, Clock, Eye, Tag } from "lucide-react"
+import { BookOpen, Clock, Eye, Tag } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { EnrollButton } from "@/components/learner/EnrollButton"
 import { formatCourseAccess, type Course } from "@/lib/courses"
 import { cn } from "@/lib/utils"
-import { enroll } from "@/app/learner/courses/actions"
 
-export function CourseGridCard({ course, enrolled }: { course: Course; enrolled: boolean }) {
+export function CourseGridCard({
+  course,
+  enrolled,
+  started,
+}: {
+  course: Course
+  enrolled: boolean
+  started: boolean
+}) {
   const price = formatCourseAccess(course)
 
   return (
@@ -67,19 +75,11 @@ export function CourseGridCard({ course, enrolled }: { course: Course; enrolled:
           <Eye className="size-3.5" />
           Preview
         </Button>
-        {enrolled ? (
-          <span className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 text-sm font-semibold text-primary">
-            <Check className="size-3.5" />
-            Enrolled
-          </span>
-        ) : (
-          <form action={enroll} className="flex-1">
-            <input type="hidden" name="courseId" value={course.id} />
-            <Button type="submit" className="h-11 w-full bg-brand-gradient text-white hover:brightness-105">
-              Enroll Now
-            </Button>
-          </form>
-        )}
+        <EnrollButton
+          courseId={course.id}
+          state={!enrolled ? "not_enrolled" : started ? "in_progress" : "not_started"}
+          className="h-11 flex-1"
+        />
       </div>
     </div>
   )

@@ -5,14 +5,15 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { recordEnrollmentTransaction } from "@/lib/transactions-server"
 
-export async function enroll(formData: FormData) {
-  const courseId = String(formData.get("courseId") ?? "")
-  if (!courseId) return
+export type EnrollResult = { ok: true } | { ok: false; error: string }
+
+export async function enroll(courseId: string): Promise<EnrollResult> {
+  if (!courseId) return { ok: false, error: "Missing course." }
 
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims?.sub
-  if (!userId) return
+  if (!userId) return { ok: false, error: "You need to be signed in to enroll." }
 
   const { error } = await supabase
     .from("enrollments")
@@ -23,7 +24,7 @@ export async function enroll(formData: FormData) {
 
   if (error) {
     console.error("enroll failed:", error.message)
-    return
+    return { ok: false, error: "Couldn't enroll. Please try again." }
   }
 
   await recordEnrollmentTransaction(supabase, userId, courseId)
@@ -31,4 +32,6 @@ export async function enroll(formData: FormData) {
   revalidatePath("/learner/courses")
   revalidatePath("/learner/courses/[id]", "page")
   revalidatePath("/learner/dashboard")
+
+  return { ok: true }
 }

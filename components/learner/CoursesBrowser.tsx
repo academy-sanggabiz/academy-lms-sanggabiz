@@ -28,6 +28,7 @@ export function CoursesBrowser({
   enrolledCourses,
   enrolledIds,
   completedIds,
+  startedIds,
 }: {
   /** Catalog: published + public only. Drives the All tab. */
   courses: Course[]
@@ -35,6 +36,7 @@ export function CoursesBrowser({
   enrolledCourses: Course[]
   enrolledIds: string[]
   completedIds: string[]
+  startedIds: string[]
 }) {
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("newest")
@@ -116,6 +118,7 @@ export function CoursesBrowser({
                   key={course.id}
                   course={course}
                   enrolled={enrolledIds.includes(course.id)}
+                  started={startedIds.includes(course.id)}
                 />
               ))}
             </div>
@@ -128,7 +131,7 @@ export function CoursesBrowser({
           {enrolledList.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {enrolledList.map((course) => (
-                <CourseGridCard key={course.id} course={course} enrolled />
+                <CourseGridCard key={course.id} course={course} enrolled started={startedIds.includes(course.id)} />
               ))}
             </div>
           ) : (
@@ -140,7 +143,7 @@ export function CoursesBrowser({
           {completedList.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {completedList.map((course) => (
-                <CourseGridCard key={course.id} course={course} enrolled />
+                <CourseGridCard key={course.id} course={course} enrolled started />
               ))}
             </div>
           ) : (
