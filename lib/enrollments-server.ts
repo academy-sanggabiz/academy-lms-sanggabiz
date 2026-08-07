@@ -133,27 +133,6 @@ export async function getLearnerCourseGrade(courseId: string): Promise<CourseGra
   return computeCourseGrade(items)
 }
 
-export async function isEnrolled(courseId: string): Promise<boolean> {
-  const supabase = await createClient()
-  const { data: claimsData } = await supabase.auth.getClaims()
-  const userId = claimsData?.claims?.sub
-  if (!userId) return false
-
-  const { data, error } = await supabase
-    .from("enrollments")
-    .select("id")
-    .eq("learner_id", userId)
-    .eq("course_id", courseId)
-    .maybeSingle()
-
-  if (error) {
-    console.error("isEnrolled failed:", error.message)
-    return false
-  }
-
-  return data !== null
-}
-
 /**
  * Enrolled + "started" (any lesson_progress row completed) in one round trip,
  * for the course-detail sidebar's 3-state Enroll/Start/Continue button.

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState, useTransition } from "react"
-import { ArrowLeft, Award, BookOpen, Calendar, CheckCircle2, Clock, Download, Mail, Pencil } from "lucide-react"
+import { ArrowLeft, Award, BookOpen, Calendar, CheckCircle2, Clock, Download, Lock, Mail, Pencil } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -179,7 +179,17 @@ function ProfileTabs({
                       })}
                     </div>
                   </div>
-                  {cert.pdfUrl ? (
+                  {!cert.feedbackGiven ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      render={<Link href={`/learn/${cert.courseId}`} />}
+                      nativeButton={false}
+                    >
+                      <Lock className="size-3.5" />
+                      Rate to unlock
+                    </Button>
+                  ) : cert.pdfUrl ? (
                     <Button
                       size="sm"
                       variant="outline"
