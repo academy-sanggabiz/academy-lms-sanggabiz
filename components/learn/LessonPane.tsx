@@ -18,6 +18,7 @@ import type { AdminQuiz } from "@/lib/courses-admin"
 import { QuizPlayer } from "@/components/learn/QuizPlayer"
 import { QuizPreview } from "@/components/learn/QuizPreview"
 import { EssayAssessmentPlayer } from "@/components/learn/EssayAssessmentPlayer"
+import { CourseFeedbackForm } from "@/components/learn/CourseFeedbackForm"
 
 export function LessonPane({
   courseId,
@@ -29,6 +30,7 @@ export function LessonPane({
   basePath = "/learn",
   mode = "learner",
   isCourseComplete = false,
+  feedbackGiven = false,
 }: {
   courseId: string
   course: Course
@@ -39,6 +41,7 @@ export function LessonPane({
   basePath?: string
   mode?: "learner" | "admin-preview"
   isCourseComplete?: boolean
+  feedbackGiven?: boolean
 }) {
   const isQuiz = lesson.content_type === "quiz" || lesson.content_type === "mixed"
   // Assessments are long, multi-question study cases -- scroll them from the top
@@ -56,6 +59,7 @@ export function LessonPane({
             prevLessonId={prevLessonId}
             basePath={basePath}
             isCourseComplete={isCourseComplete}
+            feedbackGiven={feedbackGiven}
           />
         ) : (
           <>
@@ -201,12 +205,14 @@ function CourseFinishedPane({
   prevLessonId,
   basePath = "/learn",
   isCourseComplete,
+  feedbackGiven,
 }: {
   courseId: string
   courseTitle: string
   prevLessonId: string | null
   basePath?: string
   isCourseComplete: boolean
+  feedbackGiven: boolean
 }) {
   return (
     <div className="relative flex flex-col items-center gap-5 p-16 text-center">
@@ -220,22 +226,35 @@ function CourseFinishedPane({
         </Link>
       )}
       {isCourseComplete ? (
-        <>
-          <p className="text-lg font-bold">🎉 Congratulations — you&apos;ve completed {courseTitle}!</p>
-          <p className="-mt-3 text-sm text-muted-foreground">Your certificate is ready to download.</p>
-          <div className="flex gap-3">
-            <Button
-              className="bg-brand-gradient text-white hover:brightness-105"
-              render={<Link href="/learner/profile?tab=certificates" />}
-              nativeButton={false}
-            >
-              View Your Certificate
-            </Button>
+        feedbackGiven ? (
+          <>
+            <p className="text-lg font-bold">🎉 Congratulations — you&apos;ve completed {courseTitle}!</p>
+            <p className="-mt-3 text-sm text-muted-foreground">Your certificate is ready to download.</p>
+            <div className="flex gap-3">
+              <Button
+                className="bg-brand-gradient text-white hover:brightness-105"
+                render={<Link href="/learner/profile?tab=certificates" />}
+                nativeButton={false}
+              >
+                View Your Certificate
+              </Button>
+              <Button variant="outline" render={<Link href="/learner/courses" />} nativeButton={false}>
+                Find more courses
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-lg font-bold">🎉 Congratulations — you&apos;ve completed {courseTitle}!</p>
+            <p className="-mt-3 text-sm text-muted-foreground">
+              One last step — tell us how it went to unlock your certificate.
+            </p>
+            <CourseFeedbackForm courseId={courseId} />
             <Button variant="outline" render={<Link href="/learner/courses" />} nativeButton={false}>
               Find more courses
             </Button>
-          </div>
-        </>
+          </>
+        )
       ) : (
         <>
           <p className="text-lg font-bold">🙌 You&apos;ve finished the last lesson in this course!</p>
