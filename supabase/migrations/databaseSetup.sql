@@ -195,7 +195,7 @@ create table public.courses (
   -- draft or published. Only the owning admin and learners an admin has
   -- explicitly enrolled can read it -- see can_read_course() below.
   is_private boolean not null default false,
-  -- passing_grade: minimum weighted final course grade (0-100, see quizzes.weight)
+  -- passing_grade: minimum weighted final course grade (0-100, see lib/course-grade.ts quizGradeWeight)
   -- a learner must reach, in addition to completing every lesson and passing
   -- every quiz individually, before checkAndIssueCertificate() will issue one.
   passing_grade int not null default 70 check (passing_grade between 0 and 100),
@@ -2175,54 +2175,6 @@ $$;
 
 grant execute on function public.admin_grading_courses(text, int, int) to authenticated;
 
-create function public.admin_grading_quizzes(
-  p_course_id uuid,
-  p_q text default '',
-  p_limit int default 25,
-  p_offset int default 0
-)
-returns table (
-  quiz_id uuid,
-  quiz_title text,
-  lesson_title text,
-  section_title text,
-  attempt_count bigint,
-  pending_response_count bigint,
-  oldest_submitted_at timestamptz,
-  total_count bigint
-)
-language sql
-stable
-security invoker
-set search_path = ''
-as $$
-  with g as (
-    select
-      a.quiz_id,
-      a.quiz_title,
-      min(a.lesson_title) as lesson_title,
-      min(a.section_title) as section_title,
-      count(*) as attempt_count,
-      sum(a.pending_count) as pending_response_count,
-      min(a.submitted_at) as oldest_submitted_at
-    from public.admin_pending_attempts a
-    where a.course_id = p_course_id
-      and (a.course_created_by = (select auth.uid()) or public.is_superadmin())
-      and (
-        coalesce(p_q, '') = ''
-        or a.quiz_title ilike '%' || public.like_escape(p_q) || '%' escape '\'
-        or a.lesson_title ilike '%' || public.like_escape(p_q) || '%' escape '\'
-      )
-    group by a.quiz_id, a.quiz_title
-  )
-  select g.*, count(*) over () as total_count
-  from g
-  order by g.quiz_title, g.quiz_id
-  limit greatest(p_limit, 0) offset greatest(p_offset, 0);
-$$;
-
-grant execute on function public.admin_grading_quizzes(uuid, text, int, int) to authenticated;
-
 -- attempt_count stays pending-only (it fronts the "Attempts Pending Review"
 -- card); course_count spans every course with a submission now that the view
 -- is no longer gated on pending_review.
@@ -2239,5 +2191,127 @@ as $$
   from public.admin_pending_attempts a
   where a.course_created_by = (select auth.uid()) or public.is_superadmin();
 $$;
+
+-- =============================================================================
+-- 14. Mandatory course feedback (1-5 rating + comment) at course end
+-- =============================================================================
+--
+-- When a learner finishes a course, the completion screen (CourseFinishedPane
+-- in components/learn/LessonPane.tsx) withholds the certificate until they
+-- leave a 1-5 star rating and a written comment. checkAndIssueCertificate()
+-- (lib/certificates.ts) is untouched -- the certificate row and PDF are still
+-- generated the moment the grade gates pass, only the learner-facing
+-- presentation is gated on this table having a row. Course-owner admins see
+-- the feedback on a new tab in the course editor and get notified when it
+-- arrives.
+
+create table public.course_feedback (
+  id uuid primary key default gen_random_uuid(),
+  -- One feedback per enrollment. Unique here (not on (learner_id, course_id))
+  -- so re-enrollment after a delete could legitimately collect fresh feedback.
+  enrollment_id uuid not null unique references public.enrollments (id) on delete cascade,
+  course_id uuid not null references public.courses (id) on delete cascade,
+  learner_id uuid not null references public.profiles (id) on delete cascade,
+  rating int not null check (rating between 1 and 5),
+  comment text not null check (length(btrim(comment)) >= 10),
+  created_at timestamptz not null default now()
+);
+
+create index course_feedback_course_created_idx
+  on public.course_feedback (course_id, created_at desc);
+
+alter table public.course_feedback enable row level security;
+
+-- Own-row read. There is deliberately NO update and NO delete policy --
+-- feedback is immutable once submitted.
+create policy "own feedback readable" on public.course_feedback
+  for select
+  to authenticated
+  using ((select auth.uid()) = learner_id);
+
+-- Insert is gated on actually having completed the course through this
+-- enrollment, not just being logged in as its learner -- this is the DB-level
+-- backstop for "you can only rate a course you finished", enforced
+-- independently of the server action.
+create policy "own feedback insertable" on public.course_feedback
+  for insert
+  to authenticated
+  with check (
+    learner_id = (select auth.uid())
+    and exists (
+      select 1 from public.enrollments e
+      where e.id = course_feedback.enrollment_id
+        and e.learner_id = (select auth.uid())
+        and e.course_id = course_feedback.course_id
+        and e.status = 'completed'
+    )
+  );
+
+create policy "admins can select course_feedback" on public.course_feedback
+  for select
+  to authenticated
+  using (public.owns_course(course_id));
+
+grant select, insert on public.course_feedback to authenticated;
+
+-- AFTER INSERT only, so the later `update ... set pdf_url` that
+-- checkAndIssueCertificate() runs against the same row never produces a
+-- second notification.
+create function public.notify_on_certificate_issued()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.notifications (user_id, type, title, body, link)
+  select
+    e.learner_id,
+    'certificate',
+    'Your certificate is ready',
+    c.title,
+    '/learner/profile?tab=certificates'
+  from public.enrollments e
+  join public.courses c on c.id = e.course_id
+  where e.id = new.enrollment_id;
+
+  return new;
+end;
+$$;
+
+create trigger on_certificate_issued
+  after insert on public.certificates
+  for each row
+  execute function public.notify_on_certificate_issued();
+
+-- Owner only (not every superadmin too) to avoid notification noise --
+-- superadmins can still see all feedback via owns_course()'s
+-- is_superadmin() branch, they just aren't paged for each submission.
+create function public.notify_on_course_feedback()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.notifications (user_id, type, title, body, link)
+  select
+    c.created_by,
+    'course_feedback',
+    'New course feedback received',
+    coalesce(nullif(p.full_name, ''), p.email, 'A learner') || ' rated ' || c.title || ' ' || new.rating || '/5',
+    '/admin/courses/preview/' || c.id
+  from public.courses c
+  join public.profiles p on p.id = new.learner_id
+  where c.id = new.course_id;
+
+  return new;
+end;
+$$;
+
+create trigger on_course_feedback_created
+  after insert on public.course_feedback
+  for each row
+  execute function public.notify_on_course_feedback();
 
 grant execute on function public.admin_grading_stats() to authenticated;

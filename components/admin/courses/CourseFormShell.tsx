@@ -57,7 +57,13 @@ export function CourseFormShell(props: ShellProps) {
   )
 }
 
-function CourseFormShellInner({ course, instructors, availableCoursesForPrerequisites, roster, isNew = false }: ShellProps) {
+function CourseFormShellInner({
+  course,
+  instructors,
+  availableCoursesForPrerequisites,
+  roster,
+  isNew = false,
+}: ShellProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)

@@ -21,9 +21,11 @@ import { relativeTime } from "@/lib/notification-format"
 export function NotificationBell({
   items,
   unreadCount,
+  seeAllHref = "/learner/notifications",
 }: {
   items: Notification[]
   unreadCount: number
+  seeAllHref?: string | null
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -97,12 +99,12 @@ export function NotificationBell({
           })
         )}
 
-        {items.length > 0 && (
+        {items.length > 0 && seeAllHref && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="justify-center text-sm font-medium text-ring"
-              render={<Link href="/learner/notifications" />}
+              render={<Link href={seeAllHref} />}
             >
               See all notifications
             </DropdownMenuItem>

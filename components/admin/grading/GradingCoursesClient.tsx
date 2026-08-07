@@ -7,7 +7,6 @@ import type { Paginated } from "@/lib/pagination"
 import type { GradingCourseSummary } from "@/lib/grading-server"
 import { ListPagination } from "@/components/admin/ListPagination"
 import { ListToolbar } from "@/components/admin/ListToolbar"
-import { ImportGradesDialog } from "./ImportGradesDialog"
 
 export function GradingCoursesClient({ page }: { page: Paginated<GradingCourseSummary> }) {
   return (
@@ -16,7 +15,6 @@ export function GradingCoursesClient({ page }: { page: Paginated<GradingCourseSu
         <h2 className="text-lg font-bold">Courses</h2>
         <div className="flex items-center gap-2">
           <ListToolbar placeholder="Search course..." />
-          <ImportGradesDialog />
         </div>
       </div>
 
@@ -43,14 +41,6 @@ export function GradingCoursesClient({ page }: { page: Paginated<GradingCourseSu
               <div className="text-muted-foreground">{c.learnerCount}</div>
               <div className="text-muted-foreground">{c.attemptCount}</div>
               <div className="flex shrink-0 items-center justify-end gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  render={<a href={`/admin/grading/export?courseId=${c.courseId}`} />}
-                  nativeButton={false}
-                >
-                  Export CSV
-                </Button>
                 <Button
                   size="sm"
                   variant="outline"

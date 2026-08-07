@@ -6,17 +6,33 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { CourseCurriculum } from "@/components/learner/CourseCurriculum"
+import { FeedbackTab } from "@/components/admin/courses/tabs/FeedbackTab"
 import { getCourseDetailForAdmin } from "@/lib/courses-admin"
 import { formatCourseAccess } from "@/lib/courses"
+import { getCourseFeedback, getCourseFeedbackSummary } from "@/lib/feedback-admin"
+import { parseListParams, type RawSearchParams } from "@/lib/pagination"
 import { cn } from "@/lib/utils"
 
 export default async function AdminCoursePreviewPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<RawSearchParams>
 }) {
-  const { id } = await params
-  const course = await getCourseDetailForAdmin(id)
+  const [{ id }, raw] = await Promise.all([params, searchParams])
+  const feedbackParams = parseListParams<Record<string, never>>(raw, {
+    prefix: "feedback",
+    sortable: ["created_at"],
+    defaultSort: "created_at",
+    defaultDir: "desc",
+  })
+
+  const [course, feedbackSummary, feedback] = await Promise.all([
+    getCourseDetailForAdmin(id),
+    getCourseFeedbackSummary(id),
+    getCourseFeedback(id, feedbackParams),
+  ])
   if (!course) notFound()
 
   const price = formatCourseAccess(course)
@@ -99,6 +115,13 @@ export default async function AdminCoursePreviewPage({
                 <div className="text-[17px] font-bold">{course.instructor?.name ?? "Sanggabiz Team"}</div>
                 <div className="mt-0.5 text-[13px] text-muted-foreground">Course Instructor</div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>
+              <div className="mb-3.5 text-lg font-bold">Feedback</div>
+              <FeedbackTab summary={feedbackSummary} feedback={feedback} />
             </CardContent>
           </Card>
         </div>

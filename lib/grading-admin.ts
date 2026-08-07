@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { checkAndIssueCertificate } from "@/lib/certificates"
+import { hasResponseContent } from "@/lib/grading-server"
 
 export type EssayGrade = { questionId: string; points: number }
 
@@ -33,6 +34,29 @@ export async function gradeAttempt(
     if (maxPoints === undefined) return { error: "Unknown question in grade payload" }
     if (!Number.isFinite(grade.points) || grade.points < 0 || grade.points > maxPoints) {
       return { error: `Points must be between 0 and ${maxPoints}` }
+    }
+  }
+
+  // A quiz_responses row can exist with no actual submitted content (the
+  // learner skipped the question) -- refuse to award points to it, since the
+  // grading matrix and CSV import are the only two writers of points_awarded.
+  const { data: existingResponses, error: existingResponsesError } = await supabase
+    .from("quiz_responses")
+    .select("question_id, response")
+    .eq("attempt_id", attemptId)
+    .in(
+      "question_id",
+      grades.map((g) => g.questionId)
+    )
+
+  if (existingResponsesError || !existingResponses) {
+    return { error: existingResponsesError?.message ?? "Could not load responses" }
+  }
+
+  const responseByQuestion = new Map(existingResponses.map((r) => [r.question_id, r.response]))
+  for (const grade of grades) {
+    if (!hasResponseContent(responseByQuestion.get(grade.questionId))) {
+      return { error: `Cannot grade a blank response for question ${grade.questionId}` }
     }
   }
 

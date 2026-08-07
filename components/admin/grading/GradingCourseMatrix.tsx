@@ -343,6 +343,62 @@ const CellView = memo(function CellView({
     return <span className="text-xs text-muted-foreground">No submission</span>
   }
 
+  // A study case is always exactly one manually-graded question and nothing
+  // else feeding the score (validateQuizzes() enforces this), so its score
+  // and its single point input are the same number on two different scales.
+  // Collapse those into one 0-100 input, matching how a read-only auto-graded
+  // cell just shows a plain number. Anything else (legacy mixed/multi-question
+  // quizzes) keeps the stacked score + per-question points view below.
+  if (column.isAssessment && cell.grades.length === 1) {
+    const [grade] = cell.grades
+
+    if (!grade.hasResponse) {
+      return <span className="text-xs text-muted-foreground">No submission</span>
+    }
+
+    const baselinePoints = String(grade.pointsAwarded ?? 0)
+    const currentPoints = edits[grade.questionId] ?? baselinePoints
+    const initialPercent = Math.round((Number(currentPoints) / grade.points) * 100)
+
+    return (
+      <div className="flex items-center gap-2">
+        <Input
+          // Uncontrolled, keyed on the server-confirmed baseline: converting
+          // percent <-> points on every keystroke (as a controlled `value`
+          // would require) is lossy at this denominator (points step to 1/20
+          // = 5%), so a controlled round-trip corrupts multi-digit typing.
+          // Remounting only when the baseline itself changes (e.g. after a
+          // save) lets the DOM hold whatever the admin is typing untouched.
+          key={`${grade.questionId}:${baselinePoints}`}
+          type="number"
+          min={0}
+          max={100}
+          disabled={disabled}
+          defaultValue={Number.isFinite(initialPercent) ? initialPercent : 0}
+          onChange={(e) => {
+            const percent = e.target.value.trim() === "" ? 0 : Number(e.target.value)
+            const points = Number.isFinite(percent) ? Math.round((percent / 100) * grade.points) : 0
+            onScoreChange(cell.attemptId as string, grade.questionId, grade.points, baselinePoints, String(points))
+          }}
+          className="h-7 w-16"
+        />
+        {cell.status === "pending_review" && <span className="text-xs text-muted-foreground">pending</span>}
+        {cell.attemptId && (
+          <button
+            type="button"
+            onClick={() =>
+              onPreview({ attemptId: cell.attemptId as string, quizTitle: column.quizTitle, learnerName })
+            }
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Preview submission"
+          >
+            <Eye className="size-3.5" />
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-2">
       {/* The score always renders, for every quiz. It used to be an exclusive
@@ -370,18 +426,24 @@ const CellView = memo(function CellView({
               {cell.grades.length > 1 && (
                 <span className="w-6 shrink-0 text-xs font-medium text-muted-foreground">Q{i + 1}</span>
               )}
-              <Input
-                type="number"
-                min={0}
-                max={grade.points}
-                disabled={disabled}
-                value={value}
-                onChange={(e) =>
-                  onScoreChange(cell.attemptId as string, grade.questionId, grade.points, baseline, e.target.value)
-                }
-                className="h-7 w-16"
-              />
-              <span className="text-xs text-muted-foreground">/ {grade.points}</span>
+              {grade.hasResponse ? (
+                <>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={grade.points}
+                    disabled={disabled}
+                    value={value}
+                    onChange={(e) =>
+                      onScoreChange(cell.attemptId as string, grade.questionId, grade.points, baseline, e.target.value)
+                    }
+                    className="h-7 w-16"
+                  />
+                  <span className="text-xs text-muted-foreground">/ {grade.points}</span>
+                </>
+              ) : (
+                <span className="text-xs text-muted-foreground">No submission</span>
+              )}
             </div>
           )
         })}

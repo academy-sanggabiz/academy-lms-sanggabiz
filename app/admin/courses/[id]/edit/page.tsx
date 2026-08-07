@@ -19,7 +19,6 @@ export default async function EditCoursePage({
     defaultSort: "enrolled_at",
     defaultDir: "desc",
   })
-
   const [course, instructors, availableCoursesForPrerequisites, roster] = await Promise.all([
     getCourseDetailForAdmin(id),
     listInstructors(),

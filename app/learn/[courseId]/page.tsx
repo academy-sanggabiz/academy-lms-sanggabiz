@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react"
 import { getLearnData } from "@/lib/learn-server"
 import { resolveUserRole, roleHomePath } from "@/lib/auth/require-admin"
 import { checkAndIssueCertificate } from "@/lib/certificates"
+import { getCourseFeedbackForLearner } from "@/lib/feedback-server"
 import { createClient } from "@/lib/supabase/server"
 import { LearnSidebar } from "@/components/learn/LearnSidebar"
 import { LessonPane } from "@/components/learn/LessonPane"
@@ -63,6 +64,8 @@ export default async function LearnPage({
     })
   }
 
+  const feedback = isCourseComplete ? await getCourseFeedbackForLearner(courseId) : null
+
   return (
     <div className="flex h-screen flex-col bg-background">
       <header className="flex h-14 shrink-0 items-center gap-3.5 border-b border-border bg-card px-5">
@@ -95,6 +98,7 @@ export default async function LearnPage({
           nextLessonId={nextLessonId}
           quizAttempt={currentLesson.quiz ? quizAttempts.get(currentLesson.quiz.id) : undefined}
           isCourseComplete={isCourseComplete}
+          feedbackGiven={feedback !== null}
         />
         <LearnSidebar
           courseId={courseId}
