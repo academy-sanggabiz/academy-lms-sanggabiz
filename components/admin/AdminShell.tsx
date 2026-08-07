@@ -6,14 +6,20 @@ import { Toaster } from "sonner"
 import { AdminSidebar } from "@/components/admin/AdminSidebar"
 import { AdminUserMenu } from "@/components/admin/AdminUserMenu"
 import { NavigationBlockerProvider } from "@/components/admin/NavigationBlockerContext"
+import { NotificationBell } from "@/components/learner/NotificationBell"
+import type { Notification } from "@/lib/notifications-server"
 
 export function AdminShell({
   name,
   role,
+  notifications,
+  unreadCount,
   children,
 }: {
   name: string
   role: "admin" | "superadmin"
+  notifications: Notification[]
+  unreadCount: number
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -35,6 +41,7 @@ export function AdminShell({
               </button>
             )}
             <div className="flex-1" />
+            <NotificationBell items={notifications} unreadCount={unreadCount} seeAllHref={null} />
             <AdminUserMenu name={name} role={role} />
           </header>
 
