@@ -115,7 +115,7 @@ export function linesToArray(text: string): string[] {
     .filter(Boolean)
 }
 
-export function arrayToLines(items: string[]): string {
+function arrayToLines(items: string[]): string {
   return items.join("\n")
 }
 
