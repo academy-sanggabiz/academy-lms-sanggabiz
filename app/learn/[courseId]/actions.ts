@@ -5,16 +5,19 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { checkAndIssueCertificate } from "@/lib/certificates"
 
-export async function toggleLessonComplete(formData: FormData) {
-  const courseId = String(formData.get("courseId") ?? "")
-  const lessonId = String(formData.get("lessonId") ?? "")
-  const completed = formData.get("completed") === "true"
-  if (!courseId || !lessonId) return
+export type ToggleLessonResult = { ok: true } | { ok: false; error: string }
+
+export async function toggleLessonComplete(
+  courseId: string,
+  lessonId: string,
+  completed: boolean
+): Promise<ToggleLessonResult> {
+  if (!courseId || !lessonId) return { ok: false, error: "Missing course or lesson." }
 
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims?.sub
-  if (!userId) return
+  if (!userId) return { ok: false, error: "You need to be signed in." }
 
   const { data: enrollment, error: enrollmentError } = await supabase
     .from("enrollments")
@@ -25,7 +28,7 @@ export async function toggleLessonComplete(formData: FormData) {
 
   if (enrollmentError || !enrollment) {
     console.error("toggleLessonComplete: no enrollment found", enrollmentError?.message)
-    return
+    return { ok: false, error: "Couldn't update progress. Please try again." }
   }
 
   const { error } = await supabase.from("lesson_progress").upsert(
@@ -40,7 +43,7 @@ export async function toggleLessonComplete(formData: FormData) {
 
   if (error) {
     console.error("toggleLessonComplete failed:", error.message)
-    return
+    return { ok: false, error: "Couldn't update progress. Please try again." }
   }
 
   if (completed) {
@@ -48,4 +51,5 @@ export async function toggleLessonComplete(formData: FormData) {
   }
 
   revalidatePath("/learn/[courseId]", "page")
+  return { ok: true }
 }

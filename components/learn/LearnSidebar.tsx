@@ -1,12 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useOptimistic, useState, useTransition } from "react"
 import Link from "next/link"
-import { ChevronDown, FileText, HelpCircle, Presentation, Send, Sparkles, Video } from "lucide-react"
+import { toast } from "sonner"
+import { ChevronDown, FileText, HelpCircle, Loader2, Presentation, Send, Sparkles, Video } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { formatDuration, type CourseSection, type LessonContentType } from "@/lib/courses"
 import { toggleLessonComplete } from "@/app/learn/[courseId]/actions"
+import { Toaster } from "@/components/ui/sonner"
 
 const typeIcon: Record<LessonContentType, typeof Video> = {
   video: Video,
@@ -88,6 +90,8 @@ export function LearnSidebar({
       ) : (
         <AiAssistantTab />
       )}
+
+      {mode === "learner" && <Toaster richColors position="top-right" />}
     </aside>
   )
 }
@@ -108,12 +112,40 @@ function ContentTab({
   mode?: "learner" | "admin-preview"
 }) {
   const [openId, setOpenId] = useState<string | null>(sections[0]?.id ?? null)
+  const [optimisticCompletedIds, applyOptimisticToggle] = useOptimistic(
+    completedLessonIds,
+    (state, { lessonId, completed }: { lessonId: string; completed: boolean }) => {
+      const next = new Set(state)
+      if (completed) next.add(lessonId)
+      else next.delete(lessonId)
+      return next
+    }
+  )
+  const [pendingLessonIds, setPendingLessonIds] = useState<Set<string>>(new Set())
+  const [, startTransition] = useTransition()
+
+  function handleToggle(lessonId: string, nextCompleted: boolean) {
+    setPendingLessonIds((prev) => new Set(prev).add(lessonId))
+    startTransition(async () => {
+      applyOptimisticToggle({ lessonId, completed: nextCompleted })
+      try {
+        const result = await toggleLessonComplete(courseId, lessonId, nextCompleted)
+        if (!result.ok) toast.error(result.error)
+      } finally {
+        setPendingLessonIds((prev) => {
+          const next = new Set(prev)
+          next.delete(lessonId)
+          return next
+        })
+      }
+    })
+  }
 
   return (
     <div className="flex-1 overflow-y-auto">
       {sections.map((section) => {
         const isOpen = openId === section.id
-        const doneCount = section.lessons.filter((l) => completedLessonIds.has(l.id)).length
+        const doneCount = section.lessons.filter((l) => optimisticCompletedIds.has(l.id)).length
 
         return (
           <div key={section.id} className="border-b border-muted">
@@ -137,7 +169,8 @@ function ContentTab({
                 {section.lessons.map((lesson) => {
                   const Icon = typeIcon[lesson.content_type]
                   const isActive = lesson.id === currentLessonId
-                  const isDone = completedLessonIds.has(lesson.id)
+                  const isDone = optimisticCompletedIds.has(lesson.id)
+                  const isPending = pendingLessonIds.has(lesson.id)
 
                   return (
                     <div
@@ -148,25 +181,29 @@ function ContentTab({
                       )}
                     >
                       {mode === "learner" && (
-                        <form action={toggleLessonComplete}>
-                          <input type="hidden" name="courseId" value={courseId} />
-                          <input type="hidden" name="lessonId" value={lesson.id} />
-                          <input type="hidden" name="completed" value={(!isDone).toString()} />
-                          <button
-                            type="submit"
-                            title="Mark complete"
-                            className={cn(
-                              "flex size-[18px] shrink-0 items-center justify-center rounded border",
-                              isDone ? "border-ring bg-ring" : "border-input bg-card"
-                            )}
-                          >
-                            {isDone && (
+                        <button
+                          type="button"
+                          title="Mark complete"
+                          disabled={isPending}
+                          onClick={() => handleToggle(lesson.id, !isDone)}
+                          className={cn(
+                            "flex size-[18px] shrink-0 items-center justify-center rounded border",
+                            isDone ? "border-ring bg-ring" : "border-input bg-card",
+                            isPending && "opacity-60"
+                          )}
+                        >
+                          {isPending ? (
+                            <Loader2
+                              className={cn("size-2.5 animate-spin", isDone ? "text-white" : "text-muted-foreground")}
+                            />
+                          ) : (
+                            isDone && (
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
                                 <path d="M5 13 L10 18 L19 7" />
                               </svg>
-                            )}
-                          </button>
-                        </form>
+                            )
+                          )}
+                        </button>
                       )}
 
                       <Link href={`${basePath}/${courseId}?lesson=${lesson.id}`} className="min-w-0 flex-1">
