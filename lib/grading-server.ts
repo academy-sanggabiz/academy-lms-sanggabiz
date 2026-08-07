@@ -15,6 +15,15 @@ export function isManuallyGraded(type: string, options: { is_correct: boolean }[
   return type === "essay" || type === "file_upload" || (type === "short_answer" && !options.some((o) => o.is_correct))
 }
 
+/**
+ * True when a quiz_responses.response value represents actual submitted
+ * content, as opposed to SQL/JSON null or an empty string left by
+ * grade_attempt() for a question the learner skipped.
+ */
+export function hasResponseContent(response: unknown): boolean {
+  return typeof response === "string" && response.trim().length > 0
+}
+
 export type GradingCourseSummary = {
   courseId: string
   courseTitle: string
@@ -117,6 +126,8 @@ export type GradingCellGrade = {
   type: string
   points: number
   pointsAwarded: number | null
+  /** False when quiz_responses.response is null/blank -- see getCourseGradingMatrix. */
+  hasResponse: boolean
 }
 
 export type GradingCell = {
@@ -168,7 +179,7 @@ type MatrixAttemptRow = {
   score: number | null
   status: GradingCellStatus
   submitted_at: string | null
-  responses: { question_id: string; points_awarded: number | null }[]
+  responses: { question_id: string; points_awarded: number | null; response: unknown }[]
 }
 
 function toOne<T>(value: T | T[] | null): T | null {
@@ -293,7 +304,7 @@ export async function getCourseGradingMatrix(
           .from("quiz_attempts")
           .select(
             `id, quiz_id, learner_id, attempt_number, score, status, submitted_at,
-             responses:quiz_responses(question_id, points_awarded)`
+             responses:quiz_responses(question_id, points_awarded, response)`
           )
           .in("quiz_id", quizIds)
           .in("learner_id", learnerIds)
@@ -337,20 +348,24 @@ export async function getCourseGradingMatrix(
         continue
       }
 
-      const awardedByQuestion = new Map(attempt.responses.map((r) => [r.question_id, r.points_awarded]))
+      const responseByQuestion = new Map(attempt.responses.map((r) => [r.question_id, r]))
       cells[column.quizId] = {
         attemptId: attempt.id,
         status: attempt.status,
         score: attempt.score,
         submittedAt: attempt.submitted_at,
         grades: (gradedQuestionsByQuiz.get(column.quizId) ?? [])
-          .filter((question) => awardedByQuestion.has(question.id))
-          .map((question) => ({
-            questionId: question.id,
-            type: question.type,
-            points: question.points,
-            pointsAwarded: awardedByQuestion.get(question.id) ?? null,
-          })),
+          .filter((question) => responseByQuestion.has(question.id))
+          .map((question) => {
+            const response = responseByQuestion.get(question.id)
+            return {
+              questionId: question.id,
+              type: question.type,
+              points: question.points,
+              pointsAwarded: response?.points_awarded ?? null,
+              hasResponse: hasResponseContent(response?.response),
+            }
+          }),
       }
     }
 
