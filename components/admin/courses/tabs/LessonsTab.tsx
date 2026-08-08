@@ -66,6 +66,7 @@ import {
 
 import { useCourseDraft } from "../CourseDraftContext"
 import { QuizIssuesProvider, useLessonQuizIssues } from "../QuizIssuesContext"
+import { useDebouncedField } from "../useDebouncedField"
 import { QuizEditor } from "./QuizEditor"
 import { RichTextEditor } from "../RichTextEditor"
 
@@ -212,16 +213,10 @@ const SectionCard = memo(function SectionCard({
 }) {
   const { dispatch } = useCourseDraft()
   const [editingTitle, setEditingTitle] = useState(false)
-  const [title, setTitle] = useState(section.title)
-
-  function saveTitle() {
-    setEditingTitle(false)
-    if (title.trim() === section.title || !title.trim()) {
-      setTitle(section.title)
-      return
-    }
-    dispatch({ type: "renameSection", id: section.id, title: title.trim() })
-  }
+  const title = useDebouncedField(section.title, (next) => {
+    const trimmed = next.trim()
+    if (trimmed) dispatch({ type: "renameSection", id: section.id, title: trimmed })
+  })
 
   function handleDelete() {
     dispatch({ type: "deleteSection", id: section.id })
@@ -233,16 +228,22 @@ const SectionCard = memo(function SectionCard({
         {editingTitle ? (
           <Input
             autoFocus
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={saveTitle}
+            value={title.value}
+            onChange={(e) => title.onChange(e.target.value)}
+            onBlur={() => {
+              title.flush()
+              setEditingTitle(false)
+            }}
             onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
             className="h-8 max-w-xs"
           />
         ) : (
           <button
             type="button"
-            onClick={() => setEditingTitle(true)}
+            onClick={() => {
+              title.reset(section.title)
+              setEditingTitle(true)
+            }}
             className="min-w-0 flex-1 truncate text-left text-sm font-bold hover:underline"
             title="Click to rename"
           >
@@ -329,11 +330,18 @@ const LessonCard = memo(function LessonCard({
 }) {
   const { dispatch } = useCourseDraft()
 
-  const [title, setTitle] = useState(lesson.title)
-  const [videoUrl, setVideoUrl] = useState(lesson.video_url ?? "")
+  function save(patch: Partial<DraftLesson>) {
+    dispatch({ type: "patchLesson", id: lesson.id, patch })
+  }
+
+  const title = useDebouncedField(lesson.title, (next) => save({ title: next }))
+  const videoUrl = useDebouncedField(lesson.video_url ?? "", (next) =>
+    save({ video_url: next.trim() || null })
+  )
   const [content, setContent] = useState(lesson.content ?? "")
-  const [durationMin, setDurationMin] = useState(
-    lesson.duration_seconds ? String(Math.round(lesson.duration_seconds / 60)) : ""
+  const durationMin = useDebouncedField(
+    lesson.duration_seconds ? String(Math.round(lesson.duration_seconds / 60)) : "",
+    (next) => save({ duration_seconds: next.trim() ? Number(next) * 60 : null })
   )
 
   const [contentOpen, setContentOpen] = useState(true)
@@ -344,18 +352,14 @@ const LessonCard = memo(function LessonCard({
   const contentType = lesson.content_type
 
   const isComplete =
-    title.trim().length > 0 &&
+    title.value.trim().length > 0 &&
     (contentType === "video" || contentType === "ppt"
-      ? videoUrl.trim().length > 0
+      ? videoUrl.value.trim().length > 0
       : contentType === "text"
         ? content.replace(/<[^>]*>/g, "").trim().length > 0
         : contentType === "quiz"
           ? (lesson.quiz?.questions.length ?? 0) > 0
           : true)
-
-  function save(patch: Partial<DraftLesson>) {
-    dispatch({ type: "patchLesson", id: lesson.id, patch })
-  }
 
   function handlePickType(value: LessonContentType) {
     save({ content_type: value })
@@ -408,7 +412,7 @@ const LessonCard = memo(function LessonCard({
           <Icon className="size-3.5" />
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-bold">
-          {title.trim() || `Lesson ${index + 1}`}
+          {title.value.trim() || `Lesson ${index + 1}`}
         </span>
         <span
           className={cn(
@@ -423,10 +427,10 @@ const LessonCard = memo(function LessonCard({
             {issues.length} quiz {issues.length === 1 ? "issue" : "issues"}
           </span>
         )}
-        {durationMin && (
+        {durationMin.value && (
           <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground">
             <Clock className="size-3" />
-            {durationMin} min
+            {durationMin.value} min
           </span>
         )}
         <Button type="button" variant="ghost" size="icon-sm" title="Duplicate lesson" onClick={handleDuplicate}>
@@ -468,9 +472,9 @@ const LessonCard = memo(function LessonCard({
             <Label htmlFor={`lesson-title-${lesson.id}`}>Lesson Title</Label>
             <Input
               id={`lesson-title-${lesson.id}`}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={() => save({ title })}
+              value={title.value}
+              onChange={(e) => title.onChange(e.target.value)}
+              onBlur={title.flush}
             />
           </div>
 
@@ -504,11 +508,9 @@ const LessonCard = memo(function LessonCard({
               id={`lesson-duration-${lesson.id}`}
               type="number"
               min={0}
-              value={durationMin}
-              onChange={(e) => setDurationMin(e.target.value)}
-              onBlur={() =>
-                save({ duration_seconds: durationMin.trim() ? Number(durationMin) * 60 : null })
-              }
+              value={durationMin.value}
+              onChange={(e) => durationMin.onChange(e.target.value)}
+              onBlur={durationMin.flush}
             />
           </div>
 
@@ -520,9 +522,9 @@ const LessonCard = memo(function LessonCard({
                 <Input
                   id={`lesson-video-${lesson.id}`}
                   placeholder="https://www.youtube.com/watch?v=..."
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                  onBlur={() => save({ video_url: videoUrl.trim() || null })}
+                  value={videoUrl.value}
+                  onChange={(e) => videoUrl.onChange(e.target.value)}
+                  onBlur={videoUrl.flush}
                 />
                 <p className="text-xs text-muted-foreground">
                   Paste the full YouTube link for this lesson&apos;s video
@@ -544,9 +546,9 @@ const LessonCard = memo(function LessonCard({
                 <Input
                   id={`lesson-slides-${lesson.id}`}
                   placeholder="https://docs.google.com/presentation/d/.../edit"
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                  onBlur={() => save({ video_url: videoUrl.trim() || null })}
+                  value={videoUrl.value}
+                  onChange={(e) => videoUrl.onChange(e.target.value)}
+                  onBlur={videoUrl.flush}
                 />
                 <p className="text-xs text-muted-foreground">
                   Paste the Google Slides share or &quot;Publish to web&quot; link
@@ -755,13 +757,14 @@ function ResourceRow({
   onRemove: () => void
 }) {
   const { dispatch } = useCourseDraft()
-  const [title, setTitle] = useState(resource.title)
-  const [url, setUrl] = useState(resource.file_url)
-  const Icon = resource.type === "file" ? FileText : Link2
 
   function save(patch: Partial<DraftResource>) {
     dispatch({ type: "patchResource", id: resource.id, patch })
   }
+
+  const title = useDebouncedField(resource.title, (next) => save({ title: next }))
+  const url = useDebouncedField(resource.file_url, (next) => save({ file_url: next }))
+  const Icon = resource.type === "file" ? FileText : Link2
 
   return (
     <div className="overflow-hidden rounded-xl border border-border">
@@ -783,18 +786,18 @@ function ResourceRow({
           <div className="space-y-1.5">
             <Label>Resource Title</Label>
             <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={() => save({ title })}
+              value={title.value}
+              onChange={(e) => title.onChange(e.target.value)}
+              onBlur={title.flush}
             />
           </div>
           <div className="space-y-1.5">
             <Label>URL</Label>
             <Input
               placeholder="https://..."
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onBlur={() => save({ file_url: url })}
+              value={url.value}
+              onChange={(e) => url.onChange(e.target.value)}
+              onBlur={url.flush}
             />
           </div>
         </div>

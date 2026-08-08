@@ -107,8 +107,14 @@ export function RichTextEditor({
     onChangeRef.current = onChange
   }, [onChange])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Mirrors the latest known HTML outside the debounce timer, so the unmount
+  // cleanup below can flush it without touching the editor instance (Tiptap's
+  // own cleanup effect destroys the editor before this effect's cleanup runs,
+  // since effects clean up in reverse mount order).
+  const latestHtmlRef = useRef(value)
 
   function scheduleUpdate(html: string) {
+    latestHtmlRef.current = html
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       debounceRef.current = null
@@ -117,6 +123,7 @@ export function RichTextEditor({
   }
 
   function flush(html: string) {
+    latestHtmlRef.current = html
     if (debounceRef.current) {
       clearTimeout(debounceRef.current)
       debounceRef.current = null
@@ -131,6 +138,7 @@ export function RichTextEditor({
       if (debounceRef.current) {
         clearTimeout(debounceRef.current)
         debounceRef.current = null
+        onChangeRef.current(latestHtmlRef.current)
       }
     }
   }, [])

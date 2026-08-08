@@ -24,6 +24,7 @@ import { QUESTION_TYPE_POINTS, REGULAR_QUIZ_MAX_ATTEMPTS } from "@/lib/courses"
 import { ASSESSMENT_GRADE_WEIGHT } from "@/lib/course-grade"
 import { useCourseDraft } from "../CourseDraftContext"
 import { useQuestionQuizIssue } from "../QuizIssuesContext"
+import { useDebouncedField } from "../useDebouncedField"
 
 // Only auto-gradable types are offered for a normal quiz. Essay/file_upload
 // only exist inside a study case (see "Add Study Case" below) -- a normal
@@ -142,12 +143,17 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: DraftQu
 
 function QuizSettings({ lessonId, quiz }: { lessonId: string; quiz: DraftQuiz }) {
   const { dispatch } = useCourseDraft()
-  const [passScore, setPassScore] = useState(String(quiz.pass_score))
-  const [maxAttempts, setMaxAttempts] = useState(quiz.max_attempts ? String(quiz.max_attempts) : "")
 
   function save(patch: Partial<Omit<DraftQuiz, "id" | "questions">>) {
     dispatch({ type: "patchQuiz", lessonId, patch })
   }
+
+  const passScore = useDebouncedField(String(quiz.pass_score), (next) =>
+    save({ pass_score: Number(next) || 0 })
+  )
+  const maxAttempts = useDebouncedField(quiz.max_attempts ? String(quiz.max_attempts) : "", (next) =>
+    save({ max_attempts: next.trim() ? Number(next) : null })
+  )
 
   return (
     <div className="mb-3 flex flex-wrap items-end gap-4 rounded-lg border border-border bg-muted/30 p-3">
@@ -158,9 +164,9 @@ function QuizSettings({ lessonId, quiz }: { lessonId: string; quiz: DraftQuiz })
           type="number"
           min={0}
           max={100}
-          value={passScore}
-          onChange={(e) => setPassScore(e.target.value)}
-          onBlur={() => save({ pass_score: Number(passScore) || 0 })}
+          value={passScore.value}
+          onChange={(e) => passScore.onChange(e.target.value)}
+          onBlur={passScore.flush}
         />
       </div>
       <div className="w-32 space-y-1.5">
@@ -171,9 +177,9 @@ function QuizSettings({ lessonId, quiz }: { lessonId: string; quiz: DraftQuiz })
             type="number"
             min={0}
             placeholder="Unlimited"
-            value={maxAttempts}
-            onChange={(e) => setMaxAttempts(e.target.value)}
-            onBlur={() => save({ max_attempts: maxAttempts.trim() ? Number(maxAttempts) : null })}
+            value={maxAttempts.value}
+            onChange={(e) => maxAttempts.onChange(e.target.value)}
+            onBlur={maxAttempts.flush}
           />
         ) : (
           <p className="flex h-9 items-center text-sm text-muted-foreground">
@@ -438,11 +444,9 @@ function OptionRow({
   onRemove: () => void
 }) {
   const { dispatch } = useCourseDraft()
-  const [text, setText] = useState(option.text)
-
-  function save() {
-    dispatch({ type: "patchOption", id: option.id, patch: { text } })
-  }
+  const text = useDebouncedField(option.text, (next) =>
+    dispatch({ type: "patchOption", id: option.id, patch: { text: next } })
+  )
 
   return (
     <div className="flex items-center gap-2.5">
@@ -468,7 +472,12 @@ function OptionRow({
           )}
         />
       )}
-      <Input value={text} onChange={(e) => setText(e.target.value)} onBlur={save} className="flex-1" />
+      <Input
+        value={text.value}
+        onChange={(e) => text.onChange(e.target.value)}
+        onBlur={text.flush}
+        className="flex-1"
+      />
       <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove}>
         <X className="size-3.5 text-destructive" />
       </Button>
