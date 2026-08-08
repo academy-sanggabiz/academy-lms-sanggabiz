@@ -70,6 +70,30 @@ create policy "own profile update" on public.profiles
   using ((select auth.uid()) = id)
   with check ((select auth.uid()) = id);
 
+-- RLS is row-level: "own profile update" authorizes writing this row, but
+-- has no way to say "except the role column". role is set once at signup by
+-- handle_new_user() below and never legitimately updated by app code (only
+-- full_name is, via app/{admin,learner}/profile/actions.ts) -- without this
+-- guard, a learner could PATCH their own row's role straight to
+-- 'superadmin' via the REST API.
+create function public.enforce_profile_role_immutable()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.role is distinct from old.role and not public.is_superadmin() then
+    raise exception 'Only a superadmin may change profiles.role';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger profiles_role_immutable
+  before update on public.profiles
+  for each row
+  execute function public.enforce_profile_role_immutable();
+
 -- Auto-create a profile row (default role 'learner') whenever a new
 -- auth.users row is created, whether via email/password or Google OAuth.
 create function public.handle_new_user()
@@ -858,7 +882,7 @@ create or replace function public.grade_attempt(p_attempt_id uuid, p_answers jso
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   v_uid uuid := (select auth.uid());
@@ -884,6 +908,12 @@ begin
   if v_uid is null then
     raise exception 'Not signed in';
   end if;
+
+  -- Trusts the two `update quiz_attempts` statements below as the one
+  -- legitimate learner-driven write to the grading columns -- see
+  -- enforce_quiz_attempt_learner_columns() further down. is_local = true,
+  -- so this reverts automatically at the end of the current transaction.
+  perform set_config('app.grading_write', 'on', true);
 
   select * into v_att from public.quiz_attempts
     where id = p_attempt_id and learner_id = v_uid;
@@ -1037,6 +1067,50 @@ create policy "own quiz attempts updatable" on public.quiz_attempts
   to authenticated
   using ((select auth.uid()) = learner_id)
   with check ((select auth.uid()) = learner_id);
+
+-- The policy above exists so saveDraft can persist draft_answers while a
+-- study case is in progress, but it also authorizes a learner to PATCH their
+-- own attempt's score/passed/status/submitted_at directly, bypassing
+-- grade_attempt() entirely. grade_attempt() sets a transaction-local GUC
+-- immediately before its own writes to those columns (it's SECURITY
+-- DEFINER, but auth.uid() inside it still resolves to the calling learner,
+-- so it can't be told apart from a direct PATCH by auth.uid() alone); this
+-- trigger trusts that signal and otherwise blocks any learner-initiated
+-- write to the grading columns. Admin writes (finalizeAttempt, via the
+-- separate "admins update quiz attempts" policy below) are unaffected -- the
+-- auth.uid() = learner_id check is false for an admin, so the trigger
+-- doesn't inspect their writes at all; RLS ownership scoping already gated
+-- that path.
+create function public.enforce_quiz_attempt_learner_columns()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if coalesce(current_setting('app.grading_write', true), '') = 'on' then
+    return new;
+  end if;
+
+  if (select auth.uid()) = old.learner_id then
+    if new.score is distinct from old.score
+      or new.passed is distinct from old.passed
+      or new.status is distinct from old.status
+      or new.submitted_at is distinct from old.submitted_at
+      or new.attempt_number is distinct from old.attempt_number
+      or new.quiz_id is distinct from old.quiz_id
+    then
+      raise exception 'Learners may only update draft_answers directly; grading writes go through grade_attempt()';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger quiz_attempts_learner_columns_guard
+  before update on public.quiz_attempts
+  for each row
+  execute function public.enforce_quiz_attempt_learner_columns();
 
 create policy "own quiz responses readable" on public.quiz_responses
   for select
@@ -1247,6 +1321,32 @@ create policy "own certificates updatable" on public.certificates
     where e.id = certificates.enrollment_id and e.learner_id = (select auth.uid())
   ));
 
+-- The policy above authorizes writing the whole row, including serial --
+-- verified pdf_url is the only column any app code updates after insert
+-- (lib/certificates.ts). Nothing legitimately changes serial after
+-- issuance; without this guard a learner could PATCH their own
+-- certificate's serial to any string. pdf_url stays freely updatable, by
+-- either the owning learner or an owning admin -- unlike the guards above,
+-- no legitimate-write case needs distinguishing here, since serial has no
+-- legitimate post-insert writer at all.
+create function public.enforce_certificate_serial_immutable()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.serial is distinct from old.serial then
+    raise exception 'certificates.serial is immutable once issued';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger certificates_serial_immutable
+  before update on public.certificates
+  for each row
+  execute function public.enforce_certificate_serial_immutable();
+
 create policy "admins read all certificates" on public.certificates
   for select to authenticated
   using (exists (
@@ -1291,6 +1391,38 @@ create policy "admins update enrollments" on public.enrollments
   with check (public.owns_course(course_id));
 
 grant update on public.enrollments to authenticated;
+
+-- Both update policies above authorize writing the whole row, including
+-- course_id/learner_id. Verified there's exactly one UPDATE call site on
+-- enrollments in the app (lib/certificates.ts, `.update({ status,
+-- completed_at })`) -- nothing legitimately repoints an existing row.
+-- Without this guard, a learner could self-enroll in any open course, then
+-- PATCH that row's course_id onto a private course's id; can_read_course()
+-- grants full read access on the mere existence of an enrollment row, so
+-- this closes a paywall/invite-only bypass. Deliberately does NOT also
+-- re-check is_open_enrollment_course(course_id) on every update -- that
+-- would block the legitimate completed_at/status flip for a learner
+-- enrolled in a private course, since that function is false for private
+-- courses by design.
+create function public.enforce_enrollment_pivot_immutable()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.course_id is distinct from old.course_id
+    or new.learner_id is distinct from old.learner_id
+  then
+    raise exception 'enrollments.course_id and learner_id are immutable; delete and re-insert instead';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger enrollments_pivot_immutable
+  before update on public.enrollments
+  for each row
+  execute function public.enforce_enrollment_pivot_immutable();
 
 -- =============================================================================
 -- 9. Admin course-authoring write access

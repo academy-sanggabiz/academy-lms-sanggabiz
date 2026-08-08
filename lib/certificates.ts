@@ -143,10 +143,17 @@ export async function checkAndIssueCertificate(
     if (grade < course.passing_grade) return null
   }
 
+  // Scoped to status = "active" so this is a one-time transition, not a
+  // rewrite on every call -- checkAndIssueCertificate() is deliberately
+  // re-run on every /learn page view (see the "Self-heal" comment at its
+  // call site) to retry certificate issuance for courses where certificates
+  // got enabled after a learner had already finished. Without this guard,
+  // completed_at moved forward on every single page view after completion.
   const { error: enrollmentUpdateError } = await supabase
     .from("enrollments")
     .update({ status: "completed", completed_at: new Date().toISOString() })
     .eq("id", enrollmentId)
+    .eq("status", "active")
 
   if (enrollmentUpdateError) {
     console.error("checkAndIssueCertificate: enrollment update failed", enrollmentUpdateError.message)
