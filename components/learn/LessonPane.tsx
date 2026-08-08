@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Maximize2, MessageCircleQuestion, Minimize2 
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { SanitizedHtml } from "@/components/SanitizedHtml"
 import {
   formatDuration,
   getGoogleSlidesEmbedUrl,
@@ -426,7 +427,7 @@ function TextContent({
           </div>
           <h2 className="mb-7 text-[28px] leading-tight font-bold">{lesson.title}</h2>
           {lesson.content ? (
-            <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: lesson.content }} />
+            <SanitizedHtml className="lesson-prose" html={lesson.content} />
           ) : (
             <p className="text-[15px] leading-[1.85] text-muted-foreground">
               No content available for this lesson.

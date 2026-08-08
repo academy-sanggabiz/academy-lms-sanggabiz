@@ -3,6 +3,7 @@ import { Award, GraduationCap, Layers, type LucideIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { FeaturedCoursesCarousel } from "@/components/FeaturedCoursesCarousel"
+import { SanitizedHtml } from "@/components/SanitizedHtml"
 import type { Course } from "@/lib/courses"
 import { getPublishedCourses } from "@/lib/courses-server"
 import { getLandingContent } from "@/lib/landing-server"
@@ -56,9 +57,9 @@ export default async function Home() {
         <h1 className="max-w-4xl text-4xl leading-tight font-bold tracking-tight sm:text-6xl">
           {hero.heading} <span className="text-ring">{hero.highlightWord}</span>
         </h1>
-        <div
+        <SanitizedHtml
           className="lesson-prose mt-7 max-w-xl text-lg text-muted-foreground"
-          dangerouslySetInnerHTML={{ __html: hero.subheading }}
+          html={hero.subheading}
         />
         <div className="mt-10 flex gap-3.5">
           <Button
@@ -104,9 +105,9 @@ export default async function Home() {
                   <Icon className="size-6 text-primary" />
                 </div>
                 <div className="mb-2.5 text-lg font-bold">{title}</div>
-                <div
+                <SanitizedHtml
                   className="lesson-prose text-sm leading-relaxed text-muted-foreground"
-                  dangerouslySetInnerHTML={{ __html: description }}
+                  html={description}
                 />
               </div>
             )
