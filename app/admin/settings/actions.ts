@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
 import { createAdminClient } from "@/lib/supabase/admin"
+import { authErrorMessage } from "@/lib/auth/auth-error-message"
 import { createClient } from "@/lib/supabase/server"
 
 async function getUserId() {
@@ -24,7 +25,7 @@ export async function updateNotificationPref(enabled: boolean) {
 
   if (error) {
     console.error("updateNotificationPref failed:", error.message)
-    return { error: error.message }
+    return { error: "Gagal menyimpan pengaturan. Coba lagi." }
   }
 
   revalidatePath("/admin/settings")
@@ -34,14 +35,14 @@ export async function updateNotificationPref(enabled: boolean) {
 export async function changePassword(formData: FormData) {
   const password = String(formData.get("password") ?? "")
   if (!password || password.length < 6) {
-    return { error: "Password must be at least 6 characters" }
+    return { error: "Kata sandi minimal 6 karakter" }
   }
 
   const supabase = await createClient()
   const { error } = await supabase.auth.updateUser({ password })
 
   if (error) {
-    return { error: error.message }
+    return { error: authErrorMessage(error.message) }
   }
 
   return { error: null }
@@ -56,7 +57,7 @@ export async function deleteAccount() {
 
   if (error) {
     console.error("deleteAccount failed:", error.message)
-    return { error: error.message }
+    return { error: "Gagal menghapus akun. Coba lagi." }
   }
 
   const supabase = await createClient()

@@ -243,9 +243,12 @@ async function generateAndUploadPdf(
       supabase.from("profiles").select("full_name, email").eq("id", learnerId).single(),
     ])
 
-    const learnerName = profile?.full_name || profile?.email || "Learner"
-    const courseTitle = course?.title ?? "Course"
+    const learnerName = profile?.full_name || profile?.email || "Peserta"
+    const courseTitle = course?.title ?? "Kursus"
     const description = (settings.description ?? "")
+      .replaceAll("[Nama Peserta]", learnerName)
+      .replaceAll("[Nama Kursus]", courseTitle)
+      // English tokens from descriptions written before the UI went Indonesian.
       .replaceAll("[Student Name]", learnerName)
       .replaceAll("[Course Name]", courseTitle)
 

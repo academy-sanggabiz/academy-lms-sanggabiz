@@ -97,7 +97,7 @@ export function GradingCourseMatrix({ matrix }: { matrix: CourseGradingMatrix })
     for (const edit of edits) {
       const value = edit.value.trim() === "" ? 0 : Number(edit.value)
       if (!Number.isFinite(value) || value < 0 || value > edit.maxPoints) {
-        toast.error(`Points must be between 0 and ${edit.maxPoints}`)
+        toast.error(`Poin harus antara 0 dan ${edit.maxPoints}`)
         return
       }
     }
@@ -133,7 +133,7 @@ export function GradingCourseMatrix({ matrix }: { matrix: CourseGradingMatrix })
       })
 
       if (result.data.failed.length === 0) {
-        toast.success(`Graded ${result.data.succeeded.length} attempt${result.data.succeeded.length === 1 ? "" : "s"}`)
+        toast.success(`${result.data.succeeded.length} percobaan dinilai`)
       }
     })
   }
@@ -144,7 +144,7 @@ export function GradingCourseMatrix({ matrix }: { matrix: CourseGradingMatrix })
     return [
       {
         id: "learner",
-        header: "Learner",
+        header: "Peserta",
         cell: ({ row }) => (
           <div className="flex flex-col">
             <Link
@@ -180,14 +180,14 @@ export function GradingCourseMatrix({ matrix }: { matrix: CourseGradingMatrix })
       })),
       {
         id: "courseGrade",
-        header: "Course Grade",
+        header: "Nilai Kursus",
         cell: ({ row }) => {
           const { grade, pendingCount } = row.original.courseGrade
           return (
             <div className="flex flex-col">
               <span className="font-semibold">{grade}%</span>
               {pendingCount > 0 && (
-                <span className="text-xs text-muted-foreground">{pendingCount} pending</span>
+                <span className="text-xs text-muted-foreground">{pendingCount} menunggu</span>
               )}
             </div>
           )
@@ -220,7 +220,7 @@ export function GradingCourseMatrix({ matrix }: { matrix: CourseGradingMatrix })
   if (matrix.columns.length === 0) {
     return (
       <div className="rounded-2xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">
-        This course has no quizzes yet.
+        Kursus ini belum memiliki kuis.
       </div>
     )
   }
@@ -228,18 +228,18 @@ export function GradingCourseMatrix({ matrix }: { matrix: CourseGradingMatrix })
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <ListToolbar placeholder="Search learner..." />
+        <ListToolbar placeholder="Cari peserta..." />
         <Button onClick={handleSaveAll} disabled={!isDirty || isSaving}>
-          {isSaving ? "Saving..." : "Save"}
+          {isSaving ? "Menyimpan..." : "Simpan"}
         </Button>
       </div>
 
       {saveSummary && (
         <div className="mb-4 rounded-lg bg-muted p-3 text-sm">
-          <div>{saveSummary.succeeded.length} attempt(s) graded successfully.</div>
+          <div>{saveSummary.succeeded.length} percobaan berhasil dinilai.</div>
           {saveSummary.failed.length > 0 && (
             <div className="mt-2 text-destructive">
-              {saveSummary.failed.length} attempt(s) failed:
+              {saveSummary.failed.length} percobaan gagal:
               <ul className="mt-1 list-disc pl-4">
                 {saveSummary.failed.map((f, i) => (
                   <li key={i}>
@@ -272,7 +272,7 @@ export function GradingCourseMatrix({ matrix }: { matrix: CourseGradingMatrix })
             {table.getRowModel().rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="py-12 text-center text-muted-foreground">
-                  No learners match your search.
+                  Tidak ada peserta yang cocok dengan pencarian Anda.
                 </TableCell>
               </TableRow>
             ) : (
@@ -340,7 +340,7 @@ const CellView = memo(function CellView({
   const scoreText = cell.score !== null ? String(cell.score) : "–"
 
   if (!hasAttempt) {
-    return <span className="text-xs text-muted-foreground">No submission</span>
+    return <span className="text-xs text-muted-foreground">Tidak ada kiriman</span>
   }
 
   // A study case is always exactly one manually-graded question and nothing
@@ -353,7 +353,7 @@ const CellView = memo(function CellView({
     const [grade] = cell.grades
 
     if (!grade.hasResponse) {
-      return <span className="text-xs text-muted-foreground">No submission</span>
+      return <span className="text-xs text-muted-foreground">Tidak ada kiriman</span>
     }
 
     const baselinePoints = String(grade.pointsAwarded ?? 0)
@@ -381,8 +381,9 @@ const CellView = memo(function CellView({
             onScoreChange(cell.attemptId as string, grade.questionId, grade.points, baselinePoints, String(points))
           }}
           className="h-7 w-16"
+          aria-label={`Nilai ${learnerName} untuk ${column.quizTitle} (0-100)`}
         />
-        {cell.status === "pending_review" && <span className="text-xs text-muted-foreground">pending</span>}
+        {cell.status === "pending_review" && <span className="text-xs text-muted-foreground">menunggu</span>}
         {cell.attemptId && (
           <button
             type="button"
@@ -390,7 +391,7 @@ const CellView = memo(function CellView({
               onPreview({ attemptId: cell.attemptId as string, quizTitle: column.quizTitle, learnerName })
             }
             className="text-muted-foreground hover:text-foreground"
-            aria-label="Preview submission"
+            aria-label="Pratinjau kiriman"
           >
             <Eye className="size-3.5" />
           </button>
@@ -413,10 +414,10 @@ const CellView = memo(function CellView({
             "text-sm",
             cell.status === "pending_review" ? "text-muted-foreground italic" : "text-foreground"
           )}
-          title={cell.status === "pending_review" ? "Provisional — auto-graded questions only" : undefined}
+          title={cell.status === "pending_review" ? "Sementara: hanya dari soal yang dinilai otomatis" : undefined}
         >
           {scoreText}
-          {cell.status === "pending_review" && <span className="ml-1 text-xs">pending</span>}
+          {cell.status === "pending_review" && <span className="ml-1 text-xs">menunggu</span>}
         </span>
         {cell.grades.map((grade, i) => {
           const baseline = String(grade.pointsAwarded ?? 0)
@@ -424,7 +425,7 @@ const CellView = memo(function CellView({
           return (
             <div key={grade.questionId} className="flex items-center gap-1">
               {cell.grades.length > 1 && (
-                <span className="w-6 shrink-0 text-xs font-medium text-muted-foreground">Q{i + 1}</span>
+                <span className="w-6 shrink-0 text-xs font-medium text-muted-foreground">S{i + 1}</span>
               )}
               {grade.hasResponse ? (
                 <>
@@ -438,11 +439,12 @@ const CellView = memo(function CellView({
                       onScoreChange(cell.attemptId as string, grade.questionId, grade.points, baseline, e.target.value)
                     }
                     className="h-7 w-16"
+                    aria-label={`Poin soal ${i + 1} untuk ${learnerName} (maks. ${grade.points})`}
                   />
                   <span className="text-xs text-muted-foreground">/ {grade.points}</span>
                 </>
               ) : (
-                <span className="text-xs text-muted-foreground">No submission</span>
+                <span className="text-xs text-muted-foreground">Tidak ada kiriman</span>
               )}
             </div>
           )
@@ -455,7 +457,7 @@ const CellView = memo(function CellView({
             onPreview({ attemptId: cell.attemptId as string, quizTitle: column.quizTitle, learnerName })
           }
           className="text-muted-foreground hover:text-foreground"
-          aria-label="Preview submission"
+          aria-label="Pratinjau kiriman"
         >
           <Eye className="size-3.5" />
         </button>

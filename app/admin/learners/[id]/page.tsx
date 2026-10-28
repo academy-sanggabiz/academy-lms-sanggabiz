@@ -39,7 +39,7 @@ export default async function AdminLearnerDetailPage({
         className="mb-5 flex items-center gap-2 text-sm font-semibold hover:text-ring"
       >
         <ArrowLeft className="size-4" />
-        Back to Learners
+        Kembali ke Peserta
       </Link>
 
       <div className="mb-5 flex flex-wrap items-center gap-5 rounded-2xl border border-border bg-card p-6">
@@ -50,7 +50,7 @@ export default async function AdminLearnerDetailPage({
           <div className="mb-1 flex items-center gap-2.5">
             <span className="text-2xl font-bold">{learner.name}</span>
             <span className="rounded-full border border-ring/30 bg-secondary px-3 py-1 text-xs font-semibold text-ring">
-              Learner
+              Peserta
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -61,9 +61,9 @@ export default async function AdminLearnerDetailPage({
       </div>
 
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard icon={BookOpen} label="Enrolled Courses" value={String(enrolledCount)} />
-        <StatCard icon={Trophy} label="Completed" value={String(completedCount)} />
-        <StatCard icon={BookOpen} label="Avg Progress" value={`${avgProgress}%`} />
+        <StatCard icon={BookOpen} label="Kursus Terdaftar" value={String(enrolledCount)} />
+        <StatCard icon={Trophy} label="Selesai" value={String(completedCount)} />
+        <StatCard icon={BookOpen} label="Rata-rata Progres" value={`${avgProgress}%`} />
       </div>
 
       <LearnerDetailTabs

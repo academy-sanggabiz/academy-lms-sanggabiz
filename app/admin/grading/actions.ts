@@ -70,7 +70,7 @@ export async function getAttemptSubmissionAction(
   }
 
   const responses = await getAttemptSubmission(attemptId)
-  if (!responses) return { ok: false, error: "Could not load submission" }
+  if (!responses) return { ok: false, error: "Gagal memuat kiriman" }
 
   return { ok: true, data: responses }
 }
@@ -94,20 +94,20 @@ export async function importGradesAction(csvText: string): Promise<ActionResult<
   }
 
   const parsed = Papa.parse<string[]>(csvText.trim(), { skipEmptyLines: true })
-  if (parsed.errors.length > 0) return { ok: false, error: parsed.errors[0].message }
+  if (parsed.errors.length > 0) return { ok: false, error: `Berkas CSV tidak dapat dibaca (${parsed.errors[0].message})` }
 
   const [header, ...rows] = parsed.data
-  if (!header) return { ok: false, error: "Empty CSV" }
+  if (!header) return { ok: false, error: "Berkas CSV kosong" }
 
   const attemptIdIndex = header.indexOf("Attempt ID")
-  if (attemptIdIndex === -1) return { ok: false, error: "Missing Attempt ID column" }
+  if (attemptIdIndex === -1) return { ok: false, error: "Kolom Attempt ID tidak ditemukan" }
 
   const scoreColumns: { index: number; questionId: string }[] = []
   header.forEach((cell, index) => {
     const match = SCORE_HEADER_RE.exec(cell)
     if (match) scoreColumns.push({ index, questionId: match[1] })
   })
-  if (scoreColumns.length === 0) return { ok: false, error: "No essay score columns found" }
+  if (scoreColumns.length === 0) return { ok: false, error: "Kolom nilai esai tidak ditemukan" }
 
   const failedRows: { attemptId: string; error: string }[] = []
   let gradedCount = 0
@@ -123,7 +123,7 @@ export async function importGradesAction(csvText: string): Promise<ActionResult<
       if (!raw) continue
       const points = Number(raw)
       if (!Number.isFinite(points)) {
-        rowError = `Invalid score "${raw}"`
+        rowError = `Nilai tidak valid "${raw}"`
         break
       }
       grades.push({ questionId, points })

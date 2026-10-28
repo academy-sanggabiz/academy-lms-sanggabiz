@@ -13,13 +13,13 @@ export function TrackingListClient({ page }: { page: Paginated<TrackingEnrollmen
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">Learners</h2>
-        <ListToolbar placeholder="Search learner or course..." />
+        <h2 className="text-lg font-bold">Peserta</h2>
+        <ListToolbar placeholder="Cari peserta atau kursus..." />
       </div>
 
       {page.rows.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
-          {page.total === 0 ? "No enrollments yet." : "No learners match your search."}
+          {page.total === 0 ? "Belum ada pendaftaran." : "Tidak ada peserta yang cocok dengan pencarian Anda."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">
@@ -30,7 +30,7 @@ export function TrackingListClient({ page }: { page: Paginated<TrackingEnrollmen
                 <TableHead>Kursus</TableHead>
                 <TableHead>Modul</TableHead>
                 <TableHead>Tugas</TableHead>
-                <TableHead />
+                <TableHead><span className="sr-only">Aksi</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -50,7 +50,7 @@ export function TrackingListClient({ page }: { page: Paginated<TrackingEnrollmen
                       render={<Link href={`/admin/tracking/${e.enrollmentId}`} />}
                       nativeButton={false}
                     >
-                      Open
+                      Buka
                     </Button>
                   </TableCell>
                 </TableRow>

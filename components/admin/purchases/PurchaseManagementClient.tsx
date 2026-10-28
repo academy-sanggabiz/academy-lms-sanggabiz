@@ -10,10 +10,10 @@ import { ListPagination } from "@/components/admin/ListPagination"
 import { PurchaseListToolbar } from "./PurchaseListToolbar"
 
 const STATUS_LABEL: Record<TransactionStatus, string> = {
-  completed: "Paid",
-  free: "Public",
-  pending: "Pending",
-  refunded: "Refunded",
+  completed: "Berbayar",
+  free: "Publik",
+  pending: "Tertunda",
+  refunded: "Dikembalikan",
 }
 
 const STATUS_VARIANT: Record<TransactionStatus, "default" | "secondary" | "destructive" | "outline"> = {
@@ -35,13 +35,13 @@ export function PurchaseManagementClient({ page }: { page: Paginated<AdminPurcha
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">All Purchases</h2>
+        <h2 className="text-lg font-bold">Semua Pembelian</h2>
         <PurchaseListToolbar />
       </div>
 
       {page.rows.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
-          {page.total === 0 ? "No purchases yet." : "No purchases match your search."}
+          {page.total === 0 ? "Belum ada pembelian." : "Tidak ada pembelian yang cocok dengan pencarian Anda."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">

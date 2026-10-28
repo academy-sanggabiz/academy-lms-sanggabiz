@@ -35,7 +35,7 @@ export default async function AdminGradingCoursePage({
         <div>
           <h1 className="text-[30px] font-bold">{matrix.courseTitle}</h1>
           <p className="text-sm text-muted-foreground">
-            Every quiz score for this course — auto-graded cells are read-only, essay cells take a grade
+            Semua nilai kuis untuk kursus ini. Sel nilai otomatis hanya dapat dibaca, sel esai perlu dinilai.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -44,7 +44,7 @@ export default async function AdminGradingCoursePage({
             render={<a href={`/admin/grading/export?courseId=${courseId}`} />}
             nativeButton={false}
           >
-            Export Course CSV
+            Ekspor CSV Kursus
           </Button>
           <ImportGradesDialog />
         </div>

@@ -15,11 +15,11 @@ export function TrackingBreadcrumb({
         className="flex items-center gap-1 font-medium text-foreground hover:underline"
       >
         <ChevronLeft className="size-4" />
-        Back
+        Kembali
       </Link>
       <div className="flex flex-wrap items-center gap-1.5">
         <Link href="/admin/tracking" className="hover:text-foreground hover:underline">
-          Online Tracking
+          Pelacakan
         </Link>
         <ChevronRight className="size-3.5 shrink-0" />
         <span className="font-medium text-foreground">

@@ -5,17 +5,17 @@ import { ListToolbar } from "@/components/admin/ListToolbar"
 
 export function PurchaseListToolbar() {
   return (
-    <ListToolbar placeholder="Search by learner or course...">
+    <ListToolbar placeholder="Cari peserta atau kursus...">
       <ListFilterSelect
         paramKey="status"
         defaultValue="all"
         placeholder="Status"
         options={[
-          { value: "all", label: "All Status" },
-          { value: "completed", label: "Paid" },
-          { value: "free", label: "Public" },
-          { value: "pending", label: "Pending" },
-          { value: "refunded", label: "Refunded" },
+          { value: "all", label: "Semua Status" },
+          { value: "completed", label: "Berbayar" },
+          { value: "free", label: "Publik" },
+          { value: "pending", label: "Tertunda" },
+          { value: "refunded", label: "Dikembalikan" },
         ]}
       />
     </ListToolbar>

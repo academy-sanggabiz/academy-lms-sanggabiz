@@ -24,16 +24,16 @@ export default async function AdminPurchasesPage({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-[30px] font-bold">Purchase Management</h1>
+        <h1 className="text-[30px] font-bold">Manajemen Pembelian</h1>
         <p className="text-sm text-muted-foreground">
-          See who bought which course and track purchase status
+          Lihat siapa membeli kursus apa dan pantau status pembelian
         </p>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard icon={Wallet} label="Total Revenue" value={formatPrice(stats.totalRevenue)} />
-        <StatCard icon={ShoppingCart} label="Total Purchases" value={stats.totalPurchases} />
-        <StatCard icon={Receipt} label="Paid Purchases" value={stats.paidPurchases} />
+        <StatCard icon={Wallet} label="Total Pendapatan" value={formatPrice(stats.totalRevenue)} />
+        <StatCard icon={ShoppingCart} label="Total Pembelian" value={stats.totalPurchases} />
+        <StatCard icon={Receipt} label="Pembelian Berbayar" value={stats.paidPurchases} />
       </div>
 
       <PurchaseManagementClient page={page} />

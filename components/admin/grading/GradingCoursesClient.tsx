@@ -12,23 +12,23 @@ export function GradingCoursesClient({ page }: { page: Paginated<GradingCourseSu
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">Courses</h2>
+        <h2 className="text-lg font-bold">Kursus</h2>
         <div className="flex items-center gap-2">
-          <ListToolbar placeholder="Search course..." />
+          <ListToolbar placeholder="Cari kursus..." />
         </div>
       </div>
 
       {page.rows.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
-          {page.total === 0 ? "No quiz submissions yet." : "No courses match your search."}
+          {page.total === 0 ? "Belum ada kiriman kuis." : "Tidak ada kursus yang cocok dengan pencarian Anda."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">
           <div className="grid grid-cols-[2fr_1fr_1fr_1fr_220px] gap-3 border-b border-border bg-muted/50 px-3 py-2.5 text-[13px] font-semibold text-muted-foreground">
-            <div>Course</div>
-            <div>Quizzes</div>
-            <div>Learners</div>
-            <div>Attempts</div>
+            <div>Kursus</div>
+            <div>Kuis</div>
+            <div>Peserta</div>
+            <div>Percobaan</div>
             <div />
           </div>
           {page.rows.map((c) => (
@@ -47,7 +47,7 @@ export function GradingCoursesClient({ page }: { page: Paginated<GradingCourseSu
                   render={<Link href={`/admin/grading/course/${c.courseId}`} />}
                   nativeButton={false}
                 >
-                  Open
+                  Buka
                 </Button>
               </div>
             </div>

@@ -134,14 +134,14 @@ export function CertificateSettings() {
             <Textarea
               id="cert-description"
               maxLength={150}
-              placeholder="misal: Dengan ini menyatakan bahwa [Student Name] telah menyelesaikan [Course Name]."
+              placeholder="misal: Dengan ini menyatakan bahwa [Nama Peserta] telah menyelesaikan [Nama Kursus]."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               onBlur={() => save({ description: description.trim() || null })}
               rows={3}
             />
             <p className="text-xs text-muted-foreground">
-              Penanda yang didukung: [Student Name] (nama peserta), [Course Name] (nama kursus)
+              Penanda yang didukung: [Nama Peserta], [Nama Kursus]
             </p>
           </div>
 

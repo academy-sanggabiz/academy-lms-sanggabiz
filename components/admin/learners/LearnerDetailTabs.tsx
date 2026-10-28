@@ -14,11 +14,11 @@ import type {
 type Tab = "enrollments" | "progress" | "certificates" | "grades" | "purchases"
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: "enrollments", label: "Enrollments" },
-  { id: "progress", label: "Progress" },
-  { id: "certificates", label: "Certificates" },
-  { id: "grades", label: "Grades" },
-  { id: "purchases", label: "Purchases" },
+  { id: "enrollments", label: "Pendaftaran" },
+  { id: "progress", label: "Progres" },
+  { id: "certificates", label: "Sertifikat" },
+  { id: "grades", label: "Nilai" },
+  { id: "purchases", label: "Pembelian" },
 ]
 
 export function LearnerDetailTabs({
@@ -52,9 +52,9 @@ export function LearnerDetailTabs({
 
       {tab === "enrollments" && (
         <div className="rounded-2xl border border-border bg-card p-6">
-          <h3 className="mb-4 text-lg font-bold">Enrolled Courses</h3>
+          <h3 className="mb-4 text-lg font-bold">Kursus Terdaftar</h3>
           {courseProgress.length === 0 ? (
-            <p className="py-5 text-center text-sm text-muted-foreground">No enrolled courses</p>
+            <p className="py-5 text-center text-sm text-muted-foreground">Belum ada kursus terdaftar</p>
           ) : (
             <div className="flex flex-col gap-3">
               {courseProgress.map((c) => (
@@ -65,11 +65,11 @@ export function LearnerDetailTabs({
                   <div className="h-[52px] w-[72px] shrink-0 rounded-lg bg-secondary" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[14.5px] font-semibold">{c.title}</div>
-                    <div className="mt-0.5 text-[13px] text-muted-foreground">{c.pct}% complete</div>
+                    <div className="mt-0.5 text-[13px] text-muted-foreground">{c.pct}% selesai</div>
                   </div>
                   {c.completed && (
                     <span className="shrink-0 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                      Completed
+                      Selesai
                     </span>
                   )}
                 </div>
@@ -81,9 +81,9 @@ export function LearnerDetailTabs({
 
       {tab === "progress" && (
         <div className="rounded-2xl border border-border bg-card p-6">
-          <h3 className="mb-4 text-lg font-bold">Course Progress</h3>
+          <h3 className="mb-4 text-lg font-bold">Progres Kursus</h3>
           {courseProgress.length === 0 ? (
-            <p className="py-5 text-center text-sm text-muted-foreground">No progress to show</p>
+            <p className="py-5 text-center text-sm text-muted-foreground">Belum ada progres</p>
           ) : (
             <div className="flex flex-col gap-4">
               {courseProgress.map((c) => (
@@ -107,9 +107,9 @@ export function LearnerDetailTabs({
 
       {tab === "certificates" && (
         <div className="rounded-2xl border border-border bg-card p-6">
-          <h3 className="mb-4 text-lg font-bold">Certificates</h3>
+          <h3 className="mb-4 text-lg font-bold">Sertifikat</h3>
           {certificates.length === 0 ? (
-            <p className="py-5 text-center text-sm text-muted-foreground">No certificates yet.</p>
+            <p className="py-5 text-center text-sm text-muted-foreground">Belum ada sertifikat.</p>
           ) : (
             <div className="flex flex-col gap-3">
               {certificates.map((cert) => (
@@ -125,7 +125,7 @@ export function LearnerDetailTabs({
                       {cert.courseTitle}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      Certificate No. {cert.serial} · Issued{" "}
+                      Sertifikat No. {cert.serial} · Terbit{" "}
                       {new Date(cert.issuedAt).toLocaleDateString("id-ID", {
                         year: "numeric",
                         month: "long",
@@ -141,10 +141,10 @@ export function LearnerDetailTabs({
                       nativeButton={false}
                     >
                       <Download className="size-3.5" />
-                      Download
+                      Unduh
                     </Button>
                   ) : (
-                    <span className="flex-none text-xs text-muted-foreground">Generating…</span>
+                    <span className="flex-none text-xs text-muted-foreground">Sedang dibuat…</span>
                   )}
                 </div>
               ))}
@@ -155,9 +155,9 @@ export function LearnerDetailTabs({
 
       {tab === "grades" && (
         <div className="rounded-2xl border border-border bg-card p-6">
-          <h3 className="mb-4 text-lg font-bold">Grades</h3>
+          <h3 className="mb-4 text-lg font-bold">Nilai</h3>
           {quizScores.length === 0 ? (
-            <p className="py-5 text-center text-sm text-muted-foreground">No quiz attempts yet.</p>
+            <p className="py-5 text-center text-sm text-muted-foreground">Belum ada percobaan kuis.</p>
           ) : (
             <div className="flex flex-col gap-3">
               {quizScores.map((q) => (
@@ -170,7 +170,7 @@ export function LearnerDetailTabs({
                     <div className="mt-1 truncate text-xs text-muted-foreground">
                       {q.courseTitle}
                       {q.submittedAt &&
-                        ` · Submitted ${new Date(q.submittedAt).toLocaleDateString("id-ID", {
+                        ` · Dikirim ${new Date(q.submittedAt).toLocaleDateString("id-ID", {
                           year: "numeric",
                           month: "long",
                           day: "numeric",
@@ -190,7 +190,7 @@ export function LearnerDetailTabs({
                           : "bg-red-100 text-red-700"
                     )}
                   >
-                    {q.status === "pending_review" ? "Pending Review" : q.passed ? "Passed" : "Failed"}
+                    {q.status === "pending_review" ? "Menunggu penilaian" : q.passed ? "Lulus" : "Belum lulus"}
                   </span>
                 </div>
               ))}
@@ -201,8 +201,8 @@ export function LearnerDetailTabs({
 
       {tab === "purchases" && (
         <div className="rounded-2xl border border-border bg-card p-6">
-          <h3 className="mb-4 text-lg font-bold">Purchases</h3>
-          <p className="py-5 text-center text-sm text-muted-foreground">No purchases yet.</p>
+          <h3 className="mb-4 text-lg font-bold">Pembelian</h3>
+          <p className="py-5 text-center text-sm text-muted-foreground">Belum ada pembelian.</p>
         </div>
       )}
     </div>
