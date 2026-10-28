@@ -338,7 +338,7 @@ export async function getCourseGradingMatrix(
   const rows: GradingMatrixRow[] = learners.map((learner) => {
     const learnerId = learner.id as string
     const learnerEmail = (learner.email as string | null) ?? ""
-    const learnerName = (learner.full_name as string | null) || learnerEmail || "Unnamed learner"
+    const learnerName = (learner.full_name as string | null) || learnerEmail || "Peserta tanpa nama"
 
     const cells: Record<string, GradingCell> = {}
     for (const column of columns) {

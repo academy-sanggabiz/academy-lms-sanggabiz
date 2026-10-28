@@ -157,7 +157,7 @@ export async function getAdminLearnerDetail(learnerId: string): Promise<AdminLea
     return null
   }
 
-  const name = data.full_name || data.email || "Unnamed learner"
+  const name = data.full_name || data.email || "Peserta tanpa nama"
   return {
     id: data.id,
     name,
@@ -463,7 +463,7 @@ export async function searchLearners(query: string, courseId?: string): Promise<
   }
 
   return data.map((p) => {
-    const name = p.full_name || p.email || "Unnamed learner"
+    const name = p.full_name || p.email || "Peserta tanpa nama"
     return {
       id: p.id,
       name,
@@ -519,7 +519,7 @@ export async function getCourseRoster(courseId: string, p: ListParams): Promise<
     // widen embedded rows to an array -- normalize the same way getCourseDetail
     // does for lesson.quiz.
     const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
-    const name = profile?.full_name || profile?.email || "Unnamed learner"
+    const name = profile?.full_name || profile?.email || "Peserta tanpa nama"
     return {
       learnerId: row.learner_id,
       name,

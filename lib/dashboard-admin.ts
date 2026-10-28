@@ -44,8 +44,8 @@ export async function getRecentEnrollments(p: { page: number; pageSize: number }
     const course = Array.isArray(row.courses) ? row.courses[0] : row.courses
     return {
       id: row.id,
-      learnerName: profile?.full_name || profile?.email || "Unnamed learner",
-      courseTitle: course?.title ?? "Untitled course",
+      learnerName: profile?.full_name || profile?.email || "Peserta tanpa nama",
+      courseTitle: course?.title ?? "Kursus tanpa judul",
       enrolledAt: row.enrolled_at,
     }
   })

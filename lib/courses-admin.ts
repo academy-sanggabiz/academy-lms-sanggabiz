@@ -760,7 +760,7 @@ export async function saveCourseDraft(
       require_prerequisites: draft.requirePrerequisites,
     })
     .eq("id", courseId)
-  if (courseError) return wrapSaveError("course details", courseError.message)
+  if (courseError) return wrapSaveError("detail kursus", courseError.message)
 
   if (sectionRows.length > 0) {
     const { error } = await supabase.from("course_sections").upsert(sectionRows, { onConflict: "id" })
@@ -822,13 +822,13 @@ export async function saveCourseDraft(
       .from("course_instructors")
       .delete()
       .eq("course_id", courseId)
-    if (deleteError) return wrapSaveError("instructor assignment", deleteError.message)
+    if (deleteError) return wrapSaveError("penetapan instruktur", deleteError.message)
 
     if (draft.instructorId) {
       const { error: insertError } = await supabase
         .from("course_instructors")
         .insert({ course_id: courseId, instructor_id: draft.instructorId })
-      if (insertError) return wrapSaveError("instructor assignment", insertError.message)
+      if (insertError) return wrapSaveError("penetapan instruktur", insertError.message)
     }
   }
 
