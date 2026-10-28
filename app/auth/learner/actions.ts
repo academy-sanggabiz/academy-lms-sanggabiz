@@ -3,6 +3,7 @@
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
+import { authErrorMessage } from "@/lib/auth/auth-error-message"
 import { createClient } from "@/lib/supabase/server"
 import { signupSchema } from "@/components/auth/schema"
 
@@ -26,7 +27,7 @@ export async function signup(
 
   const parsed = signupSchema.safeParse({ fullName, email, password, confirmPassword })
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input" }
+    return { error: parsed.error.issues[0]?.message ?? "Data tidak valid" }
   }
 
   const origin = (await headers()).get("origin")
@@ -42,7 +43,7 @@ export async function signup(
   })
 
   if (error) {
-    return { error: error.message }
+    return { error: authErrorMessage(error.message) }
   }
 
   // With email confirmation off, signUp returns a live session immediately --

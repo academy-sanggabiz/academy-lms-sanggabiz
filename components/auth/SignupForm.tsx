@@ -55,13 +55,13 @@ export function SignupForm() {
     return (
       <div className="space-y-3 text-center">
         <Mail className="mx-auto size-10 text-ring" />
-        <h1 className="text-xl font-bold">Check your email</h1>
+        <h1 className="text-xl font-bold">Periksa email Anda</h1>
         <p className="text-sm text-muted-foreground">
-          We sent a confirmation link to <span className="font-medium text-foreground">{state.email}</span>.
-          Click it to activate your account.
+          Kami telah mengirim tautan konfirmasi ke <span className="font-medium text-foreground">{state.email}</span>.
+          Klik tautan tersebut untuk mengaktifkan akun Anda.
         </p>
         <Link href="/auth/login" className="inline-block text-sm text-ring underline underline-offset-4">
-          Back to log in
+          Kembali ke halaman masuk
         </Link>
       </div>
     )
@@ -80,8 +80,8 @@ export function SignupForm() {
   return (
     <>
       <div className="space-y-1 text-center">
-        <h1 className="text-xl font-bold">Create your account</h1>
-        <p className="text-sm text-muted-foreground">Start learning with Sanggabiz.</p>
+        <h1 className="text-xl font-bold">Buat akun Anda</h1>
+        <p className="text-sm text-muted-foreground">Mulai belajar bersama Sanggabiz.</p>
       </div>
 
       {state && "error" in state && (
@@ -92,25 +92,25 @@ export function SignupForm() {
 
       <form onSubmit={onSubmit} className="space-y-3">
         <div>
-          <Input type="text" placeholder="Full name" {...register("fullName")} />
+          <Input type="text" placeholder="Nama lengkap" aria-label="Nama lengkap" {...register("fullName")} />
           {errors.fullName && (
             <p className="mt-1 text-xs text-destructive">{errors.fullName.message}</p>
           )}
         </div>
         <div>
-          <Input type="email" placeholder="Email" {...register("email")} />
+          <Input type="email" placeholder="Email" aria-label="Email" {...register("email")} />
           {errors.email && (
             <p className="mt-1 text-xs text-destructive">{errors.email.message}</p>
           )}
         </div>
         <div>
-          <PasswordInput placeholder="Password" {...register("password")} />
+          <PasswordInput placeholder="Kata sandi" aria-label="Kata sandi" {...register("password")} />
           {errors.password && (
             <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>
           )}
         </div>
         <div>
-          <PasswordInput placeholder="Confirm password" {...register("confirmPassword")} />
+          <PasswordInput placeholder="Konfirmasi kata sandi" aria-label="Konfirmasi kata sandi" {...register("confirmPassword")} />
           {errors.confirmPassword && (
             <p className="mt-1 text-xs text-destructive">{errors.confirmPassword.message}</p>
           )}
@@ -130,13 +130,13 @@ export function SignupForm() {
           className="w-full"
           disabled={isPending || (!!HCAPTCHA_SITE_KEY && !captchaToken)}
         >
-          {isPending ? "Signing up..." : "Sign up"}
+          {isPending ? "Mendaftar..." : "Daftar"}
         </Button>
       </form>
 
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
-        <span className="text-xs text-muted-foreground">Or continue with</span>
+        <span className="text-xs text-muted-foreground">Atau lanjutkan dengan</span>
         <div className="h-px flex-1 bg-border" />
       </div>
 
@@ -148,13 +148,13 @@ export function SignupForm() {
         disabled={isGoogleLoading}
       >
         <GoogleIcon className="size-4" />
-        {isGoogleLoading ? "Redirecting..." : "Continue with Google"}
+        {isGoogleLoading ? "Mengalihkan..." : "Lanjutkan dengan Google"}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">
-        Already have an account?{" "}
+        Sudah punya akun?{" "}
         <Link href="/auth/login" className="text-ring underline underline-offset-4">
-          Log in
+          Masuk
         </Link>
       </p>
     </>

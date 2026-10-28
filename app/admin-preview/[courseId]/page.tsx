@@ -9,7 +9,7 @@ import { LearnShell } from "@/components/learn/LearnShell"
 import { LearnSidebar } from "@/components/learn/LearnSidebar"
 import { LessonPane } from "@/components/learn/LessonPane"
 
-export const metadata = { title: "Course preview" }
+export const metadata = { title: "Pratinjau kursus" }
 
 export default async function AdminPreviewPage({
   params,

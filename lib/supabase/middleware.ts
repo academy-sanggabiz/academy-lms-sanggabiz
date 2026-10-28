@@ -78,7 +78,7 @@ export async function updateSession(request: NextRequest) {
     if (role && role !== 'admin' && role !== 'superadmin') {
       const url = request.nextUrl.clone()
       url.pathname = '/auth/login'
-      url.searchParams.set('error', 'Not authorized for the admin area')
+      url.searchParams.set('error', 'Anda tidak berwenang mengakses area admin')
       return NextResponse.redirect(url)
     }
   }

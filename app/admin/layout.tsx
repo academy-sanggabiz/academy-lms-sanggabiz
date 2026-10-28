@@ -15,7 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect("/auth/login")
   }
   if (result.status === "unauthorized") {
-    redirect("/auth/login?error=Not authorized for the admin area")
+    redirect("/auth/login?error=Anda tidak berwenang mengakses area admin")
   }
 
   const supabase = await createClient()

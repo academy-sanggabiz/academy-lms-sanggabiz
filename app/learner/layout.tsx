@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getNotifications } from "@/lib/notifications-server"
 import { resolveUserRole, roleHomePath } from "@/lib/auth/require-admin"
 
-export const metadata: Metadata = { title: "My learning" }
+export const metadata: Metadata = { title: "Belajar saya" }
 
 export default async function LearnerLayout({ children }: { children: React.ReactNode }) {
   const userRole = await resolveUserRole()
