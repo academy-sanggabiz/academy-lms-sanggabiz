@@ -118,14 +118,14 @@ export function EssayAssessmentPlayer({
             <div
               className={cn(
                 "text-5xl font-bold",
-                passed ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
+                passed ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"
               )}
             >
               {attemptInfo.lastScore}%
             </div>
           ) : (
             <div className="flex items-center gap-2 text-2xl font-bold">
-              <CheckCircle2 className="size-6 text-emerald-600 dark:text-emerald-400" />
+              <CheckCircle2 className="size-6 text-emerald-700 dark:text-emerald-400" />
               Reviewed
             </div>
           )}

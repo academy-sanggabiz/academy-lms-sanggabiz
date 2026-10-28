@@ -81,7 +81,7 @@ export function NotificationBell({
                 {n.body && (
                   <span className="truncate text-xs text-muted-foreground">{n.body}</span>
                 )}
-                <span className="text-[11px] text-muted-foreground/70">
+                <span className="text-[11px] text-muted-foreground">
                   {relativeTime(n.createdAt)}
                 </span>
               </span>

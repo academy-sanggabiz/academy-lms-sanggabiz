@@ -116,7 +116,7 @@ export default async function CourseDetailPage({
           </div>
           <div className="mb-4 flex items-center justify-between">
             <div className="text-2xl font-bold">{price}</div>
-            <span className="rounded-full bg-[#35b5c6] px-3 py-1 text-xs font-semibold text-white">{price}</span>
+            <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">{price}</span>
           </div>
 
           <EnrollButton

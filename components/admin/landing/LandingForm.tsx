@@ -167,7 +167,7 @@ export function LandingForm({
               <Label htmlFor={`features.${index}.icon`}>Icon</Label>
               <select
                 id={`features.${index}.icon`}
-                className="flex h-8 w-fit items-center rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="flex h-8 w-fit items-center rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring"
                 {...form.register(`features.${index}.icon` as const)}
               >
                 {LANDING_ICON_OPTIONS.map((icon) => (

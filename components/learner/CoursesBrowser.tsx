@@ -158,7 +158,7 @@ export function CoursesBrowser({
 function EmptyState({ message }: { message: string }) {
   return (
     <Card>
-      <CardContent className="py-16 text-center text-sm text-muted-foreground/70">
+      <CardContent className="py-16 text-center text-sm text-muted-foreground">
         {message}
       </CardContent>
     </Card>

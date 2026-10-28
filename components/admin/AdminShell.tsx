@@ -45,7 +45,7 @@ export function AdminShell({
             <AdminUserMenu name={name} role={role} />
           </header>
 
-          <main className="mx-auto w-full max-w-6xl p-8">{children}</main>
+          <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl p-8 outline-none">{children}</main>
         </div>
 
         <Toaster richColors position="top-right" />

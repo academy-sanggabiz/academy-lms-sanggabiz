@@ -216,7 +216,7 @@ export function QuizPlayer({
               <div
                 className={cn(
                   "text-5xl font-bold",
-                  result.passed ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
+                  result.passed ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"
                 )}
               >
                 {result.score}%
@@ -251,7 +251,7 @@ export function QuizPlayer({
                 className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4.5"
               >
                 {isCorrect === true && (
-                  <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-700 dark:text-emerald-400" />
                 )}
                 {isCorrect === false && (
                   <XCircle className="mt-0.5 size-5 shrink-0 text-destructive" />

@@ -30,7 +30,7 @@ export function NotificationsListClient({ page }: { page: Paginated<Notification
                   <span className="text-sm font-medium">{n.title}</span>
                 </span>
                 {n.body && <span className="text-sm text-muted-foreground">{n.body}</span>}
-                <span className="text-xs text-muted-foreground/70">
+                <span className="text-xs text-muted-foreground">
                   {relativeTime(n.createdAt)}
                 </span>
               </span>

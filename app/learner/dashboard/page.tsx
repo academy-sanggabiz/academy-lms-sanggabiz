@@ -59,7 +59,7 @@ export default async function LearnerDashboardPage() {
         <Card className="min-h-[280px] transition-shadow hover:shadow-[0_8px_24px_rgba(20,55,64,0.08)]">
           <CardContent>
             <div className="mb-4 text-lg font-bold">Continue Learning</div>
-            <p className="pt-2 text-sm text-muted-foreground/70">No courses in progress</p>
+            <p className="pt-2 text-sm text-muted-foreground">No courses in progress</p>
           </CardContent>
         </Card>
 
@@ -78,7 +78,7 @@ export default async function LearnerDashboardPage() {
                 </div>
               </div>
             ) : (
-              <p className="pt-2 text-sm text-muted-foreground/70">No recommendations available</p>
+              <p className="pt-2 text-sm text-muted-foreground">No recommendations available</p>
             )}
           </CardContent>
         </Card>
