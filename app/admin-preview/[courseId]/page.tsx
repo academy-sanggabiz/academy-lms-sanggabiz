@@ -5,6 +5,7 @@ import { ArrowLeft, Eye } from "lucide-react"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { getCourseDetailForAdmin } from "@/lib/courses-admin"
 import { Badge } from "@/components/ui/badge"
+import { LearnShell } from "@/components/learn/LearnShell"
 import { LearnSidebar } from "@/components/learn/LearnSidebar"
 import { LessonPane } from "@/components/learn/LessonPane"
 
@@ -39,24 +40,30 @@ export default async function AdminPreviewPage({
   const nextLessonId = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1].id : null
 
   return (
-    <div className="flex h-screen flex-col bg-background">
-      <header className="flex h-14 shrink-0 items-center gap-3.5 border-b border-border bg-card px-5">
-        <Link
-          href={`/admin/courses/preview/${courseId}`}
-          title="Back to course overview"
-          className="flex size-9 items-center justify-center rounded-lg border border-input hover:bg-muted"
-        >
-          <ArrowLeft className="size-4" />
-        </Link>
-        <img src="/logo.png" alt="Sanggabiz" className="size-7 object-contain" />
-        <div className="min-w-0 flex-1 truncate text-sm font-semibold">{course.title}</div>
-        <Badge variant="outline" className="flex items-center gap-1.5">
-          <Eye className="size-3.5" />
-          Preview Mode
-        </Badge>
-      </header>
-
-      <div className="flex min-h-0 flex-1">
+    <LearnShell
+      header={
+        <>
+          <Link
+            href={`/admin/courses/preview/${courseId}`}
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-input hover:bg-muted"
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+            <span className="sr-only">Back to course overview</span>
+          </Link>
+          <img src="/logo.png" alt="" className="hidden size-7 object-contain sm:block" />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold">{course.title}</div>
+            <div className="truncate text-xs text-muted-foreground">
+              Lesson {currentIndex + 1} of {allLessons.length}
+            </div>
+          </div>
+          <Badge variant="outline" className="flex items-center gap-1.5">
+            <Eye className="size-3.5" aria-hidden />
+            Preview Mode
+          </Badge>
+        </>
+      }
+      pane={
         <LessonPane
           key={currentLesson.id}
           courseId={courseId}
@@ -67,6 +74,8 @@ export default async function AdminPreviewPage({
           basePath="/admin-preview"
           mode="admin-preview"
         />
+      }
+      sidebar={
         <LearnSidebar
           courseId={courseId}
           sections={course.sections}
@@ -75,7 +84,7 @@ export default async function AdminPreviewPage({
           basePath="/admin-preview"
           mode="admin-preview"
         />
-      </div>
-    </div>
+      }
+    />
   )
 }

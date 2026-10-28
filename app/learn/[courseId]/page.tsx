@@ -7,6 +7,8 @@ import { resolveUserRole, roleHomePath } from "@/lib/auth/require-admin"
 import { checkAndIssueCertificate } from "@/lib/certificates"
 import { getCourseFeedbackForLearner } from "@/lib/feedback-server"
 import { createClient } from "@/lib/supabase/server"
+import { formatDuration } from "@/lib/courses"
+import { LearnShell } from "@/components/learn/LearnShell"
 import { LearnSidebar } from "@/components/learn/LearnSidebar"
 import { LessonPane } from "@/components/learn/LessonPane"
 
@@ -66,29 +68,51 @@ export default async function LearnPage({
 
   const feedback = isCourseComplete ? await getCourseFeedbackForLearner(courseId) : null
 
-  return (
-    <div className="flex h-screen flex-col bg-background">
-      <header className="flex h-14 shrink-0 items-center gap-3.5 border-b border-border bg-card px-5">
-        <Link
-          href={`/learner/courses/${courseId}`}
-          title="Back to course"
-          className="flex size-9 items-center justify-center rounded-lg border border-input hover:bg-muted"
-        >
-          <ArrowLeft className="size-4" />
-        </Link>
-        <img src="/logo.png" alt="Sanggabiz" className="size-7 object-contain" />
-        <div className="min-w-0 flex-1 truncate text-sm font-semibold">{course.title}</div>
-        <div className="flex items-center gap-2.5">
-          <div className="h-1.5 w-32 overflow-hidden rounded-full bg-secondary">
-            <div className="h-full bg-brand-gradient" style={{ width: `${progressPct}%` }} />
-          </div>
-          <span className="text-xs font-semibold whitespace-nowrap text-primary">
-            {doneCount} / {allLessons.length} done
-          </span>
-        </div>
-      </header>
+  const currentSection = course.sections.find((s) => s.lessons.some((l) => l.id === currentLesson.id))
+  const remainingSeconds = allLessons
+    .filter((l) => !completedLessonIds.has(l.id))
+    .reduce((sum, l) => sum + (l.duration_seconds ?? 0), 0)
 
-      <div className="flex min-h-0 flex-1">
+  return (
+    <LearnShell
+      header={
+        <>
+          <Link
+            href={`/learner/courses/${courseId}`}
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-input hover:bg-muted"
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+            <span className="sr-only">Back to course overview</span>
+          </Link>
+          <img src="/logo.png" alt="" className="hidden size-7 object-contain sm:block" />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold">{course.title}</div>
+            {/* Orientation (DL standard §3): where am I in the course. */}
+            <div className="truncate text-xs text-muted-foreground">
+              Lesson {currentIndex + 1} of {allLessons.length}
+              {currentSection ? ` · ${currentSection.title}` : ""}
+            </div>
+          </div>
+          <div className="hidden items-center gap-2.5 md:flex">
+            <div
+              role="progressbar"
+              aria-label="Course progress"
+              aria-valuemin={0}
+              aria-valuemax={allLessons.length}
+              aria-valuenow={doneCount}
+              aria-valuetext={`${doneCount} of ${allLessons.length} lessons done`}
+              className="h-1.5 w-32 overflow-hidden rounded-full bg-secondary"
+            >
+              <div className="h-full bg-brand-gradient" style={{ width: `${progressPct}%` }} />
+            </div>
+            <span className="text-xs font-semibold whitespace-nowrap text-primary">
+              {doneCount} of {allLessons.length} lessons done
+              {remainingSeconds > 0 && !isCourseComplete ? ` · ${formatDuration(remainingSeconds)} left` : ""}
+            </span>
+          </div>
+        </>
+      }
+      pane={
         <LessonPane
           key={currentLesson.id}
           courseId={courseId}
@@ -99,14 +123,17 @@ export default async function LearnPage({
           quizAttempt={currentLesson.quiz ? quizAttempts.get(currentLesson.quiz.id) : undefined}
           isCourseComplete={isCourseComplete}
           feedbackGiven={feedback !== null}
+          isLessonDone={completedLessonIds.has(currentLesson.id)}
         />
+      }
+      sidebar={
         <LearnSidebar
           courseId={courseId}
           sections={course.sections}
           currentLessonId={currentLesson.id}
           completedLessonIds={completedLessonIds}
         />
-      </div>
-    </div>
+      }
+    />
   )
 }

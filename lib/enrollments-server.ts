@@ -198,3 +198,94 @@ export async function getStartedCourseIds(): Promise<string[]> {
 
   return [...courseIds]
 }
+
+export type ContinueLearningItem = {
+  courseId: string
+  title: string
+  thumbnailUrl: string | null
+  doneCount: number
+  totalCount: number
+  /** First lesson not yet done, in curriculum order; null when all are done. */
+  nextLesson: { id: string; title: string; position: number } | null
+}
+
+/**
+ * The learner's active courses with real progress and the exact lesson to
+ * resume, for the dashboard's "Continue learning" card (DL standard:
+ * "Continue: lesson 3 of 8" beats a list of course names). Two queries: the
+ * enrolled courses with their ordered lessons, then the completed lessons.
+ */
+export async function getContinueLearning(limit = 3): Promise<ContinueLearningItem[]> {
+  const supabase = await createClient()
+  const { data: claimsData } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims?.sub
+  if (!userId) return []
+
+  const { data: enrollments, error } = await supabase
+    .from("enrollments")
+    .select(
+      `id, enrolled_at,
+      course:courses(id, title, thumbnail_url,
+        sections:course_sections(position, lessons(id, title, position)))`
+    )
+    .eq("learner_id", userId)
+    .eq("status", "active")
+    .order("enrolled_at", { ascending: false })
+
+  if (error) {
+    console.error("getContinueLearning failed:", error.message)
+    return []
+  }
+  if (!enrollments?.length) return []
+
+  const { data: progress, error: progressError } = await supabase
+    .from("lesson_progress")
+    .select("enrollment_id, lesson_id, completed_at")
+    .in(
+      "enrollment_id",
+      enrollments.map((e) => e.id)
+    )
+    .eq("completed", true)
+
+  if (progressError) console.error("getContinueLearning progress lookup failed:", progressError.message)
+
+  const doneByEnrollment = new Map<string, { lessons: Set<string>; lastAt: string }>()
+  for (const row of progress ?? []) {
+    const entry = doneByEnrollment.get(row.enrollment_id) ?? { lessons: new Set<string>(), lastAt: "" }
+    entry.lessons.add(row.lesson_id)
+    if (row.completed_at && row.completed_at > entry.lastAt) entry.lastAt = row.completed_at
+    doneByEnrollment.set(row.enrollment_id, entry)
+  }
+
+  type RawSection = { position: number; lessons: { id: string; title: string; position: number }[] }
+
+  const items = enrollments.flatMap((enrollment) => {
+    const course = Array.isArray(enrollment.course) ? enrollment.course[0] : enrollment.course
+    if (!course) return []
+    const lessons = [...((course.sections ?? []) as RawSection[])]
+      .sort((a, b) => a.position - b.position)
+      .flatMap((s) => [...s.lessons].sort((a, b) => a.position - b.position))
+    if (lessons.length === 0) return []
+    const done = doneByEnrollment.get(enrollment.id)
+    const nextIndex = lessons.findIndex((l) => !done?.lessons.has(l.id))
+    return [
+      {
+        item: {
+          courseId: course.id,
+          title: course.title,
+          thumbnailUrl: course.thumbnail_url,
+          doneCount: lessons.filter((l) => done?.lessons.has(l.id)).length,
+          totalCount: lessons.length,
+          nextLesson: nextIndex === -1 ? null : { ...lessons[nextIndex], position: nextIndex + 1 },
+        } satisfies ContinueLearningItem,
+        // Most recently studied first, then most recently enrolled.
+        sortKey: done?.lastAt || enrollment.enrolled_at,
+      },
+    ]
+  })
+
+  return items
+    .sort((a, b) => (a.sortKey < b.sortKey ? 1 : -1))
+    .slice(0, limit)
+    .map((x) => x.item)
+}

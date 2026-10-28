@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ChevronDown, FileText, HelpCircle, Presentation, Send, Sparkles, Video } from "lucide-react"
+import { ChevronDown, FileText, HelpCircle, Presentation, Video } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { formatDuration, type CourseSection, type LessonContentType } from "@/lib/courses"
@@ -24,13 +24,6 @@ const typeLabel: Record<LessonContentType, string> = {
   ppt: "Slides",
 }
 
-const suggestedQuestions = [
-  "Give me an overview of the course",
-  "What tools do I need for this course?",
-  "How long will this course take?",
-  "What should I do after finishing this course?",
-]
-
 export function LearnSidebar({
   courseId,
   sections,
@@ -46,48 +39,22 @@ export function LearnSidebar({
   basePath?: string
   mode?: "learner" | "admin-preview"
 }) {
-  const [sideTab, setSideTab] = useState<"content" | "ai">("content")
-
+  // v2: the "AI Assistant" tab was removed. It looked usable but had no
+  // backend, and a control that does nothing reads as a broken product
+  // (DL standard: every button leads to a real view).
   return (
-    <aside className="flex w-[360px] shrink-0 flex-col border-l border-border bg-card">
-      <div className="flex gap-1 border-b border-muted px-3 pt-2">
-        <button
-          onClick={() => setSideTab("content")}
-          className={cn(
-            "rounded-t-lg px-3 py-2 text-sm font-semibold",
-            sideTab === "content"
-              ? "border-b-2 border-ring text-ring"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Course content
-        </button>
-        <button
-          onClick={() => setSideTab("ai")}
-          className={cn(
-            "flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-sm font-semibold",
-            sideTab === "ai"
-              ? "border-b-2 border-ring text-ring"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Sparkles className="size-3.5" />
-          AI Assistant
-        </button>
-      </div>
-
-      {sideTab === "content" ? (
-        <ContentTab
-          courseId={courseId}
-          sections={sections}
-          currentLessonId={currentLessonId}
-          completedLessonIds={completedLessonIds}
-          basePath={basePath}
-          mode={mode}
-        />
-      ) : (
-        <AiAssistantTab />
-      )}
+    <aside aria-labelledby="course-content-heading" className="flex min-h-0 flex-1 flex-col border-l border-border bg-card">
+      <h2 id="course-content-heading" className="border-b border-muted px-5 py-3 text-sm font-semibold text-foreground">
+        Course content
+      </h2>
+      <ContentTab
+        courseId={courseId}
+        sections={sections}
+        currentLessonId={currentLessonId}
+        completedLessonIds={completedLessonIds}
+        basePath={basePath}
+        mode={mode}
+      />
     </aside>
   )
 }
@@ -107,7 +74,11 @@ function ContentTab({
   basePath?: string
   mode?: "learner" | "admin-preview"
 }) {
-  const [openId, setOpenId] = useState<string | null>(sections[0]?.id ?? null)
+  // Open the module that holds the current lesson, so the learner sees where
+  // they are without hunting for it.
+  const [openId, setOpenId] = useState<string | null>(
+    sections.find((s) => s.lessons.some((l) => l.id === currentLessonId))?.id ?? sections[0]?.id ?? null
+  )
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -118,16 +89,21 @@ function ContentTab({
         return (
           <div key={section.id} className="border-b border-muted">
             <button
+              type="button"
               onClick={() => setOpenId(isOpen ? null : section.id)}
+              aria-expanded={isOpen}
               className="flex w-full items-center gap-2.5 bg-secondary/40 px-5 py-3.5 text-left hover:bg-secondary/70"
             >
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-semibold leading-tight">{section.title}</div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
-                  {mode === "admin-preview" ? `${section.lessons.length} lessons` : `${doneCount} / ${section.lessons.length}`}
+                  {mode === "admin-preview"
+                    ? `${section.lessons.length} lessons`
+                    : `${doneCount} of ${section.lessons.length} done`}
                 </div>
               </div>
               <ChevronDown
+                aria-hidden
                 className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")}
               />
             </button>
@@ -152,29 +128,40 @@ function ContentTab({
                           <input type="hidden" name="courseId" value={courseId} />
                           <input type="hidden" name="lessonId" value={lesson.id} />
                           <input type="hidden" name="completed" value={(!isDone).toString()} />
+                          {/* 24px hit area around the 18px box (WCAG 2.5.8 target size). */}
                           <button
                             type="submit"
-                            title="Mark complete"
-                            className={cn(
-                              "flex size-[18px] shrink-0 items-center justify-center rounded border",
-                              isDone ? "border-ring bg-ring" : "border-input bg-card"
-                            )}
+                            aria-pressed={isDone}
+                            aria-label={isDone ? `Mark "${lesson.title}" as not done` : `Mark "${lesson.title}" as done`}
+                            className="-m-[3px] flex size-6 shrink-0 items-center justify-center rounded"
                           >
-                            {isDone && (
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
-                                <path d="M5 13 L10 18 L19 7" />
-                              </svg>
-                            )}
+                            <span
+                              className={cn(
+                                "flex size-[18px] items-center justify-center rounded border",
+                                isDone ? "border-ring bg-ring" : "border-input bg-card"
+                              )}
+                            >
+                              {isDone && (
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" aria-hidden>
+                                  <path d="M5 13 L10 18 L19 7" />
+                                </svg>
+                              )}
+                            </span>
                           </button>
                         </form>
                       )}
 
-                      <Link href={`${basePath}/${courseId}?lesson=${lesson.id}`} className="min-w-0 flex-1">
+                      <Link
+                        href={`${basePath}/${courseId}?lesson=${lesson.id}`}
+                        aria-current={isActive ? "page" : undefined}
+                        className="min-w-0 flex-1"
+                      >
                         <div className="line-clamp-2 text-[13.5px] leading-snug">{lesson.title}</div>
                         <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Icon className="size-3" />
+                          <Icon className="size-3" aria-hidden />
                           <span>
                             {typeLabel[lesson.content_type]}
+                            {mode === "learner" && isDone ? " · Done" : ""}
                             {lesson.duration_seconds ? ` · ${formatDuration(lesson.duration_seconds)}` : ""}
                           </span>
                         </div>
@@ -187,43 +174,6 @@ function ContentTab({
           </div>
         )
       })}
-    </div>
-  )
-}
-
-function AiAssistantTab() {
-  const [input, setInput] = useState("")
-
-  return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex-1 overflow-y-auto p-5">
-        <div className="mb-1.5 text-base font-bold">Do you have any questions about this course?</div>
-        <p className="mb-4.5 text-xs leading-relaxed text-muted-foreground">
-          Our AI assistant may make mistakes. Verify for accuracy.
-        </p>
-        <div className="flex flex-col gap-2.5">
-          {suggestedQuestions.map((q) => (
-            <button
-              key={q}
-              onClick={() => setInput(q)}
-              className="rounded-lg border border-input px-3.5 py-3 text-left text-[13.5px] leading-snug hover:border-ring hover:bg-secondary/40"
-            >
-              {q}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="flex items-center gap-2.5 border-t border-muted p-3.5">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask a question"
-          className="h-10 flex-1 rounded-lg border border-input bg-card px-3.5 text-[13.5px] outline-none focus:border-ring"
-        />
-        <button className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-gradient text-white">
-          <Send className="size-4" />
-        </button>
-      </div>
     </div>
   )
 }

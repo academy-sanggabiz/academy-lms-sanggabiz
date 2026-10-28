@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
 
 import { createClient } from "@/lib/supabase/server"
 import { checkAndIssueCertificate } from "@/lib/certificates"
@@ -9,6 +10,9 @@ export async function toggleLessonComplete(formData: FormData) {
   const courseId = String(formData.get("courseId") ?? "")
   const lessonId = String(formData.get("lessonId") ?? "")
   const completed = formData.get("completed") === "true"
+  // Optional: the "Complete & continue" button sends the next lesson so the
+  // learner lands on it in one step (DL standard: one clear next action).
+  const continueTo = String(formData.get("continueTo") ?? "")
   if (!courseId || !lessonId) return
 
   const supabase = await createClient()
@@ -48,4 +52,8 @@ export async function toggleLessonComplete(formData: FormData) {
   }
 
   revalidatePath("/learn/[courseId]", "page")
+
+  if (continueTo) {
+    redirect(`/learn/${encodeURIComponent(courseId)}?lesson=${encodeURIComponent(continueTo)}`)
+  }
 }
