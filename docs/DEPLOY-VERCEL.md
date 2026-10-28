@@ -47,7 +47,7 @@ Login Google (`signInWithOAuth`) dan link konfirmasi email memakai `origin` doma
 
 1. Buka domain Vercel, daftar akun, lalu jadikan admin pertama dengan mengubah `public.profiles.role` menjadi `superadmin` di Table Editor.
 2. Logout lalu login lagi, supaya JWT memuat peran baru lewat access-token hook.
-3. Uji alur inti sesuai checklist `docs/V2-UPGRADE.md` §5: buat kursus → publish → enroll sebagai learner → "Complete & continue" → kuis dengan penjelasan.
+3. Uji alur inti sesuai checklist `docs/V2-UPGRADE.md` §5: buat kursus → publish → enroll sebagai learner → "Selesai & lanjut" → kuis dengan penjelasan.
 4. Jalankan audit aksesibilitas terhadap URL produksi:
    ```bash
    AUDIT_BASE_URL=https://<domain> AUDIT_LEARNER_EMAIL=... AUDIT_LEARNER_PASSWORD=... \

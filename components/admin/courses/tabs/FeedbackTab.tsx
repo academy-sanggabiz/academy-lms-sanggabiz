@@ -24,7 +24,7 @@ export function FeedbackTab({
           {summary.average !== null && <StarRating value={Math.round(summary.average)} readOnly size="sm" />}
         </div>
         <div className="text-sm text-muted-foreground">
-          {summary.count} review{summary.count === 1 ? "" : "s"}
+          {summary.count} ulasan
         </div>
         <div className="flex flex-1 min-w-[180px] flex-col gap-1">
           {([5, 4, 3, 2, 1] as const).map((n) => {
@@ -43,17 +43,17 @@ export function FeedbackTab({
         </div>
       </div>
 
-      {feedback.total > 0 && <ListToolbar placeholder="Search by learner name or email..." prefix={FEEDBACK_PREFIX} />}
+      {feedback.total > 0 && <ListToolbar placeholder="Cari nama atau email peserta..." prefix={FEEDBACK_PREFIX} />}
 
       {feedback.rows.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border py-12 text-center">
           <MessageSquare className="size-6 text-muted-foreground" />
           <p className="text-sm font-medium">
-            {feedback.total === 0 ? "No feedback yet" : "No feedback matches your search"}
+            {feedback.total === 0 ? "Belum ada ulasan" : "Tidak ada ulasan yang cocok dengan pencarian Anda"}
           </p>
           {feedback.total === 0 && (
             <p className="max-w-[320px] text-xs text-muted-foreground">
-              Learners are asked to rate the course when they complete it.
+              Peserta diminta menilai kursus setelah menyelesaikannya.
             </p>
           )}
         </div>

@@ -3,6 +3,7 @@ import { recordEnrollmentTransaction } from "@/lib/transactions-server"
 import { getOwnedCourseIdsOrNull } from "@/lib/courses-admin"
 import { escapeForOrFilter, paginated, rangeFor, type ListParams, type Paginated } from "@/lib/pagination"
 import { pickRepresentativeAttempt } from "@/lib/quiz-attempt-selection"
+import { dbErrorMessage } from "@/lib/db-error-message"
 
 /** Server-only admin data access for Learner Management -- never import from a Client Component. */
 
@@ -156,7 +157,7 @@ export async function getAdminLearnerDetail(learnerId: string): Promise<AdminLea
     return null
   }
 
-  const name = data.full_name || data.email || "Unnamed learner"
+  const name = data.full_name || data.email || "Peserta tanpa nama"
   return {
     id: data.id,
     name,
@@ -462,7 +463,7 @@ export async function searchLearners(query: string, courseId?: string): Promise<
   }
 
   return data.map((p) => {
-    const name = p.full_name || p.email || "Unnamed learner"
+    const name = p.full_name || p.email || "Peserta tanpa nama"
     return {
       id: p.id,
       name,
@@ -518,7 +519,7 @@ export async function getCourseRoster(courseId: string, p: ListParams): Promise<
     // widen embedded rows to an array -- normalize the same way getCourseDetail
     // does for lesson.quiz.
     const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
-    const name = profile?.full_name || profile?.email || "Unnamed learner"
+    const name = profile?.full_name || profile?.email || "Peserta tanpa nama"
     return {
       learnerId: row.learner_id,
       name,
@@ -543,7 +544,7 @@ export async function enrollLearnerInCourse(
 
   if (error) {
     console.error("enrollLearnerInCourse failed:", error.message)
-    return { error: error.message }
+    return { error: dbErrorMessage(error.message) }
   }
 
   await recordEnrollmentTransaction(supabase, learnerId, courseId)
@@ -564,7 +565,7 @@ export async function unenrollLearnerFromCourse(
 
   if (error) {
     console.error("unenrollLearnerFromCourse failed:", error.message)
-    return { error: error.message }
+    return { error: dbErrorMessage(error.message) }
   }
   return { ok: true }
 }

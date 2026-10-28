@@ -43,7 +43,7 @@ export default async function AdminCoursePreviewPage({
         <Button
           variant="outline"
           size="icon"
-          aria-label="Back to course editor"
+          aria-label="Kembali ke editor kursus"
           render={<Link href={`/admin/courses/${course.id}/edit`} />}
           nativeButton={false}
         >
@@ -58,7 +58,7 @@ export default async function AdminCoursePreviewPage({
               : "border-pill-border bg-draft-background text-destructive"
           }
         >
-          {course.status === "published" ? "Published" : "Draft"}
+          {course.status === "published" ? "Terbit" : "Draf"}
         </Badge>
       </div>
 
@@ -66,19 +66,19 @@ export default async function AdminCoursePreviewPage({
         <div className="flex min-w-0 flex-col gap-6">
           <Card>
             <CardContent>
-              <div className="mb-3.5 text-lg font-bold">Course Overview</div>
+              <div className="mb-3.5 text-lg font-bold">Ringkasan Kursus</div>
               <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{course.description}</p>
               <div className="mt-4 flex gap-2 border-t border-muted pt-4 text-[13px] text-muted-foreground">
-                <span>{course.lesson_count} lessons</span>
+                <span>{course.lesson_count} pelajaran</span>
                 <span>·</span>
-                <span>{course.duration_hours} hours</span>
+                <span>{course.duration_hours} jam</span>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent>
-              <div className="mb-2 text-lg font-bold">Course Content</div>
+              <div className="mb-2 text-lg font-bold">Isi kursus</div>
               <CourseCurriculum sections={course.sections} courseId={course.id} basePath="/admin-preview" />
             </CardContent>
           </Card>
@@ -86,7 +86,7 @@ export default async function AdminCoursePreviewPage({
           {course.who_for.length > 0 && (
             <Card>
               <CardContent>
-                <div className="mb-3.5 text-lg font-bold">Who This Course Is For</div>
+                <div className="mb-3.5 text-lg font-bold">Untuk Siapa Kursus Ini</div>
                 <div className="flex flex-col gap-3.5 text-sm leading-relaxed text-muted-foreground">
                   {course.who_for.map((line, i) => (
                     <div key={i}>{line}</div>
@@ -99,7 +99,7 @@ export default async function AdminCoursePreviewPage({
           {course.requirements.length > 0 && (
             <Card>
               <CardContent>
-                <div className="mb-3.5 text-lg font-bold">Requirements</div>
+                <div className="mb-3.5 text-lg font-bold">Persyaratan</div>
                 <div className="flex flex-col gap-3.5 text-sm leading-relaxed text-muted-foreground">
                   {course.requirements.map((line, i) => (
                     <div key={i}>{line}</div>
@@ -113,15 +113,15 @@ export default async function AdminCoursePreviewPage({
             <CardContent className="flex items-center gap-4">
               <div className="course-thumb-placeholder size-16 shrink-0 rounded-full" />
               <div>
-                <div className="text-[17px] font-bold">{course.instructor?.name ?? "Sanggabiz Team"}</div>
-                <div className="mt-0.5 text-[13px] text-muted-foreground">Course Instructor</div>
+                <div className="text-[17px] font-bold">{course.instructor?.name ?? "Tim Sanggabiz"}</div>
+                <div className="mt-0.5 text-[13px] text-muted-foreground">Instruktur Kursus</div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent>
-              <div className="mb-3.5 text-lg font-bold">Feedback</div>
+              <div className="mb-3.5 text-lg font-bold">Ulasan</div>
               <FeedbackTab summary={feedbackSummary} feedback={feedback} />
             </CardContent>
           </Card>
@@ -138,7 +138,7 @@ export default async function AdminCoursePreviewPage({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={course.thumbnail_url} alt="" className="absolute inset-0 size-full object-cover" />
             ) : (
-              "course thumbnail"
+              "gambar kursus"
             )}
           </div>
           <div className="mb-4 flex items-center justify-between">
@@ -152,13 +152,13 @@ export default async function AdminCoursePreviewPage({
             render={<Link href={`/admin/courses/${course.id}/edit`} />}
             nativeButton={false}
           >
-            Edit Course
+            Ubah Kursus
           </Button>
 
           <div className="mt-4 flex flex-col gap-3 text-[13.5px] text-muted-foreground">
             <div className="flex items-center gap-2.5">
               <FileText className="size-4" />
-              {course.resource_count} resources
+              {course.resource_count} sumber belajar
             </div>
             <div className="flex items-center gap-2.5">
               <Globe className="size-4" />
@@ -166,7 +166,7 @@ export default async function AdminCoursePreviewPage({
             </div>
             <div className="flex items-center gap-2.5">
               <Users className="size-4" />
-              {course.enrolled_count} learners enrolled
+              {course.enrolled_count} peserta terdaftar
             </div>
           </div>
         </div>

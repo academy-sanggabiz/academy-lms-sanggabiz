@@ -2,13 +2,13 @@ import { z } from "zod"
 
 export const signupSchema = z
   .object({
-    fullName: z.string().trim().min(1, "Full name is required"),
-    email: z.string().trim().email("Enter a valid email"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
+    fullName: z.string().trim().min(1, "Nama lengkap wajib diisi"),
+    email: z.string().trim().email("Masukkan email yang valid"),
+    password: z.string().min(6, "Kata sandi minimal 6 karakter"),
     confirmPassword: z.string(),
   })
   .refine((values) => values.password === values.confirmPassword, {
-    message: "Passwords do not match",
+    message: "Kata sandi tidak cocok",
     path: ["confirmPassword"],
   })
 

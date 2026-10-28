@@ -37,16 +37,16 @@ export function UserMenu({ name, email }: { name: string; email: string }) {
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link href="/learner/profile" />}>
           <User />
-          Profile
+          Profil
         </DropdownMenuItem>
         <DropdownMenuItem render={<Link href="/learner/settings" />}>
           <Settings />
-          Settings
+          Pengaturan
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={() => logout()}>
           <LogOut />
-          Log Out
+          Keluar
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

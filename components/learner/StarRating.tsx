@@ -20,14 +20,14 @@ export function StarRating({
   const starSize = size === "sm" ? "size-4" : "size-6"
 
   return (
-    <div className="flex items-center gap-1" role={readOnly ? undefined : "radiogroup"} aria-label="Rating">
+    <div className="flex items-center gap-1" role={readOnly ? undefined : "radiogroup"} aria-label="Penilaian">
       {RATINGS.map((n) => (
         <button
           key={n}
           type="button"
           disabled={readOnly}
           onClick={() => onChange?.(n)}
-          aria-label={`${n} star${n > 1 ? "s" : ""}`}
+          aria-label={`${n} bintang`}
           aria-pressed={!readOnly ? value === n : undefined}
           className={cn(
             "text-muted-foreground/40 disabled:cursor-default",

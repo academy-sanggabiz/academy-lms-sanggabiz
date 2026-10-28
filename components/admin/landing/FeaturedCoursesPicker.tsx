@@ -44,8 +44,8 @@ export function FeaturedCoursesPicker({
     <div className="space-y-3">
       <div className="flex gap-2.5">
         <Select value={pickerValue} onValueChange={(v) => v && setPickerValue(v)}>
-          <SelectTrigger aria-label="Course to feature" className="flex-1">
-            <SelectValue placeholder="Select a course" />
+          <SelectTrigger aria-label="Kursus unggulan" className="flex-1">
+            <SelectValue placeholder="Pilih kursus" />
           </SelectTrigger>
           <SelectContent>
             {pickableCourses.map((course) => (
@@ -56,7 +56,7 @@ export function FeaturedCoursesPicker({
           </SelectContent>
         </Select>
         <Button type="button" variant="outline" onClick={handleAdd} disabled={!pickerValue}>
-          Add
+          Tambah
         </Button>
       </div>
 
@@ -72,6 +72,7 @@ export function FeaturedCoursesPicker({
                 type="button"
                 onClick={() => handleRemove(course.id)}
                 className="shrink-0 text-destructive"
+                aria-label={`Hapus ${course.title}`}
               >
                 <X className="size-3.5" />
               </button>

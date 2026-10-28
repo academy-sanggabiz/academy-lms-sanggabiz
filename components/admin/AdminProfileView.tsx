@@ -40,7 +40,8 @@ export function AdminProfileView({ name, email, joinedYear, role }: AdminProfile
           </div>
           <button
             onClick={() => setIsEditing(true)}
-            title="Edit profile"
+            title="Ubah profil"
+            aria-label="Ubah profil"
             className="absolute right-0 bottom-0 flex size-8 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-[0_2px_8px_rgba(20,55,64,0.15)] hover:bg-muted"
           >
             <Pencil className="size-3.5" />
@@ -60,7 +61,7 @@ export function AdminProfileView({ name, email, joinedYear, role }: AdminProfile
             </span>
             <span className="flex items-center gap-2">
               <Calendar className="size-3.5 text-ring" />
-              Joined since {joinedYear}
+              Bergabung sejak {joinedYear}
             </span>
           </div>
         </div>
@@ -88,12 +89,13 @@ function EditProfileForm({
       <div className="mb-6 flex items-center gap-3.5">
         <button
           onClick={onDone}
-          title="Back to profile"
+          title="Kembali ke profil"
+          aria-label="Kembali ke profil"
           className="flex size-9 flex-none items-center justify-center rounded-lg border border-border bg-card hover:bg-muted"
         >
           <ArrowLeft className="size-[17px]" />
         </button>
-        <div className="text-2xl font-bold">Edit Profile</div>
+        <div className="text-2xl font-bold">Ubah Profil</div>
       </div>
 
       <form
@@ -117,7 +119,7 @@ function EditProfileForm({
         </div>
 
         <Label htmlFor="fullName" className="mb-2 block text-sm font-semibold">
-          Name
+          Nama
         </Label>
         <Input id="fullName" name="fullName" defaultValue={name} className="mb-4 w-full" />
 
@@ -125,16 +127,16 @@ function EditProfileForm({
           Email
         </Label>
         <Input id="email" value={email} disabled className="w-full bg-muted" />
-        <p className="mt-1.5 mb-4 text-xs text-muted-foreground">Email cannot be changed</p>
+        <p className="mt-1.5 mb-4 text-xs text-muted-foreground">Email tidak dapat diubah</p>
 
         {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 
         <div className="flex gap-3">
           <Button type="submit" disabled={isPending} className="bg-brand-gradient text-white hover:brightness-105">
-            {isPending ? "Saving..." : "Save Changes"}
+            {isPending ? "Menyimpan..." : "Simpan Perubahan"}
           </Button>
           <Button type="button" variant="outline" onClick={onDone}>
-            Cancel
+            Batal
           </Button>
         </div>
       </form>

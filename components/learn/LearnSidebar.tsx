@@ -18,10 +18,10 @@ const typeIcon: Record<LessonContentType, typeof Video> = {
 
 const typeLabel: Record<LessonContentType, string> = {
   video: "Video",
-  text: "Reading",
-  quiz: "Quiz",
-  mixed: "Mixed",
-  ppt: "Slides",
+  text: "Bacaan",
+  quiz: "Kuis",
+  mixed: "Campuran",
+  ppt: "Slide",
 }
 
 export function LearnSidebar({
@@ -45,7 +45,7 @@ export function LearnSidebar({
   return (
     <aside aria-labelledby="course-content-heading" className="flex min-h-0 flex-1 flex-col border-l border-border bg-card">
       <h2 id="course-content-heading" className="border-b border-muted px-5 py-3 text-sm font-semibold text-foreground">
-        Course content
+        Isi kursus
       </h2>
       <ContentTab
         courseId={courseId}
@@ -98,8 +98,8 @@ function ContentTab({
                 <div className="text-sm font-semibold leading-tight">{section.title}</div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
                   {mode === "admin-preview"
-                    ? `${section.lessons.length} lessons`
-                    : `${doneCount} of ${section.lessons.length} done`}
+                    ? `${section.lessons.length} pelajaran`
+                    : `${doneCount} dari ${section.lessons.length} selesai`}
                 </div>
               </div>
               <ChevronDown
@@ -132,7 +132,7 @@ function ContentTab({
                           <button
                             type="submit"
                             aria-pressed={isDone}
-                            aria-label={isDone ? `Mark "${lesson.title}" as not done` : `Mark "${lesson.title}" as done`}
+                            aria-label={isDone ? `Tandai "${lesson.title}" belum selesai` : `Tandai "${lesson.title}" selesai`}
                             className="-m-[3px] flex size-6 shrink-0 items-center justify-center rounded"
                           >
                             <span
@@ -161,7 +161,7 @@ function ContentTab({
                           <Icon className="size-3" aria-hidden />
                           <span>
                             {typeLabel[lesson.content_type]}
-                            {mode === "learner" && isDone ? " · Done" : ""}
+                            {mode === "learner" && isDone ? " · Selesai" : ""}
                             {lesson.duration_seconds ? ` · ${formatDuration(lesson.duration_seconds)}` : ""}
                           </span>
                         </div>

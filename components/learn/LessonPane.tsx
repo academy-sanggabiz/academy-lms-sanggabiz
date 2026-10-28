@@ -167,7 +167,7 @@ function LessonNavArrows({
       {prevLessonId ? (
         <Link
           href={`${basePath}/${courseId}?lesson=${prevLessonId}`}
-          aria-label="Previous lesson"
+          aria-label="Pelajaran sebelumnya"
           className={cn(
             "absolute top-1/2 left-3 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-input bg-card text-muted-foreground shadow-lg hover:bg-muted hover:text-foreground",
             visibility
@@ -179,7 +179,7 @@ function LessonNavArrows({
         <button
           type="button"
           disabled
-          aria-label="Previous lesson (this is the first lesson)"
+          aria-label="Pelajaran sebelumnya (ini pelajaran pertama)"
           className={cn(
             "absolute top-1/2 left-3 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-input bg-card text-muted-foreground shadow-lg",
             revealOnHover ? "opacity-0 transition-opacity duration-150 group-hover:opacity-40" : "opacity-40"
@@ -192,7 +192,7 @@ function LessonNavArrows({
       {nextLessonId ? (
         <Link
           href={`${basePath}/${courseId}?lesson=${nextLessonId}`}
-          aria-label="Next lesson"
+          aria-label="Pelajaran berikutnya"
           className={cn(
             "absolute top-1/2 right-3 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-input bg-card text-muted-foreground shadow-lg hover:bg-muted hover:text-foreground",
             visibility
@@ -204,7 +204,7 @@ function LessonNavArrows({
         <button
           type="button"
           onClick={onReachEnd}
-          aria-label="Finish course"
+          aria-label="Selesaikan kursus"
           className={cn(
             "absolute top-1/2 right-3 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-input bg-card text-muted-foreground shadow-lg hover:bg-muted hover:text-foreground",
             visibility
@@ -237,7 +237,7 @@ function CourseFinishedPane({
       {prevLessonId && (
         <Link
           href={`${basePath}/${courseId}?lesson=${prevLessonId}`}
-          aria-label="Previous lesson"
+          aria-label="Pelajaran sebelumnya"
           className="absolute top-1/2 left-3 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-input bg-card text-muted-foreground shadow-lg hover:bg-muted hover:text-foreground"
         >
           <ChevronLeft className="size-5" aria-hidden />
@@ -246,38 +246,38 @@ function CourseFinishedPane({
       {isCourseComplete ? (
         feedbackGiven ? (
           <>
-            <p className="text-lg font-bold">🎉 Congratulations — you&apos;ve completed {courseTitle}!</p>
-            <p className="-mt-3 text-sm text-muted-foreground">Your certificate is ready to download.</p>
+            <p className="text-lg font-bold">Selamat, Anda telah menyelesaikan {courseTitle}.</p>
+            <p className="-mt-3 text-sm text-muted-foreground">Sertifikat Anda siap diunduh.</p>
             <div className="flex gap-3">
               <Button
                 className="bg-brand-gradient text-white hover:brightness-105"
                 render={<Link href="/learner/profile?tab=certificates" />}
                 nativeButton={false}
               >
-                View Your Certificate
+                Lihat Sertifikat Anda
               </Button>
               <Button variant="outline" render={<Link href="/learner/courses" />} nativeButton={false}>
-                Find more courses
+                Cari kursus lain
               </Button>
             </div>
           </>
         ) : (
           <>
-            <p className="text-lg font-bold">🎉 Congratulations — you&apos;ve completed {courseTitle}!</p>
+            <p className="text-lg font-bold">Selamat, Anda telah menyelesaikan {courseTitle}.</p>
             <p className="-mt-3 text-sm text-muted-foreground">
-              One last step — tell us how it went to unlock your certificate.
+              Satu langkah lagi: beri ulasan untuk membuka sertifikat Anda.
             </p>
             <CourseFeedbackForm courseId={courseId} />
             <Button variant="outline" render={<Link href="/learner/courses" />} nativeButton={false}>
-              Find more courses
+              Cari kursus lain
             </Button>
           </>
         )
       ) : (
         <>
-          <p className="text-lg font-bold">🙌 You&apos;ve finished the last lesson in this course!</p>
+          <p className="text-lg font-bold">Anda telah menyelesaikan pelajaran terakhir di kursus ini.</p>
           <Button variant="outline" render={<Link href="/learner/courses" />} nativeButton={false}>
-            Find more courses
+            Cari kursus lain
           </Button>
         </>
       )}
@@ -306,7 +306,7 @@ function VideoContent({
     return (
       <div className="group relative flex justify-center">
         <div className="flex aspect-video w-full max-w-[calc(62vh*16/9)] items-center justify-center bg-foreground/90 text-sm text-background/70">
-          No video available for this lesson.
+          Video untuk pelajaran ini belum tersedia.
         </div>
         <LessonNavArrows
           courseId={courseId}
@@ -364,7 +364,7 @@ function SlidesContent({
     return (
       <div className="group relative flex justify-center">
         <div className="flex aspect-video w-full max-w-[calc(62vh*16/9)] items-center justify-center bg-foreground/90 text-sm text-background/70">
-          No slides available for this lesson.
+          Slide untuk pelajaran ini belum tersedia.
         </div>
         <LessonNavArrows
           courseId={courseId}
@@ -424,7 +424,7 @@ function TextContent({
           <button
             type="button"
             onClick={() => setFullscreen(true)}
-            aria-label="Read in full screen"
+            aria-label="Baca dalam layar penuh"
             className="sticky top-3.5 float-right mr-5 flex size-9 items-center justify-center rounded-[10px] border border-input bg-card text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
           >
             <Maximize2 className="size-4" aria-hidden />
@@ -434,7 +434,7 @@ function TextContent({
           <button
             type="button"
             onClick={() => setFullscreen(false)}
-            aria-label="Exit full screen"
+            aria-label="Keluar dari layar penuh"
             className="fixed right-6 bottom-6 z-[60] flex size-11 items-center justify-center rounded-xl border border-input bg-muted text-muted-foreground shadow-lg hover:bg-accent hover:text-foreground"
           >
             <Minimize2 className="size-4.5" aria-hidden />
@@ -443,14 +443,14 @@ function TextContent({
         {/* Line length capped near 72 characters (DL standard: 45-75). */}
         <div className="mx-auto max-w-[72ch] px-5 py-8 sm:px-14">
           <div className="mb-2.5 text-xs font-semibold tracking-wider text-ring uppercase">
-            Reading{lesson.duration_seconds ? ` · ${formatDuration(lesson.duration_seconds)}` : ""}
+            Bacaan{lesson.duration_seconds ? ` · ${formatDuration(lesson.duration_seconds)}` : ""}
           </div>
           <h1 className="mb-7 text-2xl leading-tight font-bold sm:text-[28px]">{lesson.title}</h1>
           {lesson.content ? (
             <div className="lesson-prose" dangerouslySetInnerHTML={{ __html: lesson.content }} />
           ) : (
             <p className="text-[15px] leading-[1.85] text-muted-foreground">
-              No content available for this lesson.
+              Konten untuk pelajaran ini belum tersedia.
             </p>
           )}
         </div>
@@ -473,7 +473,7 @@ function QuizPlaceholder() {
   return (
     <div className="flex flex-col items-center gap-3 p-16 text-center">
       <MessageCircleQuestion className="size-10 text-muted-foreground/50" strokeWidth={1.5} />
-      <p className="text-sm text-muted-foreground">Quiz — coming soon.</p>
+      <p className="text-sm text-muted-foreground">Kuis segera hadir.</p>
     </div>
   )
 }
@@ -506,13 +506,13 @@ function LessonFooter({
 
   return (
     <nav
-      aria-label="Lesson navigation"
+      aria-label="Navigasi pelajaran"
       className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-card px-5 py-4 sm:px-7"
     >
       {prevLessonId ? (
         <Button variant="outline" render={<Link href={`${basePath}/${courseId}?lesson=${prevLessonId}`} />} nativeButton={false}>
           <ChevronLeft className="size-4" aria-hidden />
-          Previous
+          Sebelumnya
         </Button>
       ) : (
         <span />
@@ -522,7 +522,7 @@ function LessonFooter({
         {mode === "learner" && isDone && (
           <span className="flex items-center gap-1.5 text-sm font-semibold text-success-foreground">
             <Check className="size-4" aria-hidden />
-            Lesson done
+            Pelajaran selesai
           </span>
         )}
         {mode === "learner" && !isDone ? (
@@ -532,7 +532,7 @@ function LessonFooter({
             <input type="hidden" name="completed" value="true" />
             {nextLessonId && <input type="hidden" name="continueTo" value={nextLessonId} />}
             <Button type="submit" className="bg-brand-gradient text-white hover:brightness-105">
-              {nextLessonId ? "Complete & continue" : "Complete lesson"}
+              {nextLessonId ? "Selesai & lanjut" : "Selesaikan pelajaran"}
               <ArrowRight className="size-4" aria-hidden />
             </Button>
           </form>
@@ -542,12 +542,12 @@ function LessonFooter({
             render={<Link href={nextHref} />}
             nativeButton={false}
           >
-            Next lesson
+            Pelajaran berikutnya
             <ArrowRight className="size-4" aria-hidden />
           </Button>
         ) : (
           <Button type="button" className="bg-brand-gradient text-white hover:brightness-105" onClick={onReachEnd}>
-            Finish course
+            Selesaikan kursus
             <ArrowRight className="size-4" aria-hidden />
           </Button>
         )}
@@ -566,13 +566,13 @@ function AboutCourse({ course }: { course: Course }) {
     <section aria-labelledby="about-course-heading" className="bg-card">
       <div className="max-w-[840px] p-5 sm:p-7">
         <h2 id="about-course-heading" className="mb-3 text-lg font-bold">
-          About this course
+          Tentang kursus ini
         </h2>
         <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{course.description}</p>
         <div className="mt-4 flex flex-wrap gap-2 text-[13px] text-muted-foreground">
-          <span>{course.lesson_count} lessons</span>
+          <span>{course.lesson_count} pelajaran</span>
           <span aria-hidden>·</span>
-          <span>{course.duration_hours} hours</span>
+          <span>{course.duration_hours} jam</span>
           <span aria-hidden>·</span>
           <span>{course.language}</span>
         </div>

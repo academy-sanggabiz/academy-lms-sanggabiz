@@ -41,12 +41,12 @@ export function formatPrice(price: number): string {
 }
 
 /**
- * Course-facing access label: invite-only reads "Private", an open zero-price
- * course reads "Public", anything else shows the price.
+ * Course-facing access label: invite-only reads "Privat", an open zero-price
+ * course reads "Publik", anything else shows the price.
  */
 export function formatCourseAccess(course: Pick<Course, "price" | "is_private">): string {
-  if (course.is_private) return "Private"
-  if (course.price <= 0) return "Public"
+  if (course.is_private) return "Privat"
+  if (course.price <= 0) return "Publik"
   return formatPrice(course.price)
 }
 
@@ -197,5 +197,9 @@ export function getGoogleSlidesEmbedUrl(url: string | null): string | null {
 
 export function formatDuration(seconds: number | null): string {
   if (!seconds) return ""
-  return `${Math.round(seconds / 60)}min`
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes} menit`
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return rest ? `${hours} jam ${rest} menit` : `${hours} jam`
 }

@@ -14,18 +14,18 @@ export async function submitCourseFeedback(input: {
   const { courseId, rating, comment } = input
   const trimmedComment = comment.trim()
 
-  if (!courseId) return { ok: false, error: "Missing course." }
+  if (!courseId) return { ok: false, error: "Kursus tidak ditemukan." }
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-    return { ok: false, error: "Please choose a rating from 1 to 5." }
+    return { ok: false, error: "Pilih penilaian dari 1 sampai 5." }
   }
   if (trimmedComment.length < 10) {
-    return { ok: false, error: "Please share a few more words about the course." }
+    return { ok: false, error: "Tuliskan ulasan sedikit lebih panjang tentang kursus ini." }
   }
 
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims?.sub
-  if (!userId) return { ok: false, error: "You need to be signed in to leave feedback." }
+  if (!userId) return { ok: false, error: "Anda perlu masuk untuk memberi ulasan." }
 
   const { data: enrollment, error: enrollmentError } = await supabase
     .from("enrollments")
@@ -36,10 +36,10 @@ export async function submitCourseFeedback(input: {
 
   if (enrollmentError) {
     console.error("submitCourseFeedback: enrollment lookup failed", enrollmentError.message)
-    return { ok: false, error: "Couldn't submit feedback. Please try again." }
+    return { ok: false, error: "Gagal mengirim ulasan. Coba lagi." }
   }
   if (!enrollment || enrollment.status !== "completed") {
-    return { ok: false, error: "Finish the course before leaving feedback." }
+    return { ok: false, error: "Selesaikan kursus sebelum memberi ulasan." }
   }
 
   const { error } = await supabase.from("course_feedback").insert({
@@ -52,10 +52,10 @@ export async function submitCourseFeedback(input: {
 
   if (error) {
     if (error.code === "23505") {
-      return { ok: false, error: "You've already left feedback for this course." }
+      return { ok: false, error: "Anda sudah memberi ulasan untuk kursus ini." }
     }
     console.error("submitCourseFeedback failed:", error.message)
-    return { ok: false, error: "Couldn't submit feedback. Please try again." }
+    return { ok: false, error: "Gagal mengirim ulasan. Coba lagi." }
   }
 
   revalidatePath("/learn/[courseId]", "page")

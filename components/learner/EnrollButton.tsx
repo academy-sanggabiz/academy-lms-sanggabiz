@@ -35,7 +35,7 @@ export function EnrollButton({
     // The full "Enrolled ✓" prefix only fits the wide xl sidebar button; the
     // compact grid-card size sits next to a Preview button in the same row.
     const label =
-      state === "in_progress" ? "Continue Learning" : size === "xl" ? "Enrolled ✓ Start Learning" : "Start Learning"
+      state === "in_progress" ? "Lanjutkan belajar" : size === "xl" ? "Terdaftar ✓ Mulai belajar" : "Mulai belajar"
     return (
       <Button
         size={size}
@@ -53,7 +53,7 @@ export function EnrollButton({
     startTransition(async () => {
       const result = await enroll(courseId)
       if (result.ok) {
-        toast.success("You're enrolled! You can start learning now.")
+        toast.success("Anda sudah terdaftar. Silakan mulai belajar.")
         onEnrolled?.()
       } else {
         toast.error(result.error)
@@ -68,7 +68,7 @@ export function EnrollButton({
       onClick={handleEnroll}
       disabled={pending}
     >
-      {pending ? "Enrolling…" : "Enroll Now"}
+      {pending ? "Mendaftarkan…" : "Ikuti kursus"}
     </Button>
   )
 }

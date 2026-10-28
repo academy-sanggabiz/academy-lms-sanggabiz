@@ -28,16 +28,16 @@ export default async function AdminLearnersPage({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-[30px] font-bold">Learner Management</h1>
+        <h1 className="text-[30px] font-bold">Manajemen Peserta</h1>
         <p className="text-sm text-muted-foreground">
-          View and manage all learners enrolled in courses
+          Lihat dan kelola semua peserta yang terdaftar di kursus
         </p>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard icon={Users} label="Total Learners" value={stats.totalLearners} />
-        <StatCard icon={BookOpen} label="Total Enrollments" value={stats.totalEnrollments} />
-        <StatCard icon={Trophy} label="Completed Courses" value={stats.totalCompleted} />
+        <StatCard icon={Users} label="Total Peserta" value={stats.totalLearners} />
+        <StatCard icon={BookOpen} label="Total Pendaftaran" value={stats.totalEnrollments} />
+        <StatCard icon={Trophy} label="Kursus Selesai" value={stats.totalCompleted} />
       </div>
 
       <LearnerManagementClient page={page} courses={courses} />

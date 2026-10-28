@@ -224,10 +224,10 @@ export async function getTrackingDetail(enrollmentId: string): Promise<TrackingD
   return {
     enrollmentId: enrollment.id,
     learnerId,
-    learnerName: profile?.full_name || profile?.email || "Unnamed learner",
+    learnerName: profile?.full_name || profile?.email || "Peserta tanpa nama",
     learnerEmail: profile?.email ?? "",
     courseId,
-    courseTitle: course?.title ?? "Untitled course",
+    courseTitle: course?.title ?? "Kursus tanpa judul",
     modulePct,
     assignmentPct,
     lessons: lessonRows,

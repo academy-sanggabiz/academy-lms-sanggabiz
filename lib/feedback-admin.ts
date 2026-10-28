@@ -78,7 +78,7 @@ export async function getCourseFeedback(courseId: string, p: ListParams): Promis
     const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
     return {
       id: row.id,
-      learnerName: profile?.full_name || profile?.email || "Unnamed learner",
+      learnerName: profile?.full_name || profile?.email || "Peserta tanpa nama",
       rating: row.rating,
       comment: row.comment,
       createdAt: row.created_at,

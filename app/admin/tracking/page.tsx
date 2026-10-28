@@ -25,15 +25,15 @@ export default async function AdminTrackingPage({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-[30px] font-bold">Online Tracking</h1>
+        <h1 className="text-[30px] font-bold">Pelacakan</h1>
         <p className="text-sm text-muted-foreground">
-          Track each learner&apos;s module and assignment completion per course
+          Pantau penyelesaian modul dan tugas setiap peserta per kursus
         </p>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <StatCard icon={GraduationCap} label="Tracked Enrollments" value={stats.totalEnrollments} />
-        <StatCard icon={Activity} label="Avg Module Completion" value={`${stats.avgModulePct}%`} />
+        <StatCard icon={GraduationCap} label="Pendaftaran Dipantau" value={stats.totalEnrollments} />
+        <StatCard icon={Activity} label="Rata-rata Penyelesaian Modul" value={`${stats.avgModulePct}%`} />
       </div>
 
       <TrackingListClient page={page} />

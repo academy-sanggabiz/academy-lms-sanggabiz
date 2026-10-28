@@ -63,7 +63,7 @@ export function InstructorPicker({ instructors: initialInstructors }: { instruct
         { id: result.data.id, name: name.trim(), title: null, bio: bio.trim() || null, avatar_url: null },
       ])
       dispatch({ type: "setField", patch: { instructorId: result.data.id } })
-      toast.success("Instructor created and assigned")
+      toast.success("Instruktur dibuat dan ditetapkan")
       setName("")
       setBio("")
       setDialogOpen(false)
@@ -81,7 +81,7 @@ export function InstructorPicker({ instructors: initialInstructors }: { instruct
       if (draft.instructorId === instructorId) {
         dispatch({ type: "setField", patch: { instructorId: null } })
       }
-      toast.success("Instructor deleted")
+      toast.success("Instruktur dihapus")
     })
   }
 
@@ -89,7 +89,7 @@ export function InstructorPicker({ instructors: initialInstructors }: { instruct
     <div className="space-y-3">
       {instructors.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
-          No instructors available. Create one to get started.
+          Belum ada instruktur. Buat instruktur untuk memulai.
         </p>
       ) : (
         <div className="space-y-2">
@@ -113,7 +113,7 @@ export function InstructorPicker({ instructors: initialInstructors }: { instruct
                       <span className="block truncate text-xs text-muted-foreground">{instructor.bio}</span>
                     )}
                   </span>
-                  {selected && <span className="text-xs font-semibold text-primary">Selected ✓</span>}
+                  {selected && <span className="text-xs font-semibold text-primary">Terpilih ✓</span>}
                 </button>
                 <AlertDialog>
                   <AlertDialogTrigger
@@ -123,7 +123,7 @@ export function InstructorPicker({ instructors: initialInstructors }: { instruct
                         variant="ghost"
                         size="icon"
                         disabled={isPending}
-                        aria-label={`Delete ${instructor.name}`}
+                        aria-label={`Hapus ${instructor.name}`}
                         className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                       />
                     }
@@ -132,20 +132,20 @@ export function InstructorPicker({ instructors: initialInstructors }: { instruct
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Delete &quot;{instructor.name}&quot;?</AlertDialogTitle>
+                      <AlertDialogTitle>Hapus &quot;{instructor.name}&quot;?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This removes them from any course they&apos;re currently assigned to. This cannot
-                        be undone.
+                        Instruktur ini akan dilepas dari semua kursus yang sedang ditanganinya. Tindakan ini
+                        tidak dapat dibatalkan.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
                       <AlertDialogAction
                         className="bg-destructive/10 text-destructive hover:bg-destructive/20"
                         onClick={() => handleDelete(instructor.id)}
                         disabled={isPending}
                       >
-                        Delete
+                        Hapus
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -159,25 +159,25 @@ export function InstructorPicker({ instructors: initialInstructors }: { instruct
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogTrigger render={<Button variant="outline" size="sm" />}>
           <Plus className="size-3.5" />
-          Add Instructor
+          Tambah Instruktur
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Instructor</DialogTitle>
+            <DialogTitle>Tambah Instruktur</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="instructor-name">Name</Label>
+              <Label htmlFor="instructor-name">Nama</Label>
               <Input id="instructor-name" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="instructor-bio">Bio</Label>
+              <Label htmlFor="instructor-bio">Biodata</Label>
               <Textarea id="instructor-bio" value={bio} onChange={(e) => setBio(e.target.value)} rows={3} />
             </div>
           </div>
           <DialogFooter>
             <Button onClick={handleCreate} disabled={!name.trim() || isPending}>
-              Create
+              Buat
             </Button>
           </DialogFooter>
         </DialogContent>

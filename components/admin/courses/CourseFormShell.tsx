@@ -111,7 +111,7 @@ function CourseFormShellInner({
         toast.error(result.error)
         return
       }
-      toast.success(status === "published" ? "Course published" : "Saved as draft")
+      toast.success(status === "published" ? "Kursus diterbitkan" : "Disimpan sebagai draf")
       dispatch({ type: "commitSaved", saved: data })
       router.refresh()
     })
@@ -127,7 +127,7 @@ function CourseFormShellInner({
       }
       setBasicInfoErrors(fieldErrors)
       setTab("basic")
-      toast.error("Please fix the highlighted fields")
+      toast.error("Perbaiki isian yang ditandai")
       return
     }
     setBasicInfoErrors({})
@@ -142,7 +142,7 @@ function CourseFormShellInner({
       toast.error(
         issues.length === 1
           ? describeQuizIssue(issues[0])
-          : `${describeQuizIssue(issues[0])} (+${issues.length - 1} more)`
+          : `${describeQuizIssue(issues[0])} (+${issues.length - 1} lainnya)`
       )
       return
     }
@@ -170,27 +170,27 @@ function CourseFormShellInner({
       <AlertDialog open={pendingSave !== null} onOpenChange={(open) => !open && setPendingSave(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>This save deletes content</AlertDialogTitle>
+            <AlertDialogTitle>Penyimpanan ini menghapus konten</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingSave && (
                 <>
-                  Saving will permanently delete{" "}
+                  Menyimpan akan menghapus permanen{" "}
                   {[
                     pendingSave.destructive.lessons > 0 &&
-                      `${pendingSave.destructive.lessons} ${pendingSave.destructive.lessons === 1 ? "lesson" : "lessons"}`,
+                      `${pendingSave.destructive.lessons} pelajaran`,
                     pendingSave.destructive.questions > 0 &&
-                      `${pendingSave.destructive.questions} ${pendingSave.destructive.questions === 1 ? "question" : "questions"}`,
+                      `${pendingSave.destructive.questions} soal`,
                   ]
                     .filter(Boolean)
-                    .join(" and ")}
-                  , including any learner progress or quiz attempts tied to them. This cannot be
-                  undone.
+                    .join(" dan ")}
+                  , termasuk progres peserta atau percobaan kuis yang terkait. Tindakan ini tidak
+                  dapat dibatalkan.
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive/10 text-destructive hover:bg-destructive/20"
               onClick={() => {
@@ -199,7 +199,7 @@ function CourseFormShellInner({
                 setPendingSave(null)
               }}
             >
-              Save anyway
+              Tetap simpan
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -207,35 +207,35 @@ function CourseFormShellInner({
       <div className="mb-6 flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={handleBack}>
           <ArrowLeft className="size-4" />
-          Back
+          Kembali
         </Button>
         <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+              <AlertDialogTitle>Perubahan belum disimpan</AlertDialogTitle>
               <AlertDialogDescription>
-                You have unsaved changes. Leave without saving?
+                Ada perubahan yang belum disimpan. Tinggalkan tanpa menyimpan?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>Batal</AlertDialogCancel>
               <AlertDialogAction onClick={() => router.push("/admin/courses")}>
-                Leave
+                Tinggalkan
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         <div className="flex items-center gap-2">
-          <h1 className="mr-3 text-xl font-bold">{isNew ? "New Course" : "Edit Course"}</h1>
+          <h1 className="mr-3 text-xl font-bold">{isNew ? "Kursus Baru" : "Ubah Kursus"}</h1>
           <Button variant="outline" disabled={isPending} onClick={() => onSubmit("draft")}>
-            Save to Draft
+            Simpan Draf
           </Button>
           <Button
             disabled={isPending}
             className="bg-brand-gradient text-white hover:brightness-105"
             onClick={() => onSubmit("published")}
           >
-            {course.status === "published" ? "Save" : "Publish"}
+            {course.status === "published" ? "Simpan" : "Terbitkan"}
           </Button>
         </div>
       </div>
@@ -243,11 +243,11 @@ function CourseFormShellInner({
       <div className="rounded-2xl border border-border bg-card p-6">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="mb-6">
-            <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="lessons">Lessons</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="learners">Learners</TabsTrigger>
-            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="basic">Info Dasar</TabsTrigger>
+            <TabsTrigger value="lessons">Pelajaran</TabsTrigger>
+            <TabsTrigger value="settings">Pengaturan</TabsTrigger>
+            <TabsTrigger value="learners">Peserta</TabsTrigger>
+            <TabsTrigger value="preview">Pratinjau</TabsTrigger>
           </TabsList>
 
           <TabsContent value="basic">

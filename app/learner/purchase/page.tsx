@@ -9,16 +9,16 @@ export default async function LearnerPurchasePage() {
   const [purchases, stats] = await Promise.all([getMyPurchases(), getMyPurchaseStats()])
 
   const tiles = [
-    { icon: Wallet, label: "Total Spent", value: formatPrice(stats.totalSpent) },
-    { icon: ShoppingCart, label: "Purchases", value: stats.totalPurchases },
-    { icon: Receipt, label: "Paid", value: stats.paidPurchases },
+    { icon: Wallet, label: "Total Belanja", value: formatPrice(stats.totalSpent) },
+    { icon: ShoppingCart, label: "Pembelian", value: stats.totalPurchases },
+    { icon: Receipt, label: "Berbayar", value: stats.paidPurchases },
   ]
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Purchase History</h1>
-        <p className="text-sm text-muted-foreground">Your course purchases and enrollments</p>
+        <h1 className="text-3xl font-bold tracking-tight">Riwayat Pembelian</h1>
+        <p className="text-sm text-muted-foreground">Pembelian dan pendaftaran kursus Anda</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

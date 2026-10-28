@@ -25,11 +25,11 @@ export type LandingContent = {
 }
 
 export const defaultHero: Hero = {
-  heading: "Learn. Grow.",
-  highlightWord: "Succeed.",
+  heading: "Belajar. Berkembang.",
+  highlightWord: "Sukses.",
   subheading:
-    "Transform your life through knowledge with Sanggabiz. Access world-class courses designed to help you achieve your goals and unlock your potential.",
-  primaryCtaText: "Start Your Journey",
+    "Kembangkan diri Anda melalui pengetahuan bersama Sanggabiz. Akses kursus berkualitas yang dirancang untuk membantu Anda mencapai tujuan dan mengembangkan potensi.",
+  primaryCtaText: "Mulai Perjalanan Anda",
   primaryCtaHref: "/auth/login",
 }
 
@@ -38,20 +38,20 @@ export const defaultFeaturedCourseIds: string[] = []
 export const defaultFeatures: Feature[] = [
   {
     icon: "graduation-cap",
-    title: "Expert-Led Courses",
+    title: "Dibimbing Para Ahli",
     description:
-      "Learn from industry professionals and academic experts with years of experience.",
+      "Belajar dari praktisi industri dan akademisi berpengalaman.",
   },
   {
     icon: "layers",
-    title: "Flexible Learning",
+    title: "Belajar Fleksibel",
     description:
-      "Study at your own pace with lifetime access to course materials and updates.",
+      "Belajar sesuai ritme Anda dengan akses seumur hidup ke materi dan pembaruan kursus.",
   },
   {
     icon: "award",
-    title: "Certified Learning",
+    title: "Bersertifikat",
     description:
-      "Earn recognized certificates upon course completion to showcase your achievements.",
+      "Dapatkan sertifikat setelah menyelesaikan kursus untuk menunjukkan pencapaian Anda.",
   },
 ]

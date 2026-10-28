@@ -71,7 +71,7 @@ function reducer(state: State, action: CourseDraftAction): State {
       return { ...state, draft: { ...draft, ...action.patch } }
 
     case "addSection": {
-      const section = { id: action.id, title: `Module ${draft.sections.length + 1}`, lessons: [] }
+      const section = { id: action.id, title: `Modul ${draft.sections.length + 1}`, lessons: [] }
       return { ...state, draft: { ...draft, sections: [...draft.sections, section] } }
     }
 
@@ -90,7 +90,7 @@ function reducer(state: State, action: CourseDraftAction): State {
     case "addLesson": {
       const lesson: DraftLesson = {
         id: action.id,
-        title: "Untitled Lesson",
+        title: "Pelajaran Tanpa Judul",
         content_type: "video",
         video_url: null,
         content: null,
@@ -125,7 +125,7 @@ function reducer(state: State, action: CourseDraftAction): State {
         const copy: DraftLesson = {
           ...source,
           id: newId(),
-          title: `${source.title} (copy)`,
+          title: `${source.title} (salinan)`,
           resources: source.resources.map((r) => ({ ...r, id: newId() })),
           quiz: source.quiz
             ? {
@@ -241,8 +241,8 @@ function reducer(state: State, action: CourseDraftAction): State {
         options:
           action.questionType === "true_false"
             ? [
-                { id: newId(), text: "True", is_correct: true },
-                { id: newId(), text: "False", is_correct: false },
+                { id: newId(), text: "Benar", is_correct: true },
+                { id: newId(), text: "Salah", is_correct: false },
               ]
             : [],
       }

@@ -30,22 +30,22 @@ import { useQuestionQuizIssue } from "../QuizIssuesContext"
 // only exist inside a study case (see "Add Study Case" below) -- a normal
 // quiz must always resolve to an immediate score, never `pending_review`.
 const QUESTION_TYPES: { value: AuthorableQuestionType; label: string }[] = [
-  { value: "multiple_choice", label: "Multiple Choice" },
-  { value: "true_false", label: "True / False" },
-  { value: "short_answer", label: "Short Answer" },
+  { value: "multiple_choice", label: "Pilihan Ganda" },
+  { value: "true_false", label: "Benar / Salah" },
+  { value: "short_answer", label: "Isian Singkat" },
 ]
 
 /** Both map to Essay in the UI; the stored `type` is what selects the answer widget. */
 const ANSWER_FORMATS: { value: "essay" | "file_upload"; label: string; hint: string }[] = [
   {
     value: "essay",
-    label: "Written answer",
-    hint: "Learners type their answer in a rich-text box.",
+    label: "Jawaban tertulis",
+    hint: "Peserta mengetik jawaban di kotak teks.",
   },
   {
     value: "file_upload",
-    label: "File or link upload",
-    hint: "Learners submit a link to their file (e.g. Google Drive) instead of typing.",
+    label: "Unggah berkas atau tautan",
+    hint: "Peserta mengirim tautan ke berkasnya (misal Google Drive), bukan mengetik.",
   },
 ]
 
@@ -82,7 +82,7 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: DraftQu
 
       {questions.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-          No questions yet — add a question, or make this a study case.
+          Belum ada soal. Tambahkan soal, atau jadikan pelajaran ini studi kasus.
         </p>
       ) : (
         <div className="flex flex-col gap-2.5">
@@ -96,12 +96,12 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: DraftQu
         <div className="mt-3 flex gap-2">
           <Button type="button" variant="outline" size="sm" onClick={openPicker}>
             <Plus className="size-3.5" />
-            Add Question
+            Tambah Soal
           </Button>
           {questions.length === 0 && (
             <Button type="button" variant="outline" size="sm" onClick={handleAddStudyCase}>
               <Plus className="size-3.5" />
-              Add Study Case
+              Tambah Studi Kasus
             </Button>
           )}
         </div>
@@ -110,11 +110,11 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: DraftQu
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
         <DialogContent className="max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>Add Question</DialogTitle>
-            <DialogDescription>Choose a question type. This can&apos;t be changed later.</DialogDescription>
+            <DialogTitle>Tambah Soal</DialogTitle>
+            <DialogDescription>Pilih jenis soal. Jenis ini tidak dapat diubah nanti.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label>Type</Label>
+            <Label>Jenis</Label>
             <RadioGroup
               value={selectedType}
               onValueChange={(value) => setSelectedType(value as AuthorableQuestionType)}
@@ -129,10 +129,10 @@ export function QuizEditor({ lessonId, quiz }: { lessonId: string; quiz: DraftQu
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setPickerOpen(false)}>
-              Cancel
+              Batal
             </Button>
             <Button type="button" variant="outline" onClick={() => handleAddQuestion(selectedType)}>
-              Add Question
+              Tambah Soal
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -153,7 +153,7 @@ function QuizSettings({ lessonId, quiz }: { lessonId: string; quiz: DraftQuiz })
   return (
     <div className="mb-3 flex flex-wrap items-end gap-4 rounded-lg border border-border bg-muted/30 p-3">
       <div className="w-32 space-y-1.5">
-        <Label htmlFor={`pass-score-${quiz.id}`}>Pass Score (%)</Label>
+        <Label htmlFor={`pass-score-${quiz.id}`}>Nilai Lulus (%)</Label>
         <Input
           id={`pass-score-${quiz.id}`}
           type="number"
@@ -165,20 +165,20 @@ function QuizSettings({ lessonId, quiz }: { lessonId: string; quiz: DraftQuiz })
         />
       </div>
       <div className="w-32 space-y-1.5">
-        <Label htmlFor={`max-attempts-${quiz.id}`}>Max Attempts</Label>
+        <Label htmlFor={`max-attempts-${quiz.id}`}>Maks. Percobaan</Label>
         {quiz.is_assessment ? (
           <Input
             id={`max-attempts-${quiz.id}`}
             type="number"
             min={0}
-            placeholder="Unlimited"
+            placeholder="Tidak terbatas"
             value={maxAttempts}
             onChange={(e) => setMaxAttempts(e.target.value)}
             onBlur={() => save({ max_attempts: maxAttempts.trim() ? Number(maxAttempts) : null })}
           />
         ) : (
           <p className="flex h-9 items-center text-sm text-muted-foreground">
-            {REGULAR_QUIZ_MAX_ATTEMPTS} (fixed)
+            {REGULAR_QUIZ_MAX_ATTEMPTS} (tetap)
           </p>
         )}
       </div>
@@ -188,7 +188,7 @@ function QuizSettings({ lessonId, quiz }: { lessonId: string; quiz: DraftQuiz })
           checked={quiz.shuffle}
           onCheckedChange={(checked) => save({ shuffle: checked })}
         />
-        <Label htmlFor={`shuffle-${quiz.id}`}>Shuffle Questions</Label>
+        <Label htmlFor={`shuffle-${quiz.id}`}>Acak Soal</Label>
       </div>
       <div className="flex w-full items-start gap-2 border-t border-border pt-3">
         <span
@@ -199,13 +199,13 @@ function QuizSettings({ lessonId, quiz }: { lessonId: string; quiz: DraftQuiz })
               : "bg-muted text-muted-foreground"
           )}
         >
-          {quiz.is_assessment ? "Study Case" : "Normal Quiz"}
+          {quiz.is_assessment ? "Studi Kasus" : "Kuis Biasa"}
         </span>
         <p className="text-xs text-muted-foreground">
           {quiz.is_assessment
-            ? `No start gate or timer; learners save drafts and submit when done. Grade manually in Admin › Grading. Counts ${ASSESSMENT_GRADE_WEIGHT}× a regular quiz toward the final course grade.`
-            : "Auto-graded and scored instantly on submit."}{" "}
-          To switch modes, delete all questions in this quiz first.
+            ? `Tanpa tombol mulai atau batas waktu; peserta menyimpan draf dan mengirim jika sudah selesai. Nilai secara manual di Admin › Penilaian. Bobotnya ${ASSESSMENT_GRADE_WEIGHT}× kuis biasa dalam nilai akhir kursus.`
+            : "Dinilai otomatis dan langsung mendapat skor saat dikirim."}{" "}
+          Untuk mengganti mode, hapus dulu semua soal di kuis ini.
         </p>
       </div>
     </div>
@@ -228,7 +228,7 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
 
   // file_upload has no QUESTION_TYPES entry any more -- it reads as "Essay".
   const typeLabel = isEssayQuestion(question.type)
-    ? "Essay"
+    ? "Esai"
     : (QUESTION_TYPES.find((t) => t.value === question.type)?.label ?? question.type)
 
   const issue = useQuestionQuizIssue(question.id)
@@ -243,18 +243,18 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
   return (
     <div className={cn("overflow-hidden rounded-lg border border-border", issue && "border-destructive")}>
       <div className="flex items-center gap-2.5 bg-muted/30 px-3 py-2">
-        <span className="text-sm font-semibold whitespace-nowrap">Question {index + 1}</span>
+        <span className="text-sm font-semibold whitespace-nowrap">Soal {index + 1}</span>
         <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-semibold text-secondary-foreground">
           {typeLabel}
         </span>
         <span className="text-xs text-muted-foreground">
-          {points} {points === 1 ? "pt" : "pts"}
+          {points} poin
         </span>
         <div className="flex-1" />
-        <Button type="button" variant="ghost" size="icon-sm" onClick={handleDelete}>
+        <Button type="button" variant="ghost" size="icon-sm" onClick={handleDelete} aria-label={`Hapus soal ${index + 1}`}>
           <Trash2 className="size-3.5 text-destructive" />
         </Button>
-        <Button type="button" variant="ghost" size="icon-sm" onClick={() => setExpanded((v) => !v)}>
+        <Button type="button" variant="ghost" size="icon-sm" onClick={() => setExpanded((v) => !v)} aria-label={`Buka/tutup soal ${index + 1}`} aria-expanded={expanded}>
           <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
         </Button>
       </div>
@@ -267,9 +267,9 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
             </p>
           )}
           <div className="space-y-1.5">
-            <Label>Prompt</Label>
+            <Label>Pertanyaan</Label>
             <RichTextEditor
-              ariaLabel={`Question ${index + 1} prompt`}
+              ariaLabel={`Pertanyaan soal ${index + 1}`}
               value={prompt}
               onChange={(html) => {
                 const next = html.replace(/<[^>]*>/g, "").trim() ? html : ""
@@ -286,7 +286,7 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
                   checked={question.allow_multiple}
                   onCheckedChange={(checked) => save({ allow_multiple: checked })}
                 />
-                <Label htmlFor={`allow-multiple-${question.id}`}>Allow multiple correct answers</Label>
+                <Label htmlFor={`allow-multiple-${question.id}`}>Izinkan lebih dari satu jawaban benar</Label>
               </div>
               <OptionsEditor
                 questionId={question.id}
@@ -306,12 +306,12 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
                   checked={question.case_sensitive}
                   onCheckedChange={(checked) => save({ case_sensitive: checked })}
                 />
-                <Label htmlFor={`case-sensitive-${question.id}`}>Case sensitive</Label>
+                <Label htmlFor={`case-sensitive-${question.id}`}>Huruf besar/kecil berpengaruh</Label>
               </div>
               <OptionsEditor questionId={question.id} options={question.options} variant="keyword" />
               {question.options.every((o) => !o.is_correct) && (
                 <p className="text-xs text-destructive">
-                  Add at least one accepted answer — a normal quiz must be auto-graded.
+                  Tambahkan minimal satu jawaban yang diterima. Kuis biasa harus dapat dinilai otomatis.
                 </p>
               )}
             </>
@@ -319,10 +319,10 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
 
           {!isEssayQuestion(question.type) && (
             <div className="space-y-1.5">
-              <Label htmlFor={`explanation-${question.id}`}>Explanation (optional)</Label>
+              <Label htmlFor={`explanation-${question.id}`}>Penjelasan (opsional)</Label>
               <p id={`explanation-help-${question.id}`} className="text-xs text-muted-foreground">
-                Shown to the learner after they submit: why the right answer is right, and what to review if
-                they missed it. One or two plain sentences.
+                Ditampilkan kepada peserta setelah mengirim jawaban: mengapa jawaban itu benar, dan materi apa yang
+                perlu dipelajari ulang jika salah. Cukup satu atau dua kalimat sederhana.
               </p>
               <Textarea
                 id={`explanation-${question.id}`}
@@ -330,7 +330,7 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
                 value={question.explanation ?? ""}
                 maxLength={5000}
                 onChange={(e) => save({ explanation: e.target.value })}
-                placeholder="e.g. Retrieval beats re-reading: answering from memory strengthens recall. Review lesson 2."
+                placeholder="misal: Mengingat kembali lebih efektif daripada membaca ulang. Pelajari lagi pelajaran 2."
                 className="min-h-[72px]"
               />
             </div>
@@ -338,7 +338,7 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
 
           {isEssayQuestion(question.type) && (
             <div className="space-y-2">
-              <Label>Answer format</Label>
+              <Label>Format jawaban</Label>
               <RadioGroup
                 value={question.type}
                 onValueChange={(value) => save({ type: value as AuthorableQuestionType })}
@@ -353,7 +353,7 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
                   </label>
                 ))}
               </RadioGroup>
-              <p className="text-xs text-muted-foreground">These responses aren&apos;t auto-graded.</p>
+              <p className="text-xs text-muted-foreground">Jawaban jenis ini tidak dinilai otomatis.</p>
             </div>
           )}
         </div>
@@ -371,7 +371,7 @@ function TrueFalseEditor({ questionId, options }: { questionId: string; options:
 
   return (
     <div className="space-y-2">
-      <Label>Correct Answer</Label>
+      <Label>Jawaban Benar</Label>
       <div className="flex gap-2.5">
         {options.map((option) => (
           <button
@@ -426,7 +426,7 @@ function OptionsEditor({
 
   return (
     <div className="space-y-2">
-      <Label>{variant === "keyword" ? "Accepted Answers" : "Options"}</Label>
+      <Label>{variant === "keyword" ? "Jawaban yang Diterima" : "Pilihan"}</Label>
       {options.map((option) => (
         <OptionRow
           key={option.id}
@@ -439,7 +439,7 @@ function OptionsEditor({
       ))}
       <Button type="button" variant="outline" size="sm" onClick={handleAddOption}>
         <Plus className="size-3.5" />
-        {variant === "keyword" ? "Add Answer" : "Add Option"}
+        {variant === "keyword" ? "Tambah Jawaban" : "Tambah Pilihan"}
       </Button>
     </div>
   )
@@ -470,7 +470,7 @@ function OptionRow({
       {variant === "single" && (
         <button
           type="button"
-          title="Mark as correct answer"
+          title="Tandai sebagai jawaban benar"
           onClick={onSetCorrect}
           className={cn(
             "size-4 shrink-0 rounded-full border-2",
@@ -481,7 +481,7 @@ function OptionRow({
       {variant === "multi" && (
         <button
           type="button"
-          title="Mark as correct answer"
+          title="Tandai sebagai jawaban benar"
           onClick={() => onToggleCorrect(!option.is_correct)}
           className={cn(
             "size-4 shrink-0 rounded-sm border-2",
@@ -489,8 +489,8 @@ function OptionRow({
           )}
         />
       )}
-      <Input value={text} onChange={(e) => setText(e.target.value)} onBlur={save} className="flex-1" />
-      <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove}>
+      <Input value={text} onChange={(e) => setText(e.target.value)} onBlur={save} className="flex-1" aria-label={variant === "keyword" ? "Jawaban yang diterima" : "Teks pilihan"} />
+      <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} aria-label="Hapus pilihan">
         <X className="size-3.5 text-destructive" />
       </Button>
     </div>

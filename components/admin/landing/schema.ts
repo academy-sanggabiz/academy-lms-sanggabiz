@@ -7,17 +7,17 @@ import { LANDING_ICON_OPTIONS } from "@/lib/landing"
 // the lesson-content editor (not enforced there either).
 export const landingFeatureSchema = z.object({
   icon: z.enum(LANDING_ICON_OPTIONS),
-  title: z.string().trim().min(1, "Title is required"),
-  description: z.string().trim().min(1, "Description is required"),
+  title: z.string().trim().min(1, "Judul wajib diisi"),
+  description: z.string().trim().min(1, "Deskripsi wajib diisi"),
 })
 
 export const landingFormSchema = z.object({
-  heading: z.string().trim().min(1, "Heading is required"),
-  highlightWord: z.string().trim().min(1, "Highlight word is required"),
-  subheading: z.string().trim().min(1, "Subheading is required"),
-  primaryCtaText: z.string().trim().min(1, "CTA text is required"),
-  primaryCtaHref: z.string().trim().min(1, "CTA link is required"),
-  features: z.array(landingFeatureSchema).min(1, "At least one feature is required"),
+  heading: z.string().trim().min(1, "Judul utama wajib diisi"),
+  highlightWord: z.string().trim().min(1, "Kata sorotan wajib diisi"),
+  subheading: z.string().trim().min(1, "Subjudul wajib diisi"),
+  primaryCtaText: z.string().trim().min(1, "Teks tombol ajakan wajib diisi"),
+  primaryCtaHref: z.string().trim().min(1, "Tautan tombol ajakan wajib diisi"),
+  features: z.array(landingFeatureSchema).min(1, "Minimal satu keunggulan wajib diisi"),
   featuredCourseIds: z.array(z.string()),
 })
 

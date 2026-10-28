@@ -73,7 +73,7 @@ export function EssayAssessmentPlayer({
         setError(res.error)
         return
       }
-      setSavedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+      setSavedAt(new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }))
     })
   }
 
@@ -98,10 +98,10 @@ export function EssayAssessmentPlayer({
           <div className="flex size-14 items-center justify-center rounded-full bg-secondary">
             <Clock className="size-6 text-ring" />
           </div>
-          <div className="text-xl font-bold">Submitted — awaiting review</div>
+          <div className="text-xl font-bold">Terkirim, menunggu penilaian</div>
           <p className="max-w-md text-sm text-muted-foreground">
-            Your assessment has been submitted to your instructor for grading. You&apos;ll see your
-            result here once it&apos;s been reviewed.
+            Studi kasus Anda sudah dikirim ke instruktur untuk dinilai. Hasilnya akan tampil di sini
+            setelah penilaian selesai.
           </p>
         </div>
       </Shell>
@@ -113,7 +113,7 @@ export function EssayAssessmentPlayer({
     return (
       <Shell>
         <div className="flex flex-col items-center gap-2.5 rounded-2xl border border-border bg-card p-12 text-center">
-          <div className="text-[15px] font-semibold text-muted-foreground">Assessment Result</div>
+          <div className="text-[15px] font-semibold text-muted-foreground">Hasil Studi Kasus</div>
           {attemptInfo?.lastScore != null ? (
             <div
               className={cn(
@@ -126,11 +126,11 @@ export function EssayAssessmentPlayer({
           ) : (
             <div className="flex items-center gap-2 text-2xl font-bold">
               <CheckCircle2 className="size-6 text-emerald-700 dark:text-emerald-400" />
-              Reviewed
+              Sudah dinilai
             </div>
           )}
           <p className="text-sm text-muted-foreground">
-            {passed ? "You passed this assessment." : "This attempt did not pass."}
+            {passed ? "Anda lulus studi kasus ini." : "Percobaan ini belum lulus."}
           </p>
           {canAttempt && (
             <Button
@@ -145,7 +145,7 @@ export function EssayAssessmentPlayer({
                 setPhase("form")
               }}
             >
-              Start New Attempt
+              Mulai Percobaan Baru
             </Button>
           )}
         </div>
@@ -157,7 +157,7 @@ export function EssayAssessmentPlayer({
     return (
       <Shell>
         <div className="rounded-2xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">
-          No attempts remaining for this assessment.
+          Kesempatan mencoba studi kasus ini sudah habis.
         </div>
       </Shell>
     )
@@ -183,10 +183,10 @@ export function EssayAssessmentPlayer({
 
       <div className="sticky bottom-0 flex items-center gap-3 rounded-2xl border border-border bg-card/95 p-4 backdrop-blur">
         <div className="flex-1 text-xs text-muted-foreground">
-          {savedAt ? `Draft saved at ${savedAt}` : "Not saved yet"}
+          {savedAt ? `Draf tersimpan pukul ${savedAt}` : "Belum disimpan"}
         </div>
         <Button variant="outline" size="lg" disabled={isBusy} onClick={handleSaveDraft}>
-          {isSaving ? "Saving…" : "Save Draft"}
+          {isSaving ? "Menyimpan…" : "Simpan Draf"}
         </Button>
         <Button
           size="lg"
@@ -194,7 +194,7 @@ export function EssayAssessmentPlayer({
           onClick={handleSubmit}
           className="bg-brand-gradient text-white hover:brightness-105"
         >
-          {isSubmitting ? "Submitting…" : "Submit Assessment"}
+          {isSubmitting ? "Mengirim…" : "Kirim Studi Kasus"}
         </Button>
       </div>
     </Shell>
@@ -228,7 +228,7 @@ function QuestionCard({
 
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-7">
-      <div className="text-sm font-semibold text-muted-foreground">Question {index + 1}</div>
+      <div className="text-sm font-semibold text-muted-foreground">Soal {index + 1}</div>
 
       <QuestionPrompt prompt={question.prompt} className="text-[17px]" />
 
@@ -262,14 +262,15 @@ function QuestionCard({
           })}
         </div>
       ) : question.type === "essay" ? (
-        <RichTextEditor ariaLabel="Your answer" value={value} onChange={onChange} />
+        <RichTextEditor ariaLabel="Jawaban Anda" value={value} onChange={onChange} />
       ) : question.type === "file_upload" ? (
         <FileUploadAnswer value={value} onChange={onChange} />
       ) : (
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Type your answer..."
+          placeholder="Ketik jawaban Anda..."
+          aria-label="Jawaban Anda"
           className="min-h-[120px] w-full resize-y rounded-lg border border-input bg-card p-3.5 text-[15px] outline-none focus:border-ring"
         />
       )}
@@ -293,7 +294,8 @@ export function FileUploadAnswer({
         type="url"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="https://drive.google.com/... (link to your PDF or document)"
+        placeholder="https://drive.google.com/... (tautan ke PDF atau dokumen Anda)"
+        aria-label="Tautan jawaban Anda"
       />
       {value && (
         <a
@@ -303,7 +305,7 @@ export function FileUploadAnswer({
           className="flex w-fit items-center gap-2 text-sm text-ring underline underline-offset-4"
         >
           <LinkIcon className="size-4" />
-          Open submitted link
+          Buka tautan yang dikirim
         </a>
       )}
     </div>

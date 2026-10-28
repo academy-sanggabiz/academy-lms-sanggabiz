@@ -92,7 +92,7 @@ export async function getAdminProfile(): Promise<AdminProfile | null> {
 /** Throws if the current session isn't admin/superadmin. */
 export async function requireAdmin(): Promise<AdminProfile> {
   const admin = await getAdminProfile()
-  if (!admin) throw new Error("Not authorized for the admin area")
+  if (!admin) throw new Error("Anda tidak berwenang mengakses area admin")
   return admin
 }
 
@@ -117,6 +117,6 @@ export async function resolveSuperAdminProfile(): Promise<SuperAdminProfileResul
 /** Throws if the current session isn't superadmin (admin alone is not enough). */
 export async function requireSuperAdmin(): Promise<SuperAdminProfile> {
   const result = await resolveSuperAdminProfile()
-  if (result.status !== "ok") throw new Error("Not authorized for the superadmin area")
+  if (result.status !== "ok") throw new Error("Anda tidak berwenang mengakses area superadmin")
   return result.profile
 }

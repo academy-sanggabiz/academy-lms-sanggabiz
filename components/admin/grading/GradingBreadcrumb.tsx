@@ -9,11 +9,11 @@ export function GradingBreadcrumb({ courseTitle }: { courseTitle: string }) {
         className="flex items-center gap-1 font-medium text-foreground hover:underline"
       >
         <ChevronLeft className="size-4" />
-        Back to Grading
+        Kembali ke Penilaian
       </Link>
       <div className="flex flex-wrap items-center gap-1.5">
         <Link href="/admin/grading" className="hover:text-foreground hover:underline">
-          Grading
+          Penilaian
         </Link>
         <ChevronRight className="size-3.5 shrink-0" />
         <span className="font-medium text-foreground">{courseTitle}</span>

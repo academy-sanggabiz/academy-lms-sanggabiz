@@ -77,7 +77,7 @@ export function LandingForm({
         toast.error(result.error)
         return
       }
-      toast.success("Landing page updated")
+      toast.success("Halaman depan diperbarui")
       form.reset(values)
       router.refresh()
     })
@@ -86,47 +86,47 @@ export function LandingForm({
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="mx-auto max-w-[900px] space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Landing Page</h1>
+        <h1 className="text-xl font-bold">Halaman Depan</h1>
         <Button
           type="submit"
           disabled={isPending}
           className="bg-brand-gradient text-white hover:brightness-105"
         >
-          Save
+          Simpan
         </Button>
       </div>
 
       <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
-        <h2 className="text-lg font-semibold">Hero</h2>
+        <h2 className="text-lg font-semibold">Bagian Utama</h2>
 
         <div className="space-y-1.5">
-          <Label htmlFor="heading">Heading</Label>
+          <Label htmlFor="heading">Judul utama</Label>
           <Input id="heading" {...form.register("heading")} />
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="highlightWord">Highlight word</Label>
+          <Label htmlFor="highlightWord">Kata sorotan</Label>
           <Input id="highlightWord" {...form.register("highlightWord")} />
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="subheading">Subheading</Label>
+          <Label htmlFor="subheading">Subjudul</Label>
           <Controller
             control={form.control}
             name="subheading"
             render={({ field }) => (
-              <RichTextEditor ariaLabel="Subheading" value={field.value} onChange={field.onChange} />
+              <RichTextEditor ariaLabel="Subjudul" value={field.value} onChange={field.onChange} />
             )}
           />
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="primaryCtaText">Primary CTA text</Label>
+            <Label htmlFor="primaryCtaText">Teks tombol ajakan</Label>
             <Input id="primaryCtaText" {...form.register("primaryCtaText")} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="primaryCtaHref">Primary CTA link</Label>
+            <Label htmlFor="primaryCtaHref">Tautan tombol ajakan</Label>
             <Input id="primaryCtaHref" {...form.register("primaryCtaHref")} />
           </div>
         </div>
@@ -134,7 +134,7 @@ export function LandingForm({
 
       <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Features</h2>
+          <h2 className="text-lg font-semibold">Keunggulan</h2>
           <Button
             type="button"
             variant="outline"
@@ -142,7 +142,7 @@ export function LandingForm({
             onClick={() => append({ icon: "graduation-cap", title: "", description: "" })}
           >
             <Plus className="size-4" />
-            Add Feature
+            Tambah Keunggulan
           </Button>
         </div>
 
@@ -150,7 +150,7 @@ export function LandingForm({
           <div key={field.id} className="space-y-3 rounded-xl border border-border p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">
-                Feature {index + 1}
+                Keunggulan {index + 1}
               </span>
               <Button
                 type="button"
@@ -158,14 +158,14 @@ export function LandingForm({
                 size="sm"
                 disabled={fields.length <= 1}
                 onClick={() => remove(index)}
-                aria-label={`Remove feature ${index + 1}`}
+                aria-label={`Hapus keunggulan ${index + 1}`}
               >
                 <Trash2 className="size-4" aria-hidden />
               </Button>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor={`features.${index}.icon`}>Icon</Label>
+              <Label htmlFor={`features.${index}.icon`}>Ikon</Label>
               <select
                 id={`features.${index}.icon`}
                 className="flex h-8 w-fit items-center rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring"
@@ -173,14 +173,14 @@ export function LandingForm({
               >
                 {LANDING_ICON_OPTIONS.map((icon) => (
                   <option key={icon} value={icon}>
-                    {icon}
+                    {{ "graduation-cap": "Topi wisuda", layers: "Lapisan", award: "Penghargaan" }[icon] ?? icon}
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor={`features.${index}.title`}>Title</Label>
+              <Label htmlFor={`features.${index}.title`}>Judul</Label>
               <Input
                 id={`features.${index}.title`}
                 {...form.register(`features.${index}.title` as const)}
@@ -188,13 +188,13 @@ export function LandingForm({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor={`features.${index}.description`}>Description</Label>
+              <Label htmlFor={`features.${index}.description`}>Deskripsi</Label>
               <Controller
                 control={form.control}
                 name={`features.${index}.description` as const}
                 render={({ field }) => (
                   <RichTextEditor
-                    ariaLabel={`Feature ${index + 1} description`}
+                    ariaLabel={`Deskripsi keunggulan ${index + 1}`}
                     value={field.value}
                     onChange={field.onChange}
                   />
@@ -206,10 +206,10 @@ export function LandingForm({
       </div>
 
       <div className="space-y-4 rounded-2xl border border-border bg-card p-6">
-        <h2 className="text-lg font-semibold">Featured Courses</h2>
+        <h2 className="text-lg font-semibold">Kursus Unggulan</h2>
         <p className="text-sm text-muted-foreground">
-          Choose which published courses appear in the &quot;Featured Courses&quot; carousel
-          on the public landing page.
+          Pilih kursus terbit yang tampil di carousel &quot;Kursus Unggulan&quot; pada halaman
+          depan publik.
         </p>
         <Controller
           control={form.control}

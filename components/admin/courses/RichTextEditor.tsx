@@ -57,10 +57,10 @@ const TEXT_COLORS = [
 const HIGHLIGHT_COLORS = ["#fef3c7", "#dcfce7", "#dbeafe", "#fce7f3", "#fee2e2"]
 
 const HEADING_OPTIONS = [
-  { label: "Paragraph", level: 0 as const },
-  { label: "Heading 1", level: 1 as const },
-  { label: "Heading 2", level: 2 as const },
-  { label: "Heading 3", level: 3 as const },
+  { label: "Paragraf", level: 0 as const },
+  { label: "Judul 1", level: 1 as const },
+  { label: "Judul 2", level: 2 as const },
+  { label: "Judul 3", level: 3 as const },
 ]
 
 // Google Docs pastes wrap most runs in `<span style="color:#000000">`, which our
@@ -82,15 +82,15 @@ function stripPastedColor(html: string): string {
  */
 function askAltText(current = ""): string | null {
   const answer = window.prompt(
-    "Describe this image for learners who cannot see it (what it shows and why it matters).\n" +
-      "Leave empty if the image is only decorative.",
+    "Jelaskan gambar ini untuk peserta yang tidak dapat melihatnya (apa isinya dan mengapa penting).\n" +
+      "Kosongkan jika gambar hanya hiasan.",
     current
   )
   return answer === null ? null : answer.trim()
 }
 
 async function uploadAndInsert(view: EditorView, file: File, pos?: number) {
-  const toastId = toast.loading("Uploading image…")
+  const toastId = toast.loading("Mengunggah gambar…")
   const result = await uploadLessonImage(file)
   toast.dismiss(toastId)
 
@@ -112,7 +112,7 @@ const UPDATE_DEBOUNCE_MS = 400
 export function RichTextEditor({
   value,
   onChange,
-  ariaLabel = "Content editor",
+  ariaLabel = "Editor konten",
 }: {
   value: string
   onChange: (html: string) => void
@@ -273,7 +273,7 @@ function Toolbar({ editor }: { editor: Editor }) {
 
       <Popover>
         <PopoverTrigger
-          render={<Button type="button" variant="ghost" size="icon-sm" title="Text color" />}
+          render={<Button type="button" variant="ghost" size="icon-sm" title="Warna teks" />}
         >
           <Palette className="size-3.5" />
         </PopoverTrigger>
@@ -295,7 +295,7 @@ function Toolbar({ editor }: { editor: Editor }) {
 
       <Popover>
         <PopoverTrigger
-          render={<Button type="button" variant="ghost" size="icon-sm" title="Highlight" />}
+          render={<Button type="button" variant="ghost" size="icon-sm" title="Sorot" />}
         >
           <Highlighter className="size-3.5" />
         </PopoverTrigger>
@@ -318,28 +318,28 @@ function Toolbar({ editor }: { editor: Editor }) {
       <ToolbarDivider />
 
       <ToolbarToggle
-        title="Bold"
+        title="Tebal"
         active={editor.isActive("bold")}
         onClick={() => editor.chain().focus().toggleBold().run()}
       >
         <Bold className="size-3.5" />
       </ToolbarToggle>
       <ToolbarToggle
-        title="Italic"
+        title="Miring"
         active={editor.isActive("italic")}
         onClick={() => editor.chain().focus().toggleItalic().run()}
       >
         <Italic className="size-3.5" />
       </ToolbarToggle>
       <ToolbarToggle
-        title="Underline"
+        title="Garis bawah"
         active={editor.isActive("underline")}
         onClick={() => editor.chain().focus().toggleUnderline().run()}
       >
         <Underline className="size-3.5" />
       </ToolbarToggle>
       <ToolbarToggle
-        title="Strikethrough"
+        title="Coret"
         active={editor.isActive("strike")}
         onClick={() => editor.chain().focus().toggleStrike().run()}
       >
@@ -352,8 +352,8 @@ function Toolbar({ editor }: { editor: Editor }) {
         type="button"
         variant="ghost"
         size="icon-sm"
-        title="Insert image"
-        aria-label="Insert image"
+        title="Sisipkan gambar"
+        aria-label="Sisipkan gambar"
         disabled={isUploading}
         onClick={() => fileInputRef.current?.click()}
       >
@@ -362,19 +362,19 @@ function Toolbar({ editor }: { editor: Editor }) {
 
       {editor.isActive("image") && (
         <Button type="button" variant="ghost" size="sm" onClick={handleEditAlt} className="text-xs">
-          Alt text
+          Teks alternatif
         </Button>
       )}
 
       <ToolbarToggle
-        title="Blockquote"
+        title="Kutipan"
         active={editor.isActive("blockquote")}
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
       >
         <Quote className="size-3.5" />
       </ToolbarToggle>
       <ToolbarToggle
-        title="Code block"
+        title="Blok kode"
         active={editor.isActive("codeBlock")}
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
       >
@@ -387,7 +387,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         type="button"
         variant="ghost"
         size="icon-sm"
-        title="Insert table"
+        title="Sisipkan tabel"
         onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
       >
         <TableIcon className="size-3.5" />
@@ -396,32 +396,32 @@ function Toolbar({ editor }: { editor: Editor }) {
       {editor.isActive("table") && (
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="sm" className="gap-1" />}>
-            Table
+            Tabel
             <ChevronDown className="size-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem onClick={() => editor.chain().focus().addRowAfter().run()}>
               <Rows3 className="size-3.5" />
-              Add row after
+              Tambah baris di bawah
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => editor.chain().focus().addColumnAfter().run()}>
               <Columns3 className="size-3.5" />
-              Add column after
+              Tambah kolom di kanan
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => editor.chain().focus().deleteRow().run()}>
               <Rows3 className="size-3.5" />
-              Delete row
+              Hapus baris
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => editor.chain().focus().deleteColumn().run()}>
               <Columns3 className="size-3.5" />
-              Delete column
+              Hapus kolom
             </DropdownMenuItem>
             <DropdownMenuItem
               variant="destructive"
               onClick={() => editor.chain().focus().deleteTable().run()}
             >
               <Trash2 className="size-3.5" />
-              Delete table
+              Hapus tabel
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -431,35 +431,35 @@ function Toolbar({ editor }: { editor: Editor }) {
 
       <DropdownMenu>
         <DropdownMenuTrigger
-          render={<Button type="button" variant="ghost" size="icon-sm" title="Text align" />}
+          render={<Button type="button" variant="ghost" size="icon-sm" title="Perataan teks" />}
         >
           <AlignLeft className="size-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuItem onClick={() => editor.chain().focus().setTextAlign("left").run()}>
             <AlignLeft className="size-3.5" />
-            Left
+            Kiri
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => editor.chain().focus().setTextAlign("center").run()}>
             <AlignCenter className="size-3.5" />
-            Center
+            Tengah
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => editor.chain().focus().setTextAlign("right").run()}>
             <AlignRight className="size-3.5" />
-            Right
+            Kanan
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
       <ToolbarToggle
-        title="Bullet list"
+        title="Daftar berbutir"
         active={editor.isActive("bulletList")}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       >
         <List className="size-3.5" />
       </ToolbarToggle>
       <ToolbarToggle
-        title="Ordered list"
+        title="Daftar bernomor"
         active={editor.isActive("orderedList")}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
       >

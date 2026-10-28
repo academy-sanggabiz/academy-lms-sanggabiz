@@ -23,7 +23,7 @@ export async function startQuiz(
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims?.sub
-  if (!userId) return { error: "Not signed in." }
+  if (!userId) return { error: "Anda belum masuk." }
 
   const { data: quiz, error: quizError } = await supabase
     .from("quizzes")
@@ -31,7 +31,7 @@ export async function startQuiz(
     .eq("id", quizId)
     .single()
 
-  if (quizError || !quiz) return { error: "Quiz not found." }
+  if (quizError || !quiz) return { error: "Kuis tidak ditemukan." }
 
   // grade_attempt() (called from submitQuiz) also enforces enrollment before
   // it will score anything, but that check only runs at submit time -- an
@@ -43,10 +43,10 @@ export async function startQuiz(
     .eq("id", quiz.lesson_id)
     .single()
 
-  if (lessonError || !lesson) return { error: "Quiz not found." }
+  if (lessonError || !lesson) return { error: "Kuis tidak ditemukan." }
   const section = Array.isArray(lesson.section) ? lesson.section[0] : lesson.section
   const courseId = section?.course_id
-  if (!courseId) return { error: "Quiz not found." }
+  if (!courseId) return { error: "Kuis tidak ditemukan." }
 
   const { data: enrollment, error: enrollmentError } = await supabase
     .from("enrollments")
@@ -55,8 +55,8 @@ export async function startQuiz(
     .eq("course_id", courseId)
     .maybeSingle()
 
-  if (enrollmentError) return { error: enrollmentError.message }
-  if (!enrollment) return { error: "Not enrolled." }
+  if (enrollmentError) return { error: userFacingError(enrollmentError.message) }
+  if (!enrollment) return { error: "Anda belum terdaftar di kursus ini." }
 
   const { data: existing, error: existingError } = await supabase
     .from("quiz_attempts")
@@ -66,11 +66,11 @@ export async function startQuiz(
     .order("attempt_number", { ascending: false })
     .limit(1)
 
-  if (existingError) return { error: existingError.message }
+  if (existingError) return { error: userFacingError(existingError.message) }
 
   const attemptsUsed = existing?.[0]?.attempt_number ?? 0
   if (attemptsUsed >= REGULAR_QUIZ_MAX_ATTEMPTS) {
-    return { error: "No attempts remaining." }
+    return { error: "Kesempatan mencoba sudah habis." }
   }
 
   const attemptNumber = attemptsUsed + 1
@@ -86,7 +86,7 @@ export async function startQuiz(
     .select("id")
     .single()
 
-  if (insertError || !attempt) return { error: insertError?.message ?? "Failed to start quiz." }
+  if (insertError || !attempt) return { error: insertError ? userFacingError(insertError.message) : "Gagal memulai kuis." }
 
   return { attemptId: attempt.id, attemptNumber }
 }
@@ -104,7 +104,7 @@ export async function startAssessmentAttempt(
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims?.sub
-  if (!userId) return { error: "Not signed in." }
+  if (!userId) return { error: "Anda belum masuk." }
 
   // Reuse an already-open attempt if there is one.
   const { data: open, error: openError } = await supabase
@@ -117,7 +117,7 @@ export async function startAssessmentAttempt(
     .limit(1)
     .maybeSingle()
 
-  if (openError) return { error: openError.message }
+  if (openError) return { error: userFacingError(openError.message) }
   if (open) return { attemptId: open.id, attemptNumber: open.attempt_number }
 
   // No open attempt -- create one (same checks as startQuiz).
@@ -127,7 +127,7 @@ export async function startAssessmentAttempt(
     .eq("id", quizId)
     .single()
 
-  if (quizError || !quiz) return { error: "Quiz not found." }
+  if (quizError || !quiz) return { error: "Kuis tidak ditemukan." }
 
   const { data: lesson, error: lessonError } = await supabase
     .from("lessons")
@@ -135,10 +135,10 @@ export async function startAssessmentAttempt(
     .eq("id", quiz.lesson_id)
     .single()
 
-  if (lessonError || !lesson) return { error: "Quiz not found." }
+  if (lessonError || !lesson) return { error: "Kuis tidak ditemukan." }
   const section = Array.isArray(lesson.section) ? lesson.section[0] : lesson.section
   const courseId = section?.course_id
-  if (!courseId) return { error: "Quiz not found." }
+  if (!courseId) return { error: "Kuis tidak ditemukan." }
 
   const { data: enrollment, error: enrollmentError } = await supabase
     .from("enrollments")
@@ -147,8 +147,8 @@ export async function startAssessmentAttempt(
     .eq("course_id", courseId)
     .maybeSingle()
 
-  if (enrollmentError) return { error: enrollmentError.message }
-  if (!enrollment) return { error: "Not enrolled." }
+  if (enrollmentError) return { error: userFacingError(enrollmentError.message) }
+  if (!enrollment) return { error: "Anda belum terdaftar di kursus ini." }
 
   const { data: existing, error: existingError } = await supabase
     .from("quiz_attempts")
@@ -158,11 +158,11 @@ export async function startAssessmentAttempt(
     .order("attempt_number", { ascending: false })
     .limit(1)
 
-  if (existingError) return { error: existingError.message }
+  if (existingError) return { error: userFacingError(existingError.message) }
 
   const attemptsUsed = existing?.[0]?.attempt_number ?? 0
   if (quiz.max_attempts !== null && attemptsUsed >= quiz.max_attempts) {
-    return { error: "No attempts remaining." }
+    return { error: "Kesempatan mencoba sudah habis." }
   }
 
   const attemptNumber = attemptsUsed + 1
@@ -178,7 +178,7 @@ export async function startAssessmentAttempt(
     .select("id")
     .single()
 
-  if (insertError || !attempt) return { error: insertError?.message ?? "Failed to start assessment." }
+  if (insertError || !attempt) return { error: insertError ? userFacingError(insertError.message) : "Gagal memulai studi kasus." }
 
   return { attemptId: attempt.id, attemptNumber }
 }
@@ -197,7 +197,7 @@ export async function saveDraft(
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims?.sub
-  if (!userId) return { error: "Not signed in." }
+  if (!userId) return { error: "Anda belum masuk." }
 
   const { error } = await supabase
     .from("quiz_attempts")
@@ -206,7 +206,7 @@ export async function saveDraft(
     .eq("learner_id", userId)
     .eq("status", "in_progress")
 
-  if (error) return { error: error.message }
+  if (error) return { error: userFacingError(error.message) }
 
   return { ok: true }
 }
@@ -225,14 +225,14 @@ export async function submitQuiz(
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims?.sub
-  if (!userId) return { error: "Not signed in." }
+  if (!userId) return { error: "Anda belum masuk." }
 
   const { data, error } = await supabase.rpc("grade_attempt", {
     p_attempt_id: attemptId,
     p_answers: answers,
   })
 
-  if (error) return { error: error.message }
+  if (error) return { error: userFacingError(error.message) }
 
   const result = { ...(data as Omit<SubmitQuizResult, "explanations">), explanations: {} } as SubmitQuizResult
 
@@ -288,4 +288,17 @@ export async function submitQuiz(
   revalidatePath("/learn/[courseId]", "page")
 
   return result
+}
+
+/**
+ * Database/RPC errors arrive in English (grade_attempt raises a few on
+ * purpose). Show the learner Indonesian text; the raw message is logged.
+ */
+function userFacingError(message: string): string {
+  console.error("quiz action failed:", message)
+  if (/not signed in/i.test(message)) return "Anda belum masuk."
+  if (/attempt not found/i.test(message)) return "Percobaan tidak ditemukan."
+  if (/already submitted/i.test(message)) return "Percobaan ini sudah dikirim."
+  if (/not enrolled/i.test(message)) return "Anda belum terdaftar di kursus ini."
+  return "Terjadi kesalahan. Coba lagi."
 }

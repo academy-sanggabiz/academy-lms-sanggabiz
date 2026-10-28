@@ -85,21 +85,21 @@ function EnrollModalContent({
         else next.add(courseId)
         return next
       })
-      toast.success(currentlyEnrolled ? "Unenrolled" : "Enrolled")
+      toast.success(currentlyEnrolled ? "Pendaftaran dibatalkan" : "Didaftarkan")
     })
   }
 
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Enroll {learner.name}</DialogTitle>
-        <DialogDescription>Toggle courses to enroll or unenroll this learner</DialogDescription>
+        <DialogTitle>Daftarkan {learner.name}</DialogTitle>
+        <DialogDescription>Pilih kursus untuk mendaftarkan atau membatalkan pendaftaran peserta ini</DialogDescription>
       </DialogHeader>
 
       {enrolledIds === null ? (
         <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
-          Loading…
+          Memuat…
         </div>
       ) : (
         <div className="flex max-h-[50vh] flex-col gap-2 overflow-auto">
@@ -119,7 +119,7 @@ function EnrollModalContent({
                     enrolled ? "bg-secondary text-ring" : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {enrolled ? "Enrolled ✓" : "Enroll"}
+                  {enrolled ? "Terdaftar ✓" : "Daftarkan"}
                 </span>
               </button>
             )
@@ -128,7 +128,7 @@ function EnrollModalContent({
       )}
 
       <DialogFooter>
-        <Button onClick={onClose}>Done</Button>
+        <Button onClick={onClose}>Selesai</Button>
       </DialogFooter>
     </>
   )

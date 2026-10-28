@@ -60,8 +60,8 @@ export function LoginForm() {
   return (
     <>
       <div className="space-y-1 text-center">
-        <h1 className="text-xl font-bold">Sign in</h1>
-        <p className="text-sm text-muted-foreground">Sign in to Sanggabiz to continue.</p>
+        <h1 className="text-xl font-bold">Masuk</h1>
+        <p className="text-sm text-muted-foreground">Masuk ke Sanggabiz untuk melanjutkan.</p>
       </div>
 
       {state && "error" in state && (
@@ -71,10 +71,10 @@ export function LoginForm() {
       )}
 
       <form onSubmit={onSubmit} className="space-y-3">
-        <Input type="email" name="email" placeholder="Email" required />
-        <PasswordInput name="password" placeholder="Password" required />
+        <Input type="email" name="email" placeholder="Email" aria-label="Email" required />
+        <PasswordInput name="password" placeholder="Kata sandi" aria-label="Kata sandi" required />
         <Button type="submit" className="w-full" disabled={isPending}>
-          {isPending ? "Logging in..." : "Log in"}
+          {isPending ? "Sedang masuk..." : "Masuk"}
         </Button>
       </form>
 
@@ -89,7 +89,7 @@ export function LoginForm() {
 
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
-        <span className="text-xs text-muted-foreground">Or continue with</span>
+        <span className="text-xs text-muted-foreground">Atau lanjutkan dengan</span>
         <div className="h-px flex-1 bg-border" />
       </div>
 
@@ -101,13 +101,13 @@ export function LoginForm() {
         disabled={isGoogleLoading}
       >
         <GoogleIcon className="size-4" />
-        {isGoogleLoading ? "Redirecting..." : "Continue with Google"}
+        {isGoogleLoading ? "Mengalihkan..." : "Lanjutkan dengan Google"}
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
+        Belum punya akun?{" "}
         <Link href="/auth/learner/signup" className="text-ring underline underline-offset-4">
-          Sign up
+          Daftar
         </Link>
       </p>
     </>

@@ -1735,15 +1735,15 @@ insert into public.landing_content (
 )
 values (
   true,
-  'Learn. Grow.',
-  'Succeed.',
-  'Transform your life through knowledge with Sanggabiz. Access world-class courses designed to help you achieve your goals and unlock your potential.',
-  'Start Your Journey',
+  'Belajar. Berkembang.',
+  'Sukses.',
+  'Kembangkan diri Anda melalui pengetahuan bersama Sanggabiz. Akses kursus berkualitas yang dirancang untuk membantu Anda mencapai tujuan dan mengembangkan potensi.',
+  'Mulai Perjalanan Anda',
   '/auth/login',
   '[
-    {"icon": "graduation-cap", "title": "Expert-Led Courses", "description": "Learn from industry professionals and academic experts with years of experience."},
-    {"icon": "layers", "title": "Flexible Learning", "description": "Study at your own pace with lifetime access to course materials and updates."},
-    {"icon": "award", "title": "Certified Learning", "description": "Earn recognized certificates upon course completion to showcase your achievements."}
+    {"icon": "graduation-cap", "title": "Dibimbing Para Ahli", "description": "Belajar dari praktisi industri dan akademisi berpengalaman."},
+    {"icon": "layers", "title": "Belajar Fleksibel", "description": "Belajar sesuai ritme Anda dengan akses seumur hidup ke materi dan pembaruan kursus."},
+    {"icon": "award", "title": "Bersertifikat", "description": "Dapatkan sertifikat setelah menyelesaikan kursus untuk menunjukkan pencapaian Anda."}
   ]'::jsonb
 )
 on conflict (id) do nothing;
@@ -1823,7 +1823,7 @@ begin
     select
       new.learner_id,
       'enrollment',
-      'You have been enrolled in a new course',
+      'Anda telah didaftarkan ke kursus baru',
       c.title,
       '/learner/courses/' || c.id
     from public.courses c

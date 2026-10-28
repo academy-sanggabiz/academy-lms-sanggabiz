@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { checkAndIssueCertificate } from "@/lib/certificates"
 import { hasResponseContent } from "@/lib/grading-server"
+import { dbErrorMessage } from "@/lib/db-error-message"
 
 export type EssayGrade = { questionId: string; points: number }
 
@@ -25,15 +26,15 @@ export async function gradeAttempt(
       grades.map((g) => g.questionId)
     )
 
-  if (questionsError || !questions) return { error: questionsError?.message ?? "Questions not found" }
+  if (questionsError || !questions) return { error: dbErrorMessage(questionsError?.message, "Soal tidak ditemukan.") }
 
   const pointsByQuestion = new Map(questions.map((q) => [q.id, q.points]))
 
   for (const grade of grades) {
     const maxPoints = pointsByQuestion.get(grade.questionId)
-    if (maxPoints === undefined) return { error: "Unknown question in grade payload" }
+    if (maxPoints === undefined) return { error: "Soal tidak dikenal dalam data nilai." }
     if (!Number.isFinite(grade.points) || grade.points < 0 || grade.points > maxPoints) {
-      return { error: `Points must be between 0 and ${maxPoints}` }
+      return { error: `Poin harus antara 0 dan ${maxPoints}` }
     }
   }
 
@@ -50,13 +51,13 @@ export async function gradeAttempt(
     )
 
   if (existingResponsesError || !existingResponses) {
-    return { error: existingResponsesError?.message ?? "Could not load responses" }
+    return { error: dbErrorMessage(existingResponsesError?.message, "Gagal memuat jawaban.") }
   }
 
   const responseByQuestion = new Map(existingResponses.map((r) => [r.question_id, r.response]))
   for (const grade of grades) {
     if (!hasResponseContent(responseByQuestion.get(grade.questionId))) {
-      return { error: `Cannot grade a blank response for question ${grade.questionId}` }
+      return { error: `Jawaban kosong tidak dapat dinilai (soal ${grade.questionId})` }
     }
   }
 
@@ -77,13 +78,13 @@ export async function gradeAttempt(
     )
   )
   const failed = results.find((r) => r.error)
-  if (failed?.error) return { error: failed.error.message }
+  if (failed?.error) return { error: dbErrorMessage(failed.error.message) }
   // A mismatched attempt_id/question_id pair (e.g. a mis-pasted CSV cell from
   // a different quiz) updates zero rows without erroring -- catch that here
   // instead of silently dropping the grade.
   const emptyIndex = results.findIndex((r) => (r.data?.length ?? 0) === 0)
   if (emptyIndex !== -1) {
-    return { error: `No response found for question ${grades[emptyIndex].questionId} on this attempt` }
+    return { error: `Jawaban untuk soal ${grades[emptyIndex].questionId} tidak ditemukan pada percobaan ini` }
   }
 
   return finalizeAttempt(attemptId)
@@ -105,26 +106,26 @@ async function finalizeAttempt(
     .eq("id", attemptId)
     .single()
 
-  if (attemptError || !attempt) return { error: attemptError?.message ?? "Attempt not found" }
+  if (attemptError || !attempt) return { error: dbErrorMessage(attemptError?.message, "Percobaan tidak ditemukan.") }
   const quiz = Array.isArray(attempt.quiz) ? attempt.quiz[0] : attempt.quiz
-  if (!quiz) return { error: "Quiz not found" }
+  if (!quiz) return { error: "Kuis tidak ditemukan." }
 
   const { data: questions, error: questionsError } = await supabase
     .from("questions")
     .select("id, points")
     .eq("quiz_id", attempt.quiz_id)
 
-  if (questionsError || !questions) return { error: questionsError?.message ?? "Could not load questions" }
+  if (questionsError || !questions) return { error: dbErrorMessage(questionsError?.message, "Gagal memuat soal.") }
 
   const { data: responses, error: responsesError } = await supabase
     .from("quiz_responses")
     .select("question_id, is_correct, points_awarded")
     .eq("attempt_id", attemptId)
 
-  if (responsesError || !responses) return { error: responsesError?.message ?? "Could not load responses" }
+  if (responsesError || !responses) return { error: dbErrorMessage(responsesError?.message, "Gagal memuat jawaban.") }
 
   const stillUngraded = responses.some((r) => r.is_correct === null)
-  if (stillUngraded) return { error: "Attempt still has ungraded responses" }
+  if (stillUngraded) return { error: "Masih ada jawaban yang belum dinilai." }
 
   const totalPoints = questions.reduce((sum, q) => sum + q.points, 0)
   const awardedPoints = responses.reduce((sum, r) => sum + (r.points_awarded ?? 0), 0)
@@ -136,7 +137,7 @@ async function finalizeAttempt(
     .update({ score, passed, status: "graded" })
     .eq("id", attemptId)
 
-  if (updateError) return { error: updateError.message }
+  if (updateError) return { error: dbErrorMessage(updateError.message) }
 
   const result = { ok: true as const, score, status: "graded" as const }
 

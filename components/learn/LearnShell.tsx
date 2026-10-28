@@ -44,8 +44,8 @@ export function LearnShell({
           className="flex h-10 shrink-0 items-center gap-2 rounded-lg border border-input px-3 text-sm font-semibold hover:bg-muted lg:hidden"
         >
           <ListTree className="size-4" aria-hidden />
-          <span className="hidden sm:inline">Course content</span>
-          <span className="sr-only sm:hidden">Course content</span>
+          <span className="hidden sm:inline">Isi kursus</span>
+          <span className="sr-only sm:hidden">Isi kursus</span>
         </button>
       </header>
 
@@ -78,7 +78,7 @@ export function LearnShell({
               className="flex size-10 items-center justify-center rounded-lg hover:bg-muted"
             >
               <X className="size-4" aria-hidden />
-              <span className="sr-only">Close course content</span>
+              <span className="sr-only">Tutup isi kursus</span>
             </button>
           </div>
           {sidebar}

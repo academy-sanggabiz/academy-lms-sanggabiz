@@ -12,7 +12,7 @@ import { LearnShell } from "@/components/learn/LearnShell"
 import { LearnSidebar } from "@/components/learn/LearnSidebar"
 import { LessonPane } from "@/components/learn/LessonPane"
 
-export const metadata = { title: "Lesson" }
+export const metadata = { title: "Pelajaran" }
 
 export default async function LearnPage({
   params,
@@ -84,32 +84,32 @@ export default async function LearnPage({
             className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-input hover:bg-muted"
           >
             <ArrowLeft className="size-4" aria-hidden />
-            <span className="sr-only">Back to course overview</span>
+            <span className="sr-only">Kembali ke ringkasan kursus</span>
           </Link>
           <img src="/logo.png" alt="" className="hidden size-7 object-contain sm:block" />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">{course.title}</div>
             {/* Orientation (DL standard §3): where am I in the course. */}
             <div className="truncate text-xs text-muted-foreground">
-              Lesson {currentIndex + 1} of {allLessons.length}
+              Pelajaran {currentIndex + 1} dari {allLessons.length}
               {currentSection ? ` · ${currentSection.title}` : ""}
             </div>
           </div>
           <div className="hidden items-center gap-2.5 md:flex">
             <div
               role="progressbar"
-              aria-label="Course progress"
+              aria-label="Progres kursus"
               aria-valuemin={0}
               aria-valuemax={allLessons.length}
               aria-valuenow={doneCount}
-              aria-valuetext={`${doneCount} of ${allLessons.length} lessons done`}
+              aria-valuetext={`${doneCount} dari ${allLessons.length} pelajaran selesai`}
               className="h-1.5 w-32 overflow-hidden rounded-full bg-secondary"
             >
               <div className="h-full bg-brand-gradient" style={{ width: `${progressPct}%` }} />
             </div>
             <span className="text-xs font-semibold whitespace-nowrap text-primary">
-              {doneCount} of {allLessons.length} lessons done
-              {remainingSeconds > 0 && !isCourseComplete ? ` · ${formatDuration(remainingSeconds)} left` : ""}
+              {doneCount} dari {allLessons.length} pelajaran selesai
+              {remainingSeconds > 0 && !isCourseComplete ? ` · sisa ${formatDuration(remainingSeconds)}` : ""}
             </span>
           </div>
         </>

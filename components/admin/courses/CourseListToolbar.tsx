@@ -6,25 +6,25 @@ import { ListToolbar } from "@/components/admin/ListToolbar"
 export function CourseListToolbar() {
   return (
     <div className="mb-6">
-      <ListToolbar placeholder="Search by course title...">
+      <ListToolbar placeholder="Cari judul kursus...">
         <ListFilterSelect
           paramKey="status"
           defaultValue="all"
           placeholder="Status"
           options={[
-            { value: "all", label: "All statuses" },
-            { value: "published", label: "Published" },
-            { value: "draft", label: "Draft" },
+            { value: "all", label: "Semua status" },
+            { value: "published", label: "Terbit" },
+            { value: "draft", label: "Draf" },
           ]}
         />
         <ListFilterSelect
           paramKey="price"
           defaultValue="all"
-          placeholder="Price"
+          placeholder="Harga"
           options={[
-            { value: "all", label: "All prices" },
-            { value: "free", label: "Public" },
-            { value: "paid", label: "Paid" },
+            { value: "all", label: "Semua harga" },
+            { value: "free", label: "Publik" },
+            { value: "paid", label: "Berbayar" },
           ]}
         />
       </ListToolbar>

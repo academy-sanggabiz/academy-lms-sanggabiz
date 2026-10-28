@@ -35,7 +35,7 @@ export function AdminShell({
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="mr-2 flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-                title="Open sidebar"
+                title="Buka sidebar"
               >
                 <img src="/logo.png" alt="Sanggabiz" className="size-7 object-contain" />
               </button>

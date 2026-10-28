@@ -40,14 +40,14 @@ export default async function Home() {
             className="h-10 px-5 text-sm font-semibold"
             render={<Link href="/auth/login" />} nativeButton={false}
           >
-            Login
+            Masuk
           </Button>
           <Button
             size="lg"
             className="h-10 px-5 text-sm font-semibold bg-brand-gradient text-white hover:brightness-105"
             render={<Link href="/auth/login" />} nativeButton={false}
           >
-            Get Started
+            Mulai
           </Button>
         </div>
       </header>
@@ -69,28 +69,28 @@ export default async function Home() {
             {hero.primaryCtaText}
           </Button>
           <Button size="xl" variant="outline" render={<Link href="/auth/login" />} nativeButton={false}>
-            Explore Courses
+            Jelajahi Kursus
           </Button>
         </div>
       </section>
 
       <section className="bg-background px-6 py-24 sm:px-10">
         <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">
-          Featured Courses
+          Kursus Unggulan
         </h2>
         <p className="mt-3 mb-11 text-center text-muted-foreground">
-          Start with our most popular course — free to enroll.
+          Mulai dari kursus terpopuler kami.
         </p>
         <FeaturedCoursesCarousel courses={featured} />
       </section>
 
       <section className="bg-card px-6 py-24 sm:px-10">
         <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">
-          Why Choose Sanggabiz?
+          Mengapa Sanggabiz?
         </h2>
         <p className="mx-auto mt-3 mb-13 max-w-lg text-center text-muted-foreground">
-          We&apos;re committed to providing exceptional learning experiences that
-          drive real results.
+          Kami berkomitmen menghadirkan pengalaman belajar berkualitas yang
+          memberi hasil nyata.
         </p>
         <div className="mx-auto grid max-w-4xl grid-cols-1 justify-center gap-6 sm:grid-cols-3">
           {features.map(({ icon, title, description }) => {
@@ -116,11 +116,11 @@ export default async function Home() {
 
       <section className="bg-gradient-to-b from-card to-background px-6 py-24 text-center">
         <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Ready to Start Learning?
+          Siap Mulai Belajar?
         </h2>
         <p className="mx-auto mt-3.5 max-w-lg text-muted-foreground">
-          Join thousands of learners who are already transforming their lives
-          through our courses.
+          Bergabunglah dengan ribuan peserta yang sudah mengembangkan diri
+          melalui kursus kami.
         </p>
         <div className="mt-9 flex justify-center gap-3.5">
           <Button
@@ -128,10 +128,10 @@ export default async function Home() {
             className="bg-brand-gradient text-white hover:brightness-105"
             render={<Link href="/auth/login" />} nativeButton={false}
           >
-            Create Free Account
+            Buat Akun
           </Button>
           <Button size="xl" variant="outline" render={<Link href="/auth/login" />} nativeButton={false}>
-            Browse All Courses
+            Lihat Semua Kursus
           </Button>
         </div>
       </section>
@@ -142,12 +142,12 @@ export default async function Home() {
           <span className="text-lg font-bold text-ring">sanggabiz</span>
         </div>
         <p className="max-w-lg text-sm text-muted-foreground">
-          Transform your life through knowledge with Sanggabiz. Access world-class
-          courses designed to help you achieve your goals.
+          Kembangkan diri Anda melalui pengetahuan bersama Sanggabiz. Akses kursus
+          berkualitas yang dirancang untuk membantu Anda mencapai tujuan.
         </p>
         <div className="flex gap-4.5 text-[13.5px]">
-          <a href="#">Terms</a>
-          <a href="#">Privacy</a>
+          <a href="#">Ketentuan</a>
+          <a href="#">Privasi</a>
         </div>
         <div className="text-xs text-muted-foreground">© 2026 Sanggabiz</div>
       </footer>

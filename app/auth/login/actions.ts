@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation"
 
 import { resolveUserRole, roleHomePath } from "@/lib/auth/require-admin"
+import { authErrorMessage } from "@/lib/auth/auth-error-message"
 import { createClient } from "@/lib/supabase/server"
 
 export type LoginState = { error: string } | null
@@ -23,14 +24,14 @@ export async function login(
   })
 
   if (error) {
-    return { error: error.message }
+    return { error: authErrorMessage(error.message) }
   }
 
   const resolved = await resolveUserRole()
   if (!resolved) {
     // Signed in but no resolvable session — bail out safely.
     await supabase.auth.signOut()
-    return { error: "Could not resolve your account" }
+    return { error: "Akun Anda tidak dapat dikenali" }
   }
 
   redirect(roleHomePath(resolved.role))

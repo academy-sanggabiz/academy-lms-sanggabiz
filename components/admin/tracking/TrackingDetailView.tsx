@@ -5,18 +5,18 @@ import { Badge } from "@/components/ui/badge"
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—"
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+  return new Date(iso).toLocaleDateString("id-ID", { month: "short", day: "numeric", year: "numeric" })
 }
 
 function QuizStatusBadge({ quiz }: { quiz: TrackingDetail["quizzes"][number] }) {
   if (quiz.status === "not_started") {
-    return <Badge variant="outline">Not started</Badge>
+    return <Badge variant="outline">Belum dimulai</Badge>
   }
   if (quiz.status === "in_progress") {
-    return <Badge variant="outline">In progress</Badge>
+    return <Badge variant="outline">Sedang dikerjakan</Badge>
   }
   if (quiz.status === "pending_review") {
-    return <Badge className="bg-draft-background text-foreground">Pending review</Badge>
+    return <Badge className="bg-draft-background text-foreground">Menunggu penilaian</Badge>
   }
   return (
     <Badge
@@ -26,7 +26,7 @@ function QuizStatusBadge({ quiz }: { quiz: TrackingDetail["quizzes"][number] }) 
           : "bg-destructive/10 text-destructive"
       }
     >
-      {quiz.passed ? "Passed" : "Failed"}
+      {quiz.passed ? "Lulus" : "Belum lulus"}
     </Badge>
   )
 }
@@ -47,20 +47,20 @@ export function TrackingDetailView({ detail }: { detail: TrackingDetail }) {
         <p className="mt-1 text-sm font-medium">{detail.courseTitle}</p>
         <div className="mt-4 flex gap-6 text-sm">
           <div>
-            <div className="text-muted-foreground">Module Completion</div>
+            <div className="text-muted-foreground">Penyelesaian Modul</div>
             <div className="text-lg font-bold">{detail.modulePct}%</div>
           </div>
           <div>
-            <div className="text-muted-foreground">Assignment Completion</div>
+            <div className="text-muted-foreground">Penyelesaian Tugas</div>
             <div className="text-lg font-bold">{detail.assignmentPct}%</div>
           </div>
         </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="mb-4 text-sm font-semibold">Modules</h2>
+        <h2 className="mb-4 text-sm font-semibold">Modul</h2>
         {sections.size === 0 ? (
-          <p className="text-sm text-muted-foreground">No lessons in this course yet.</p>
+          <p className="text-sm text-muted-foreground">Belum ada pelajaran di kursus ini.</p>
         ) : (
           <div className="flex flex-col gap-4">
             {[...sections.entries()].map(([sectionTitle, lessons]) => (
@@ -85,16 +85,16 @@ export function TrackingDetailView({ detail }: { detail: TrackingDetail }) {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="mb-4 text-sm font-semibold">Quizzes</h2>
+        <h2 className="mb-4 text-sm font-semibold">Kuis</h2>
         {detail.quizzes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No quizzes in this course.</p>
+          <p className="text-sm text-muted-foreground">Kursus ini tidak memiliki kuis.</p>
         ) : (
           <div className="overflow-hidden rounded-xl border border-border">
             <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-3 border-b border-border bg-muted/50 px-3 py-2.5 text-[13px] font-semibold text-muted-foreground">
-              <div>Quiz</div>
+              <div>Kuis</div>
               <div>Status</div>
-              <div>Score</div>
-              <div>Submitted</div>
+              <div>Nilai</div>
+              <div>Dikirim</div>
             </div>
             {detail.quizzes.map((quiz) => (
               <div

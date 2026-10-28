@@ -9,7 +9,7 @@ export function CourseEditorSkeleton() {
       </div>
 
       <div className="mb-6 flex gap-2">
-        {["Basic Info", "Lessons", "Settings", "Preview"].map((label) => (
+        {["Info Dasar", "Pelajaran", "Pengaturan", "Pratinjau"].map((label) => (
           <Skeleton key={label} className="h-9 w-28 rounded-md" />
         ))}
       </div>

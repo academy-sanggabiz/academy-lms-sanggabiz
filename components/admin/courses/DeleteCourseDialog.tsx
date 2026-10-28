@@ -36,33 +36,33 @@ export function DeleteCourseDialog({
         toast.error(result.error)
         return
       }
-      toast.success("Course deleted")
+      toast.success("Kursus dihapus")
     })
   }
 
   return (
     <AlertDialog>
       <AlertDialogTrigger
-        render={<Button variant="destructive" className={className} aria-label="Delete course" />}
+        render={<Button variant="destructive" className={className} aria-label="Hapus kursus" />}
       >
         <Trash2 className="size-3.5" />
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete &quot;{courseTitle}&quot;?</AlertDialogTitle>
+          <AlertDialogTitle>Hapus &quot;{courseTitle}&quot;?</AlertDialogTitle>
           <AlertDialogDescription>
-            This permanently deletes the course and all of its sections, lessons, and resources.
-            This cannot be undone.
+            Kursus beserta seluruh modul, pelajaran, dan sumber belajarnya akan dihapus permanen.
+            Tindakan ini tidak dapat dibatalkan.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Batal</AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive/10 text-destructive hover:bg-destructive/20"
             onClick={handleDelete}
             disabled={isPending}
           >
-            {isPending ? "Deleting…" : "Delete"}
+            {isPending ? "Menghapus…" : "Hapus"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

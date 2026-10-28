@@ -11,12 +11,12 @@ export function NotificationsListClient({ page }: { page: Paginated<Notification
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">All notifications</h2>
+        <h2 className="text-lg font-bold">Semua notifikasi</h2>
       </div>
 
       {page.rows.length === 0 ? (
         <p className="px-2 py-12 text-center text-sm text-muted-foreground">
-          No notifications yet.
+          Belum ada notifikasi.
         </p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">

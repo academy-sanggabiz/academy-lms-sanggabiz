@@ -27,16 +27,16 @@ export function LearnerManagementClient({
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">All Learners</h2>
-        <ListToolbar placeholder="Search by name or email...">
+        <h2 className="text-lg font-bold">Semua Peserta</h2>
+        <ListToolbar placeholder="Cari nama atau email...">
           <ListFilterSelect
             paramKey="filter"
             defaultValue="all"
             placeholder="Filter"
             options={[
-              { value: "all", label: "All Learners" },
-              { value: "enrolled", label: "Enrolled" },
-              { value: "completed", label: "Completed" },
+              { value: "all", label: "Semua Peserta" },
+              { value: "enrolled", label: "Terdaftar" },
+              { value: "completed", label: "Selesai" },
             ]}
           />
         </ListToolbar>
@@ -44,16 +44,16 @@ export function LearnerManagementClient({
 
       {page.rows.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
-          No learners match your search.
+          Tidak ada peserta yang cocok dengan pencarian Anda.
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead>Learner</TableHead>
+                <TableHead>Peserta</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -81,11 +81,11 @@ export function LearnerManagementClient({
                         render={<Link href={`/admin/learners/${l.id}`} />}
                         nativeButton={false}
                       >
-                        View Details
+                        Lihat Detail
                       </Button>
                       <Button size="sm" onClick={() => setEnrollTarget(l)}>
                         <Plus className="size-3.5" />
-                        Enroll
+                        Daftarkan
                       </Button>
                     </div>
                   </TableCell>

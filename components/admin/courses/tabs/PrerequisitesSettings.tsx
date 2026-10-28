@@ -42,25 +42,25 @@ export function PrerequisitesSettings({ availableCourses }: { availableCourses: 
 
   return (
     <section className="space-y-3">
-      <h3 className="text-[17px] font-bold">Prerequisites Settings</h3>
+      <h3 className="text-[17px] font-bold">Pengaturan Prasyarat</h3>
       <div className="flex items-start justify-between gap-5">
         <div>
-          <div className="text-sm font-medium">Require Prerequisites</div>
+          <div className="text-sm font-medium">Wajibkan Prasyarat</div>
           <div className="text-xs text-muted-foreground">
-            Require learners to complete other courses before enrolling in this course
+            Peserta harus menyelesaikan kursus lain sebelum mendaftar ke kursus ini
           </div>
         </div>
-        <Switch aria-label="Require prerequisites" checked={draft.requirePrerequisites} onCheckedChange={handleToggle} />
+        <Switch aria-label="Wajibkan prasyarat" checked={draft.requirePrerequisites} onCheckedChange={handleToggle} />
       </div>
 
       {draft.requirePrerequisites && (
         <div className="space-y-3 border-t border-border pt-3.5">
           <div>
-            <div className="mb-2.5 text-xs font-semibold">Prerequisite Courses</div>
+            <div className="mb-2.5 text-xs font-semibold">Kursus Prasyarat</div>
             <div className="flex gap-2.5">
               <Select value={pickerValue} onValueChange={(v) => v && setPickerValue(v)}>
-                <SelectTrigger aria-label="Prerequisite course" className="flex-1">
-                  <SelectValue placeholder="Select a course" />
+                <SelectTrigger aria-label="Kursus prasyarat" className="flex-1">
+                  <SelectValue placeholder="Pilih kursus" />
                 </SelectTrigger>
                 <SelectContent>
                   {pickableCourses.map((course) => (
@@ -71,11 +71,11 @@ export function PrerequisitesSettings({ availableCourses }: { availableCourses: 
                 </SelectContent>
               </Select>
               <Button type="button" onClick={handleAdd} disabled={!pickerValue}>
-                Add
+                Tambah
               </Button>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Select courses that must be completed before learners can enroll in this course
+              Pilih kursus yang harus diselesaikan peserta sebelum dapat mendaftar ke kursus ini
             </p>
           </div>
 
@@ -91,6 +91,7 @@ export function PrerequisitesSettings({ availableCourses }: { availableCourses: 
                     type="button"
                     onClick={() => handleRemove(course.id)}
                     className="shrink-0 text-destructive"
+                    aria-label={`Hapus prasyarat ${course.title}`}
                   >
                     <X className="size-3.5" />
                   </button>

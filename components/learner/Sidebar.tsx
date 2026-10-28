@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils"
 
 const navItems = [
   { href: "/learner/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/learner/courses", label: "Courses", icon: BookOpen },
-  { href: "/learner/purchase", label: "Purchase", icon: ShoppingCart },
+  { href: "/learner/courses", label: "Kursus", icon: BookOpen },
+  { href: "/learner/purchase", label: "Pembelian", icon: ShoppingCart },
 ]
 
 export function Sidebar({ open, onToggle }: { open: boolean; onToggle: () => void }) {
@@ -27,7 +27,7 @@ export function Sidebar({ open, onToggle }: { open: boolean; onToggle: () => voi
         <button
           onClick={onToggle}
           className="flex size-8 flex-none items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-          title="Close sidebar"
+          title="Tutup sidebar"
         >
           <PanelLeftClose className="size-[18px]" />
         </button>

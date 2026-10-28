@@ -134,7 +134,7 @@ export function FeaturedCoursesCarousel({ courses }: { courses: Course[] }) {
         <button
           type="button"
           onClick={() => goTo(activeIndex - 1)}
-          title="Previous course"
+          title="Kursus sebelumnya"
           className="flex size-11 shrink-0 items-center justify-center rounded-full border border-input bg-card text-muted-foreground hover:bg-secondary hover:text-foreground"
         >
           <ChevronLeft className="size-4" />
@@ -175,7 +175,7 @@ export function FeaturedCoursesCarousel({ courses }: { courses: Course[] }) {
         <button
           type="button"
           onClick={() => goTo(activeIndex + 1)}
-          title="Next course"
+          title="Kursus berikutnya"
           className="flex size-11 shrink-0 items-center justify-center rounded-full border border-input bg-card text-muted-foreground hover:bg-secondary hover:text-foreground"
         >
           <ChevronRight className="size-4" />
@@ -187,7 +187,7 @@ export function FeaturedCoursesCarousel({ courses }: { courses: Course[] }) {
           <button
             key={course.id}
             type="button"
-            title="Go to course"
+            title="Lihat kursus"
             onClick={() => goTo(i)}
             className={cn(
               "h-2 rounded-full transition-all",

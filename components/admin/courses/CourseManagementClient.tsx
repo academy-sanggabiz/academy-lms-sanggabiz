@@ -15,8 +15,8 @@ export function CourseManagementClient({ page }: { page: Paginated<Course> }) {
       {page.rows.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border py-16 text-center text-sm text-muted-foreground">
           {page.total === 0
-            ? "No courses yet — click Create Course to add your first one."
-            : "No courses match your filters."}
+            ? "Belum ada kursus. Klik Buat Kursus untuk menambahkan kursus pertama Anda."
+            : "Tidak ada kursus yang cocok dengan filter Anda."}
         </div>
       ) : (
         <>

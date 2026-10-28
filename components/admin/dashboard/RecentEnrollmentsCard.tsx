@@ -6,7 +6,7 @@ import { ListPagination } from "@/components/admin/ListPagination"
 const PREFIX = "enroll"
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
+  return new Date(iso).toLocaleDateString("id-ID", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -16,17 +16,17 @@ function formatDate(iso: string): string {
 export function RecentEnrollmentsCard({ enrollments }: { enrollments: Paginated<RecentEnrollment> }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
-      <h2 className="mb-4 text-sm font-semibold">Recent Enrollments</h2>
+      <h2 className="mb-4 text-sm font-semibold">Pendaftaran Terbaru</h2>
       {enrollments.rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No enrollments yet</p>
+        <p className="text-sm text-muted-foreground">Belum ada pendaftaran</p>
       ) : (
         <div className="max-h-[320px] overflow-y-auto rounded-xl border border-border">
           <Table>
             <TableHeader>
               <TableRow className="sticky top-0 z-10 bg-muted/50 hover:bg-muted/50">
-                <TableHead>Learner</TableHead>
-                <TableHead>Course</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>Peserta</TableHead>
+                <TableHead>Kursus</TableHead>
+                <TableHead>Tanggal</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

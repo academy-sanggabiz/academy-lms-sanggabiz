@@ -8,10 +8,10 @@ export default function AuthCodeErrorPage() {
         <span className="text-2xl font-bold text-ring">sanggabiz</span>
       </div>
       <p className="text-muted-foreground">
-        We couldn&apos;t complete your sign-in. The link may have expired or already been used.
+        Proses masuk tidak dapat diselesaikan. Tautan mungkin sudah kedaluwarsa atau sudah digunakan.
       </p>
       <Link href="/auth/login" className="text-ring underline underline-offset-4">
-        Back to login
+        Kembali ke halaman masuk
       </Link>
     </div>
   )

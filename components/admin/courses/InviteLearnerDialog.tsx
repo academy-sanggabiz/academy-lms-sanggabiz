@@ -97,7 +97,7 @@ function InviteLearnerDialogContent({
         return
       }
       setJustEnrolled((prev) => new Set(prev).add(learner.id))
-      toast.success(`${learner.name} enrolled`)
+      toast.success(`${learner.name} didaftarkan`)
       onEnrolled()
     })
   }
@@ -107,9 +107,9 @@ function InviteLearnerDialogContent({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Invite learner</DialogTitle>
+        <DialogTitle>Undang peserta</DialogTitle>
         <DialogDescription>
-          Search registered learners by name or email, then enroll them in this course.
+          Cari peserta berdasarkan nama atau email, lalu daftarkan ke kursus ini.
         </DialogDescription>
       </DialogHeader>
 
@@ -119,7 +119,8 @@ function InviteLearnerDialogContent({
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Name or email…"
+          placeholder="Nama atau email…"
+          aria-label="Cari peserta berdasarkan nama atau email"
           className="bg-card pl-9"
         />
       </div>
@@ -127,18 +128,18 @@ function InviteLearnerDialogContent({
       <div className="flex max-h-[50vh] min-h-[120px] flex-col gap-2 overflow-auto">
         {trimmed.length < MIN_QUERY_LENGTH ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            Type at least {MIN_QUERY_LENGTH} characters to search.
+            Ketik minimal {MIN_QUERY_LENGTH} karakter untuk mencari.
           </p>
         ) : isSearching ? (
           <p className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
-            Searching…
+            Mencari…
           </p>
         ) : selectable.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             {hasSearched && results.length > 0
-              ? "Everyone matching is already enrolled."
-              : "No learners found."}
+              ? "Semua peserta yang cocok sudah terdaftar."
+              : "Peserta tidak ditemukan."}
           </p>
         ) : (
           selectable.map((learner) => (
@@ -157,7 +158,7 @@ function InviteLearnerDialogContent({
                 <span className="block truncate text-xs text-muted-foreground">{learner.email}</span>
               </span>
               <span className="shrink-0 rounded-full bg-muted px-3 py-1 text-xs font-semibold whitespace-nowrap">
-                Enroll
+                Daftarkan
               </span>
             </button>
           ))
@@ -165,7 +166,7 @@ function InviteLearnerDialogContent({
       </div>
 
       <DialogFooter>
-        <Button onClick={onClose}>Done</Button>
+        <Button onClick={onClose}>Selesai</Button>
       </DialogFooter>
     </>
   )

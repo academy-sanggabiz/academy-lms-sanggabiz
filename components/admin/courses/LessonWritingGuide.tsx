@@ -36,25 +36,25 @@ export function LessonWritingGuide({
     <div className="mt-2 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground" aria-live="polite">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <span className="font-semibold text-foreground">
-          {words} words · about {words === 0 ? 0 : minutes} min to read
+          {words} kata · sekitar {words === 0 ? 0 : minutes} menit membaca
         </span>
         <span className={cn(tooLong && "font-semibold text-destructive")}>
           {tooLong
-            ? "Longer than 10 minutes: consider splitting this into two lessons with one goal each."
-            : "Aim for 5–7 minutes and one learning goal per lesson."}
+            ? "Lebih dari 10 menit: pertimbangkan membaginya menjadi dua pelajaran dengan satu tujuan masing-masing."
+            : "Usahakan 5–7 menit dan satu tujuan belajar per pelajaran."}
         </span>
         {words > 0 && (
           <Button type="button" variant="outline" size="xs" onClick={() => onUseAsDuration(minutes)}>
-            Use {minutes} min as duration
+            Gunakan {minutes} menit sebagai durasi
           </Button>
         )}
       </div>
       <ul className="mt-2 list-disc space-y-0.5 pl-4">
-        <li>Start with one sentence that says what the learner will be able to do.</li>
-        <li>Headings and short paragraphs: most readers scan before they read.</li>
-        <li>Explain every technical term where it first appears.</li>
-        <li>Give an example from real work before the rule.</li>
-        <li>End with a short check (a quiz lesson) so learners retrieve what they read.</li>
+        <li>Awali dengan satu kalimat tentang apa yang akan mampu dilakukan peserta.</li>
+        <li>Gunakan subjudul dan paragraf pendek: kebanyakan pembaca memindai sebelum membaca.</li>
+        <li>Jelaskan setiap istilah teknis saat pertama kali muncul.</li>
+        <li>Berikan contoh dari pekerjaan nyata sebelum aturannya.</li>
+        <li>Akhiri dengan latihan singkat (pelajaran kuis) agar peserta mengingat kembali isi bacaan.</li>
       </ul>
     </div>
   )

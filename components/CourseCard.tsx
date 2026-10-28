@@ -29,7 +29,7 @@ export function CourseCard({
             className="absolute inset-0 size-full object-cover"
           />
         ) : (
-          "course thumbnail"
+          "gambar kursus"
         )}
         <span className="absolute top-3 right-3 rounded-full bg-ring px-3 py-1 text-xs font-semibold text-white">
           {formatCourseAccess(course)}
@@ -39,7 +39,7 @@ export function CourseCard({
         {course.title}
       </div>
       <div className="text-[13px] text-muted-foreground">
-        {course.lesson_count} lessons · {course.duration_hours} hours
+        {course.lesson_count} pelajaran · {course.duration_hours} jam
       </div>
     </div>
   )

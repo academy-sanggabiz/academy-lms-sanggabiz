@@ -9,10 +9,10 @@ import type { CourseSection, LessonContentType } from "@/lib/courses"
 
 const typeLabel: Record<LessonContentType, string> = {
   video: "Video",
-  text: "Reading",
-  quiz: "Quiz",
-  mixed: "Mixed",
-  ppt: "Slides",
+  text: "Bacaan",
+  quiz: "Kuis",
+  mixed: "Campuran",
+  ppt: "Slide",
 }
 
 const typeIcon: Record<LessonContentType, typeof PlayCircle> = {
@@ -63,7 +63,7 @@ export function CourseCurriculum({
                       <span className="flex-1 truncate">{lesson.title}</span>
                       <span className="text-xs text-muted-foreground">
                         {lesson.content_type === "quiz" && lesson.quiz
-                          ? `${lesson.quiz.questions.length} questions`
+                          ? `${lesson.quiz.questions.length} soal`
                           : typeLabel[lesson.content_type]}
                       </span>
                     </>

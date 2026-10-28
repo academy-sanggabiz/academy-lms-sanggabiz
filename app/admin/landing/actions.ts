@@ -14,7 +14,7 @@ export async function saveLandingContentAction(
   try {
     await requireSuperAdmin()
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const result = await saveLandingContent(input)

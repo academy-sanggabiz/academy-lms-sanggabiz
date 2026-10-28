@@ -131,10 +131,10 @@ const styles = StyleSheet.create({
 })
 
 const CERTIFICATE_COPY: Record<string, { title: string; verb: string }> = {
-  completion: { title: "Certificate of Completion", verb: "has successfully completed" },
-  participation: { title: "Certificate of Participation", verb: "has successfully participated in" },
-  achievement: { title: "Certificate of Achievement", verb: "has successfully achieved" },
-  custom: { title: "Certificate", verb: "has successfully completed" },
+  completion: { title: "Sertifikat Kelulusan", verb: "telah berhasil menyelesaikan" },
+  participation: { title: "Sertifikat Partisipasi", verb: "telah berpartisipasi dalam" },
+  achievement: { title: "Sertifikat Prestasi", verb: "telah berhasil meraih" },
+  custom: { title: "Sertifikat", verb: "telah berhasil menyelesaikan" },
 }
 
 export type CertificateDocumentProps = {
@@ -168,7 +168,7 @@ export function CertificateDocument({
 }: CertificateDocumentProps) {
   const copy = CERTIFICATE_COPY[certificateType] ?? CERTIFICATE_COPY.completion
   const headline = certificateType === "custom" && customTitle ? customTitle : copy.title
-  const issuedDate = new Date(issuedAt).toLocaleDateString("en-US", {
+  const issuedDate = new Date(issuedAt).toLocaleDateString("id-ID", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -190,7 +190,7 @@ export function CertificateDocument({
         <View style={styles.content}>
           <Text style={styles.eyebrow}>Sanggabiz Academy</Text>
           <Text style={styles.title}>{headline}</Text>
-          <Text style={styles.presented}>This certifies that</Text>
+          <Text style={styles.presented}>Dengan ini menyatakan bahwa</Text>
           <Text style={styles.name}>{learnerName}</Text>
           <Text style={styles.description}>{description || `${copy.verb} ${courseTitle}.`}</Text>
           {additionalText ? <Text style={styles.additionalText}>{additionalText}</Text> : null}
@@ -210,8 +210,8 @@ export function CertificateDocument({
           </View>
 
           <View style={styles.meta}>
-            <Text style={styles.metaText}>Certificate No. {serial}</Text>
-            <Text style={styles.metaText}>Issued {issuedDate}</Text>
+            <Text style={styles.metaText}>Sertifikat No. {serial}</Text>
+            <Text style={styles.metaText}>Diterbitkan {issuedDate}</Text>
           </View>
         </View>
       </Page>

@@ -12,7 +12,7 @@ export function AssignmentColumnHeader({ column }: { column: GradingColumn }) {
       <Popover>
         <PopoverTrigger className="text-muted-foreground hover:text-foreground">
           <Info className="size-3.5" />
-          <span className="sr-only">Assignment info</span>
+          <span className="sr-only">Info tugas</span>
         </PopoverTrigger>
         <PopoverContent align="start">
           <div className="flex flex-col gap-1.5">
@@ -20,20 +20,20 @@ export function AssignmentColumnHeader({ column }: { column: GradingColumn }) {
             <p className="text-xs text-muted-foreground">
               {column.sectionTitle} · {column.lessonTitle}
             </p>
-            <p className="text-xs text-muted-foreground">Pass score: {column.passScore}%</p>
+            <p className="text-xs text-muted-foreground">Nilai lulus: {column.passScore}%</p>
             {/* Derived from is_assessment, not authored -- see quizGradeWeight. */}
             <p className="text-xs text-muted-foreground">
-              Counts {column.weight}× toward the course grade
+              Bobot {column.weight}× dalam nilai kursus
             </p>
             {column.questionPrompts.length > 0 && (
               <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-muted-foreground">
                 {/* Already sliced server-side -- see COLUMN_PROMPT_PREVIEW in lib/grading-server.ts. */}
                 {column.questionPrompts.map((prompt, i) => (
                   <li key={i} className="line-clamp-2">
-                    {prompt.replace(/<[^>]+>/g, " ").trim() || "Untitled question"}
+                    {prompt.replace(/<[^>]+>/g, " ").trim() || "Soal tanpa judul"}
                   </li>
                 ))}
-                {column.extraPromptCount > 0 && <li>+{column.extraPromptCount} more</li>}
+                {column.extraPromptCount > 0 && <li>+{column.extraPromptCount} lainnya</li>}
               </ul>
             )}
           </div>

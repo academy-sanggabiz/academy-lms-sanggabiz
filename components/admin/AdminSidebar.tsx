@@ -18,11 +18,11 @@ import { useNavigationBlocker } from "@/components/admin/NavigationBlockerContex
 
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/courses", label: "Course Management", icon: BookOpen },
-  { href: "/admin/grading", label: "Grading", icon: ClipboardCheck },
-  { href: "/admin/tracking", label: "Online Tracking", icon: Activity },
-  { href: "/admin/learners", label: "Learners", icon: Users },
-  { href: "/admin/purchases", label: "Purchase", icon: ShoppingCart },
+  { href: "/admin/courses", label: "Manajemen Kursus", icon: BookOpen },
+  { href: "/admin/grading", label: "Penilaian", icon: ClipboardCheck },
+  { href: "/admin/tracking", label: "Pelacakan", icon: Activity },
+  { href: "/admin/learners", label: "Peserta", icon: Users },
+  { href: "/admin/purchases", label: "Pembelian", icon: ShoppingCart },
 ]
 
 export function AdminSidebar({
@@ -48,7 +48,7 @@ export function AdminSidebar({
         <button
           onClick={onToggle}
           className="flex size-8 flex-none items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-          title="Close sidebar"
+          title="Tutup sidebar"
         >
           <PanelLeftClose className="size-[18px]" />
         </button>
@@ -59,7 +59,7 @@ export function AdminSidebar({
           <NavLink key={href} href={href} label={label} icon={Icon} />
         ))}
         {role === "superadmin" && (
-          <NavLink href="/admin/landing" label="Landing Page" icon={Layout} />
+          <NavLink href="/admin/landing" label="Halaman Depan" icon={Layout} />
         )}
       </nav>
 
@@ -89,7 +89,7 @@ function NavLink({
     <Link
       href={href}
       onNavigate={(e) => {
-        if (isBlocked && !window.confirm("You have unsaved changes. Leave without saving?")) {
+        if (isBlocked && !window.confirm("Ada perubahan yang belum disimpan. Tinggalkan tanpa menyimpan?")) {
           e.preventDefault()
         }
       }}

@@ -27,7 +27,7 @@ export function ImportGradesDialog() {
 
   function processFile(file: File) {
     if (!file.name.toLowerCase().endsWith(".csv") && file.type !== "text/csv") {
-      toast.error("Please select a CSV file")
+      toast.error("Pilih berkas CSV")
       return
     }
 
@@ -43,7 +43,7 @@ export function ImportGradesDialog() {
       }
       setSummary(result.data)
       if (result.data.failedRows.length === 0) {
-        toast.success(`Graded ${result.data.gradedCount} attempt${result.data.gradedCount === 1 ? "" : "s"}`)
+        toast.success(`${result.data.gradedCount} percobaan dinilai`)
       }
     })
   }
@@ -73,14 +73,14 @@ export function ImportGradesDialog() {
       }}
     >
       <DialogTrigger render={<Button variant="outline" />}>
-        Import Grades
+        Impor Nilai
       </DialogTrigger>
       <DialogContent className="max-w-[460px]">
         <DialogHeader>
-          <DialogTitle>Import Grades from CSV</DialogTitle>
+          <DialogTitle>Impor Nilai dari CSV</DialogTitle>
           <DialogDescription>
-            Upload a CSV exported from this Grading page (with essay scores filled in) to apply grades in
-            bulk.
+            Unggah CSV yang diekspor dari halaman Penilaian ini (dengan nilai esai sudah diisi) untuk
+            menerapkan nilai sekaligus.
           </DialogDescription>
         </DialogHeader>
 
@@ -103,7 +103,7 @@ export function ImportGradesDialog() {
             <p className="text-sm font-medium">{fileName}</p>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Drag & drop your CSV here, or <span className="font-medium text-foreground">click to browse</span>
+              Seret & lepas CSV di sini, atau <span className="font-medium text-foreground">klik untuk memilih berkas</span>
             </p>
           )}
           <input
@@ -118,10 +118,10 @@ export function ImportGradesDialog() {
 
         {summary && (
           <div className="rounded-lg bg-muted p-3 text-sm">
-            <div>{summary.gradedCount} attempt(s) graded successfully.</div>
+            <div>{summary.gradedCount} percobaan berhasil dinilai.</div>
             {summary.failedRows.length > 0 && (
               <div className="mt-2 text-destructive">
-                {summary.failedRows.length} row(s) failed:
+                {summary.failedRows.length} baris gagal:
                 <ul className="mt-1 list-disc pl-4">
                   {summary.failedRows.map((r, i) => (
                     <li key={i}>
@@ -135,7 +135,7 @@ export function ImportGradesDialog() {
         )}
 
         <DialogFooter>
-          <Button onClick={() => setOpen(false)}>Done</Button>
+          <Button onClick={() => setOpen(false)}>Selesai</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

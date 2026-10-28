@@ -45,7 +45,7 @@ export async function getMyPurchases(): Promise<LearnerPurchase[]> {
     const course = Array.isArray(row.course) ? row.course[0] : row.course
     return {
       id: row.id,
-      courseTitle: course?.title ?? "Untitled course",
+      courseTitle: course?.title ?? "Kursus tanpa judul",
       amount: row.amount,
       currency: row.currency,
       status: row.status,

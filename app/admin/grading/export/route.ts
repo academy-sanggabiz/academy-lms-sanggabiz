@@ -77,7 +77,7 @@ async function buildQuizCsv(
     const responseByQuestion = new Map((attempt.responses ?? []).map((r) => [r.question_id, r]))
 
     const row = [
-      learner?.full_name ?? "Unknown learner",
+      learner?.full_name ?? "Peserta tidak dikenal",
       attempt.learner_id,
       attempt.id,
       attempt.score !== null ? String(attempt.score) : "",
@@ -101,19 +101,19 @@ export async function GET(request: Request) {
   try {
     admin = await requireAdmin()
   } catch {
-    return new NextResponse("Not authorized", { status: 403 })
+    return new NextResponse("Anda tidak berwenang", { status: 403 })
   }
 
   const url = new URL(request.url)
   const quizId = url.searchParams.get("quizId")
   const courseId = url.searchParams.get("courseId")
-  if (!quizId && !courseId) return new NextResponse("Missing quizId or courseId", { status: 400 })
+  if (!quizId && !courseId) return new NextResponse("Parameter quizId atau courseId wajib diisi", { status: 400 })
 
   const supabase = await createClient()
 
   if (quizId) {
     const quiz = await loadQuizForExport(supabase, quizId, admin)
-    if (!quiz) return new NextResponse("Quiz not found", { status: 404 })
+    if (!quiz) return new NextResponse("Kuis tidak ditemukan", { status: 404 })
 
     const { data: allQuestions, error: questionsError } = await supabase
       .from("questions")
@@ -121,7 +121,7 @@ export async function GET(request: Request) {
       .eq("quiz_id", quizId)
       .order("position", { ascending: true })
 
-    if (questionsError || !allQuestions) return new NextResponse("Could not load questions", { status: 500 })
+    if (questionsError || !allQuestions) return new NextResponse("Gagal memuat soal", { status: 500 })
 
     // An all-objective quiz exports too -- it just has no per-question
     // answer/score pairs, only the attempt-level Quiz Score column.
@@ -153,9 +153,9 @@ export async function GET(request: Request) {
   // import path already skips blank score cells, so no import-side change
   // is needed to round-trip this shape.
   const { data: course } = await supabase.from("courses").select("id, title, created_by").eq("id", courseId!).single()
-  if (!course) return new NextResponse("Course not found", { status: 404 })
+  if (!course) return new NextResponse("Kursus tidak ditemukan", { status: 404 })
   if (admin.role !== "superadmin" && course.created_by !== admin.userId) {
-    return new NextResponse("Course not found", { status: 404 })
+    return new NextResponse("Kursus tidak ditemukan", { status: 404 })
   }
 
   // Scoped by the join rather than selecting every quiz on the platform and
@@ -166,7 +166,7 @@ export async function GET(request: Request) {
     .eq("lesson.section.course_id", course.id)
     .order("title", { ascending: true })
 
-  if (quizzesError || !courseQuizzes) return new NextResponse("Could not load quizzes", { status: 500 })
+  if (quizzesError || !courseQuizzes) return new NextResponse("Gagal memuat kuis", { status: 500 })
 
   // One questions query for the whole course instead of one per quiz.
   const { data: allQuestions, error: questionsError } = await supabase
@@ -178,7 +178,7 @@ export async function GET(request: Request) {
     )
     .order("position", { ascending: true })
 
-  if (questionsError || !allQuestions) return new NextResponse("Could not load questions", { status: 500 })
+  if (questionsError || !allQuestions) return new NextResponse("Gagal memuat soal", { status: 500 })
 
   const questionsByQuiz = new Map<string, QuestionRow[]>()
   for (const question of allQuestions) {

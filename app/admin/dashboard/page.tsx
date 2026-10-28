@@ -48,20 +48,20 @@ export default async function AdminDashboardPage({
       <div className="mb-6">
         <h1 className="text-[30px] font-bold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">
-          Overview of learners, courses, and recent activity
+          Ringkasan peserta, kursus, dan aktivitas terbaru
         </p>
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Users} label="Total Learners" value={learnerStats.totalLearners} />
+        <StatCard icon={Users} label="Total Peserta" value={learnerStats.totalLearners} />
         <StatCard
           icon={BookOpen}
-          label="Total Courses"
+          label="Total Kursus"
           value={courseStats.totalCourses}
-          hint={`${courseStats.publishedCourses} published`}
+          hint={`${courseStats.publishedCourses} terbit`}
         />
-        <StatCard icon={GraduationCap} label="Total Enrollments" value={learnerStats.totalEnrollments} />
-        <StatCard icon={Trophy} label="Completed Courses" value={learnerStats.totalCompleted} />
+        <StatCard icon={GraduationCap} label="Total Pendaftaran" value={learnerStats.totalEnrollments} />
+        <StatCard icon={Trophy} label="Kursus Selesai" value={learnerStats.totalCompleted} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

@@ -7,7 +7,7 @@ import { ListPagination } from "@/components/admin/ListPagination"
 const PREFIX = "course"
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
+  return new Date(iso).toLocaleDateString("id-ID", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -17,17 +17,17 @@ function formatDate(iso: string): string {
 export function RecentCoursesCard({ courses }: { courses: Paginated<Course> }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
-      <h2 className="mb-4 text-sm font-semibold">Recent Courses</h2>
+      <h2 className="mb-4 text-sm font-semibold">Kursus Terbaru</h2>
       {courses.rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No courses yet</p>
+        <p className="text-sm text-muted-foreground">Belum ada kursus</p>
       ) : (
         <div className="max-h-[320px] overflow-y-auto rounded-xl border border-border">
           <Table>
             <TableHeader>
               <TableRow className="sticky top-0 z-10 bg-muted/50 hover:bg-muted/50">
-                <TableHead>Title</TableHead>
+                <TableHead>Judul</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>Tanggal</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -45,7 +45,7 @@ export function RecentCoursesCard({ courses }: { courses: Paginated<Course> }) {
                             : "border-pill-border bg-draft-background text-destructive"
                         }
                       >
-                        {isPublished ? "Published" : "Draft"}
+                        {isPublished ? "Terbit" : "Draf"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs whitespace-nowrap text-muted-foreground">{formatDate(c.created_at)}</TableCell>

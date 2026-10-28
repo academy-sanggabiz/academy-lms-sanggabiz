@@ -61,7 +61,7 @@ export function ImageDropzone({
         ) : (
           <div className="flex flex-col items-center gap-1.5 text-muted-foreground">
             <Upload className="size-4" />
-            <span className="text-xs">Click to upload image</span>
+            <span className="text-xs">Klik untuk mengunggah gambar</span>
           </div>
         )}
 
@@ -73,7 +73,7 @@ export function ImageDropzone({
               onChange("")
             }}
             className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm hover:bg-background"
-            aria-label={`Remove ${label.toLowerCase()}`}
+            aria-label={`Hapus ${label.toLowerCase()}`}
           >
             <X className="size-3.5" />
           </button>

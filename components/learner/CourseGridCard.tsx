@@ -30,7 +30,7 @@ export function CourseGridCard({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={course.thumbnail_url} alt="" className="absolute inset-0 size-full object-cover" />
           ) : (
-            "course thumbnail"
+            "gambar kursus"
           )}
           <span className="absolute top-3 right-3 rounded-full bg-ring px-3 py-1 text-xs font-semibold text-white">
             {price}
@@ -45,11 +45,11 @@ export function CourseGridCard({
       <div className="mb-3 flex flex-wrap gap-4 text-[13px] text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <BookOpen className="size-3.5" />
-          {course.lesson_count} lessons
+          {course.lesson_count} pelajaran
         </span>
         <span className="flex items-center gap-1.5">
           <Clock className="size-3.5" />
-          {course.duration_hours} hours
+          {course.duration_hours} jam
         </span>
         <span className="flex items-center gap-1.5">
           <Tag className="size-3.5" />
@@ -73,7 +73,7 @@ export function CourseGridCard({
           nativeButton={false}
         >
           <Eye className="size-3.5" />
-          Preview
+          Pratinjau
         </Button>
         <EnrollButton
           courseId={course.id}

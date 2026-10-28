@@ -31,7 +31,7 @@ export async function searchLearnersAction(
   try {
     await requireAdmin()
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const results = await searchLearners(query, courseId)
@@ -45,7 +45,7 @@ export async function enrollLearnerAction(
   try {
     await requireAdmin()
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const result = await enrollLearnerInCourse(learnerId, courseId)
@@ -62,7 +62,7 @@ export async function unenrollLearnerAction(
   try {
     await requireAdmin()
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const result = await unenrollLearnerFromCourse(learnerId, courseId)

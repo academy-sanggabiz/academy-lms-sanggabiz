@@ -42,7 +42,7 @@ export function Pagination({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-3 py-3">
       <p className="text-[13px] text-muted-foreground">
-        Showing {from}–{to} of {total}
+        Menampilkan {from}–{to} dari {total}
       </p>
 
       <div className="flex items-center gap-1">
@@ -51,7 +51,7 @@ export function Pagination({
           size="sm"
           disabled={disabled || page <= 1}
           onClick={() => onPageChange(page - 1)}
-          aria-label="Previous page"
+          aria-label="Halaman sebelumnya"
         >
           <ChevronLeft />
         </Button>
@@ -83,7 +83,7 @@ export function Pagination({
           size="sm"
           disabled={disabled || page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          aria-label="Next page"
+          aria-label="Halaman berikutnya"
         >
           <ChevronRight />
         </Button>
@@ -95,13 +95,13 @@ export function Pagination({
           onValueChange={(value) => onPageSizeChange(Number(value))}
           disabled={disabled}
         >
-          <SelectTrigger aria-label="Rows per page" className="h-9 w-[110px] bg-card">
+          <SelectTrigger aria-label="Baris per halaman" className="h-9 w-[110px] bg-card">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {PAGE_SIZES.map((size) => (
               <SelectItem key={size} value={String(size)}>
-                {size} / page
+                {size} / halaman
               </SelectItem>
             ))}
           </SelectContent>

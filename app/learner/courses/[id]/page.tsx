@@ -34,7 +34,7 @@ export default async function CourseDetailPage({
         <Button
           variant="outline"
           size="icon"
-          aria-label="Back to courses"
+          aria-label="Kembali ke daftar kursus"
           render={<Link href="/learner/courses" />}
           nativeButton={false}
         >
@@ -47,19 +47,19 @@ export default async function CourseDetailPage({
         <div className="flex flex-col gap-6 min-w-0">
           <Card>
             <CardContent>
-              <div className="mb-3.5 text-lg font-bold">Course Overview</div>
+              <div className="mb-3.5 text-lg font-bold">Ringkasan Kursus</div>
               <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">{course.description}</p>
               <div className="mt-4 flex gap-2 border-t border-muted pt-4 text-[13px] text-muted-foreground">
-                <span>{course.lesson_count} lessons</span>
+                <span>{course.lesson_count} pelajaran</span>
                 <span>·</span>
-                <span>{course.duration_hours} hours</span>
+                <span>{course.duration_hours} jam</span>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent>
-              <div className="mb-2 text-lg font-bold">Course Content</div>
+              <div className="mb-2 text-lg font-bold">Isi kursus</div>
               <CourseCurriculumGate
                 sections={course.sections}
                 courseId={course.id}
@@ -72,7 +72,7 @@ export default async function CourseDetailPage({
           {course.who_for.length > 0 && (
             <Card>
               <CardContent>
-                <div className="mb-3.5 text-lg font-bold">Who This Course Is For</div>
+                <div className="mb-3.5 text-lg font-bold">Untuk Siapa Kursus Ini</div>
                 <div className="flex flex-col gap-3.5 text-sm leading-relaxed text-muted-foreground">
                   {course.who_for.map((line, i) => (
                     <div key={i}>{line}</div>
@@ -85,7 +85,7 @@ export default async function CourseDetailPage({
           {course.requirements.length > 0 && (
             <Card>
               <CardContent>
-                <div className="mb-3.5 text-lg font-bold">Requirements</div>
+                <div className="mb-3.5 text-lg font-bold">Persyaratan</div>
                 <div className="flex flex-col gap-3.5 text-sm leading-relaxed text-muted-foreground">
                   {course.requirements.map((line, i) => (
                     <div key={i}>{line}</div>
@@ -99,8 +99,8 @@ export default async function CourseDetailPage({
             <CardContent className="flex items-center gap-4">
               <div className="course-thumb-placeholder size-16 shrink-0 rounded-full" />
               <div>
-                <div className="text-[17px] font-bold">{course.instructor?.name ?? "Sanggabiz Team"}</div>
-                <div className="mt-0.5 text-[13px] text-muted-foreground">Course Instructor</div>
+                <div className="text-[17px] font-bold">{course.instructor?.name ?? "Tim Sanggabiz"}</div>
+                <div className="mt-0.5 text-[13px] text-muted-foreground">Instruktur Kursus</div>
               </div>
             </CardContent>
           </Card>
@@ -117,7 +117,7 @@ export default async function CourseDetailPage({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={course.thumbnail_url} alt="" className="absolute inset-0 size-full object-cover" />
             ) : (
-              "course thumbnail"
+              "gambar kursus"
             )}
           </div>
           <div className="mb-4 flex items-center justify-between">
@@ -135,13 +135,13 @@ export default async function CourseDetailPage({
           {courseGrade && courseGrade.available > 0 && (
             <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
               <div className="flex items-baseline justify-between">
-                <span className="text-sm font-semibold">Course Grade</span>
+                <span className="text-sm font-semibold">Nilai Kursus</span>
                 <span className="text-lg font-bold">{courseGrade.grade}%</span>
               </div>
               {courseGrade.pendingCount > 0 && (
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {courseGrade.pendingCount} assessment{courseGrade.pendingCount === 1 ? "" : "s"} awaiting
-                  instructor review — grade may still rise.
+                  {courseGrade.pendingCount} studi kasus menunggu penilaian instruktur.
+                  Nilai masih dapat naik.
                 </p>
               )}
             </div>
@@ -150,7 +150,7 @@ export default async function CourseDetailPage({
           <div className="mt-4 flex flex-col gap-3 text-[13.5px] text-muted-foreground">
             <div className="flex items-center gap-2.5">
               <FileText className="size-4" />
-              {course.resource_count} resources
+              {course.resource_count} sumber belajar
             </div>
             <div className="flex items-center gap-2.5">
               <Globe className="size-4" />
@@ -158,7 +158,7 @@ export default async function CourseDetailPage({
             </div>
             <div className="flex items-center gap-2.5">
               <Users className="size-4" />
-              {course.enrolled_count} learners enrolled
+              {course.enrolled_count} peserta terdaftar
             </div>
           </div>
         </div>

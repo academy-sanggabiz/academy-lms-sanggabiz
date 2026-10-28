@@ -49,13 +49,13 @@ export function CourseCurriculumGate({
       <Dialog open={open && !enrolled} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Enrollment required</DialogTitle>
+            <DialogTitle>Perlu mendaftar</DialogTitle>
             <DialogDescription>
-              You need to enroll in this course before you can start learning.
+              Anda perlu mengikuti kursus ini sebelum mulai belajar.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+            <DialogClose render={<Button variant="outline" />}>Batal</DialogClose>
             <EnrollButton courseId={courseId} state="not_enrolled" onEnrolled={() => setOpen(false)} />
           </DialogFooter>
         </DialogContent>

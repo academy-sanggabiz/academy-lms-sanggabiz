@@ -9,7 +9,7 @@ import { LearnShell } from "@/components/learn/LearnShell"
 import { LearnSidebar } from "@/components/learn/LearnSidebar"
 import { LessonPane } from "@/components/learn/LessonPane"
 
-export const metadata = { title: "Course preview" }
+export const metadata = { title: "Pratinjau kursus" }
 
 export default async function AdminPreviewPage({
   params,
@@ -50,18 +50,18 @@ export default async function AdminPreviewPage({
             className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-input hover:bg-muted"
           >
             <ArrowLeft className="size-4" aria-hidden />
-            <span className="sr-only">Back to course overview</span>
+            <span className="sr-only">Kembali ke ringkasan kursus</span>
           </Link>
           <img src="/logo.png" alt="" className="hidden size-7 object-contain sm:block" />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">{course.title}</div>
             <div className="truncate text-xs text-muted-foreground">
-              Lesson {currentIndex + 1} of {allLessons.length}
+              Pelajaran {currentIndex + 1} dari {allLessons.length}
             </div>
           </div>
           <Badge variant="outline" className="flex items-center gap-1.5">
             <Eye className="size-3.5" aria-hidden />
-            Preview Mode
+            Mode Pratinjau
           </Badge>
         </>
       }

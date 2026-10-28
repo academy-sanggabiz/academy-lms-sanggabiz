@@ -12,27 +12,27 @@ export function OnlineTrackingCard({ rows }: { rows: Paginated<TrackingEnrollmen
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold">Online Tracking</h2>
+        <h2 className="text-sm font-semibold">Pelacakan</h2>
         <Button
           size="sm"
           variant="outline"
           render={<Link href="/admin/tracking" />}
           nativeButton={false}
         >
-          View All
+          Lihat Semua
         </Button>
       </div>
       {rows.rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No enrollments yet</p>
+        <p className="text-sm text-muted-foreground">Belum ada pendaftaran</p>
       ) : (
         <div className="max-h-[320px] overflow-y-auto rounded-xl border border-border">
           <Table>
             <TableHeader>
               <TableRow className="sticky top-0 z-10 bg-muted/50 hover:bg-muted/50">
-                <TableHead>Learner</TableHead>
-                <TableHead>Course</TableHead>
-                <TableHead>Module</TableHead>
-                <TableHead>Assignment</TableHead>
+                <TableHead>Peserta</TableHead>
+                <TableHead>Kursus</TableHead>
+                <TableHead>Modul</TableHead>
+                <TableHead>Tugas</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
