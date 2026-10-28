@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import type { Course, CourseDetail, CourseSection, Instructor } from "@/lib/courses"
+import type { Course, CourseDetail, CourseSection, Instructor, Lesson, Question } from "@/lib/courses"
 
 export async function getPublishedCourses(): Promise<Course[]> {
   const supabase = await createClient()
@@ -56,20 +56,39 @@ export async function getEnrolledCourses(): Promise<Course[]> {
     .filter((course): course is Course => course != null)
 }
 
+type PublicLessonRow = {
+  id: string
+  section_id: string
+  title: string
+  position: number
+  content_type: Lesson["content_type"]
+  duration_seconds: number | null
+  resource_count: number
+}
+
+/**
+ * Course detail for the learner side: the "sales page" (/learner/courses/[id])
+ * and the lesson player (lib/learn-server.ts).
+ *
+ * Two layers, matching the RLS split in databaseSetup.sql section 17:
+ *  - the curriculum skeleton (section + lesson titles, type, duration) comes
+ *    from the `lessons_public` view, readable by anyone who can read the
+ *    course -- so a non-enrolled visitor still sees what the course contains;
+ *  - lesson content, video_url, resources, quiz questions and options come
+ *    from the base tables, which RLS only opens to learners enrolled in the
+ *    course and to the admin who owns it (can_read_course_content()).
+ * For everyone else the second query simply returns no rows and each lesson
+ * is filled with empty content (video_url/content null, no resources, quiz
+ * null), so callers never see content they are not entitled to and never
+ * have to branch on enrollment to stay safe.
+ */
 export async function getCourseDetail(id: string): Promise<CourseDetail | null> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("courses")
     .select(
       `*,
-      sections:course_sections(
-        *,
-        lessons(
-          *,
-          resources(*),
-          quiz:quizzes(*, questions(id,type,prompt,points,position,allow_multiple,case_sensitive))
-        )
-      ),
+      sections:course_sections(*),
       course_instructors(instructor:instructors(*))`
     )
     .eq("id", id)
@@ -81,14 +100,35 @@ export async function getCourseDetail(id: string): Promise<CourseDetail | null> 
     return null
   }
 
-  // The query above omits `options` (question_options is admin-only now), so
-  // each question here is missing that field until it's stitched back on
-  // below -- cast through CourseSection since the shape is otherwise identical.
-  const rawSections = data.sections as CourseSection[]
+  const rawSections = data.sections as Omit<CourseSection, "lessons">[]
+  const sectionIds = rawSections.map((s) => s.id)
 
-  const questionIds = rawSections.flatMap((s) =>
-    s.lessons.flatMap((l) => (l.quiz ? l.quiz.questions.map((q) => q.id) : []))
-  )
+  const [{ data: publicRows, error: publicError }, { data: fullRows, error: fullError }] = await Promise.all([
+    supabase
+      .from("lessons_public")
+      .select("id, section_id, title, position, content_type, duration_seconds, resource_count")
+      .eq("course_id", id),
+    sectionIds.length > 0
+      ? supabase
+          .from("lessons")
+          .select(
+            "*, resources(*), quiz:quizzes(*, questions(id,type,prompt,points,position,allow_multiple,case_sensitive))"
+          )
+          .in("section_id", sectionIds)
+      : Promise.resolve({ data: [], error: null }),
+  ])
+
+  if (publicError) console.error("getCourseDetail curriculum lookup failed:", publicError.message)
+  if (fullError) console.error("getCourseDetail content lookup failed:", fullError.message)
+
+  // The query above omits `options` (question_options is admin-only), so each
+  // question is missing that field until it's stitched back on below.
+  const fullById = new Map((fullRows ?? []).map((row) => [row.id as string, row as Lesson]))
+
+  const questionIds = [...fullById.values()].flatMap((l) => {
+    const quiz = Array.isArray(l.quiz) ? l.quiz[0] : l.quiz
+    return quiz ? quiz.questions.map((q: Question) => q.id) : []
+  })
 
   // question_options.is_correct is admin-only at the RLS level (see
   // databaseSetup.sql) -- the learner-facing player only ever needs option
@@ -112,28 +152,37 @@ export async function getCourseDetail(id: string): Promise<CourseDetail | null> 
     optionsByQuestion.set(row.question_id, list)
   }
 
-  const sections = rawSections
+  const toLesson = (row: PublicLessonRow): Lesson => {
+    const full = fullById.get(row.id)
+    if (!full) {
+      // Not entitled to the content: curriculum fields only.
+      return { ...row, video_url: null, content: null, quiz: null, resources: [] }
+    }
+    const quiz = Array.isArray(full.quiz) ? full.quiz[0] : full.quiz
+    return {
+      ...full,
+      resources: [...(full.resources ?? [])].sort((a, b) => a.position - b.position),
+      quiz: quiz
+        ? {
+            ...quiz,
+            questions: [...quiz.questions]
+              .map((q) => ({
+                ...q,
+                options: (optionsByQuestion.get(q.id) ?? []).sort((a, b) => a.position - b.position),
+              }))
+              .sort((a, b) => a.position - b.position),
+          }
+        : null,
+    }
+  }
+
+  const publicLessons = (publicRows ?? []) as PublicLessonRow[]
+  const sections: CourseSection[] = rawSections
     .map((section) => ({
       ...section,
-      lessons: [...section.lessons]
-        .map((lesson) => {
-          const quiz = Array.isArray(lesson.quiz) ? lesson.quiz[0] : lesson.quiz
-          return {
-            ...lesson,
-            resources: [...(lesson.resources ?? [])].sort((a, b) => a.position - b.position),
-            quiz: quiz
-              ? {
-                  ...quiz,
-                  questions: [...quiz.questions]
-                    .map((q) => ({
-                      ...q,
-                      options: (optionsByQuestion.get(q.id) ?? []).sort((a, b) => a.position - b.position),
-                    }))
-                    .sort((a, b) => a.position - b.position),
-                }
-              : null,
-          }
-        })
+      lessons: publicLessons
+        .filter((l) => l.section_id === section.id)
+        .map(toLesson)
         .sort((a, b) => a.position - b.position),
     }))
     .sort((a, b) => a.position - b.position)
@@ -141,20 +190,20 @@ export async function getCourseDetail(id: string): Promise<CourseDetail | null> 
   const instructorRows = data.course_instructors as { instructor: Instructor }[]
   const instructor = instructorRows[0]?.instructor ?? null
 
-  const lessonIds = sections.flatMap((s) => s.lessons.map((l) => l.id))
+  // Counted from the public view so the sales page shows the real number
+  // even to visitors who can't read the resources themselves.
+  const resourceCount = publicLessons.reduce((sum, l) => sum + (l.resource_count ?? 0), 0)
 
-  const [{ count: resourceCount }, { count: enrolledCount }] = await Promise.all([
-    lessonIds.length > 0
-      ? supabase.from("resources").select("*", { count: "exact", head: true }).in("lesson_id", lessonIds)
-      : Promise.resolve({ count: 0 }),
-    supabase.from("enrollments").select("*", { count: "exact", head: true }).eq("course_id", id),
-  ])
+  const { count: enrolledCount } = await supabase
+    .from("enrollments")
+    .select("*", { count: "exact", head: true })
+    .eq("course_id", id)
 
   return {
     ...data,
     sections,
     instructor,
-    resource_count: resourceCount ?? 0,
+    resource_count: resourceCount,
     enrolled_count: enrolledCount ?? 0,
   }
 }
