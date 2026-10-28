@@ -33,7 +33,7 @@ v2 upgrades v1 to our [Digital Learning Standard](./docs/STANDAR-DIGITAL-LEARNIN
 
 - **Accessible (WCAG 2.2 AA):** retuned colour tokens (every text pair ≥ 4.5:1), solid focus ring, skip link, page titles, accessible names, 24px targets, keyboard lesson reordering, image alt text. `npm run audit:a11y` reports **0 axe violations on 26 pages**.
 - **Mobile-ready player:** course content becomes a drawer below `lg`; no horizontal scroll at 390px; "Lesson 3 of 8 · Module 1", lessons done and time left in the header.
-- **One clear next step:** "Complete & continue" under every lesson; a real *Continue learning* card on the dashboard (next lesson + progress).
+- **One clear next step:** "Selesai & lanjut" (complete & continue) under every lesson; a real *Lanjutkan belajar* (continue learning) card on the dashboard (next lesson + progress).
 - **Feedback that teaches:** per-question explanations shown after a quiz is submitted (RLS keeps them hidden before), results in words, next-step guidance.
 - **Authoring guidance:** live reading time against the 5–7 minute, one-goal lesson size, plus a content checklist.
 - **Platform:** Next.js 16.4.3 with `proxy.ts`, a lockfile that builds on Linux/CI, 0 production dependency vulnerabilities.

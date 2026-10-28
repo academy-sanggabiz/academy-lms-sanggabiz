@@ -101,7 +101,7 @@ try {
     const editHref = await page.locator('a[href$="/edit"]').first().getAttribute("href").catch(() => null)
     if (editHref) {
       await visit(page, editHref)
-      for (const tab of ["Lessons", "Settings", "Learners", "Preview"]) {
+      for (const tab of ["Pelajaran", "Pengaturan", "Peserta", "Pratinjau"]) {
         await page.click(`[role=tab]:has-text("${tab}")`)
         await page.waitForTimeout(500)
         await audit(page, `${editHref} [${tab}]`)
