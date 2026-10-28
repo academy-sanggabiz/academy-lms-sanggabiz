@@ -60,7 +60,7 @@ export function SignupForm() {
           We sent a confirmation link to <span className="font-medium text-foreground">{state.email}</span>.
           Click it to activate your account.
         </p>
-        <Link href="/auth/login" className="inline-block text-sm text-ring hover:underline">
+        <Link href="/auth/login" className="inline-block text-sm text-ring underline underline-offset-4">
           Back to log in
         </Link>
       </div>
@@ -153,7 +153,7 @@ export function SignupForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/auth/login" className="text-ring hover:underline">
+        <Link href="/auth/login" className="text-ring underline underline-offset-4">
           Log in
         </Link>
       </p>

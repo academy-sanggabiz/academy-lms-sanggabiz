@@ -56,7 +56,7 @@ export function CertificateSettings() {
             Issue certificates to students upon course completion
           </div>
         </div>
-        <Switch checked={settings.enabled} onCheckedChange={(checked) => save({ enabled: checked })} />
+        <Switch aria-label="Enable certificate" checked={settings.enabled} onCheckedChange={(checked) => save({ enabled: checked })} />
       </div>
 
       <div className="max-w-sm space-y-1.5">

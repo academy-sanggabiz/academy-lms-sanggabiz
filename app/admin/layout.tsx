@@ -1,9 +1,12 @@
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { AdminShell } from "@/components/admin/AdminShell"
 import { resolveAdminProfile } from "@/lib/auth/require-admin"
 import { createClient } from "@/lib/supabase/server"
 import { getNotifications } from "@/lib/notifications-server"
+
+export const metadata: Metadata = { title: "Admin" }
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const result = await resolveAdminProfile()

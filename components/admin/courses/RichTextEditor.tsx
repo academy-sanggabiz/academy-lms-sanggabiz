@@ -112,9 +112,12 @@ const UPDATE_DEBOUNCE_MS = 400
 export function RichTextEditor({
   value,
   onChange,
+  ariaLabel = "Content editor",
 }: {
   value: string
   onChange: (html: string) => void
+  /** Accessible name of the editable area (WCAG 4.1.2). */
+  ariaLabel?: string
 }) {
   const onChangeRef = useRef(onChange)
   useEffect(() => {
@@ -163,6 +166,8 @@ export function RichTextEditor({
     content: value,
     editorProps: {
       attributes: {
+        "aria-label": ariaLabel,
+        "aria-multiline": "true",
         class: "lesson-prose min-h-[160px] rounded-b-lg border border-t-0 border-border bg-card px-3.5 py-3 focus:outline-none",
       },
       transformPastedHTML: stripPastedColor,

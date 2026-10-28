@@ -95,7 +95,7 @@ export function Pagination({
           onValueChange={(value) => onPageSizeChange(Number(value))}
           disabled={disabled}
         >
-          <SelectTrigger className="h-9 w-[110px] bg-card">
+          <SelectTrigger aria-label="Rows per page" className="h-9 w-[110px] bg-card">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

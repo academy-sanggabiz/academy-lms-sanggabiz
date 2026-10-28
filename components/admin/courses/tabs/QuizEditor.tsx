@@ -269,6 +269,7 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
           <div className="space-y-1.5">
             <Label>Prompt</Label>
             <RichTextEditor
+              ariaLabel={`Question ${index + 1} prompt`}
               value={prompt}
               onChange={(html) => {
                 const next = html.replace(/<[^>]*>/g, "").trim() ? html : ""

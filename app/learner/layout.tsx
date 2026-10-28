@@ -1,9 +1,12 @@
+import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { LearnerShell } from "@/components/learner/LearnerShell"
 import { createClient } from "@/lib/supabase/server"
 import { getNotifications } from "@/lib/notifications-server"
 import { resolveUserRole, roleHomePath } from "@/lib/auth/require-admin"
+
+export const metadata: Metadata = { title: "My learning" }
 
 export default async function LearnerLayout({ children }: { children: React.ReactNode }) {
   const userRole = await resolveUserRole()

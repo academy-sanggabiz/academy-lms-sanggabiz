@@ -262,7 +262,7 @@ function QuestionCard({
           })}
         </div>
       ) : question.type === "essay" ? (
-        <RichTextEditor value={value} onChange={onChange} />
+        <RichTextEditor ariaLabel="Your answer" value={value} onChange={onChange} />
       ) : question.type === "file_upload" ? (
         <FileUploadAnswer value={value} onChange={onChange} />
       ) : (
@@ -300,7 +300,7 @@ export function FileUploadAnswer({
           href={value}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex w-fit items-center gap-2 text-sm text-ring hover:underline"
+          className="flex w-fit items-center gap-2 text-sm text-ring underline underline-offset-4"
         >
           <LinkIcon className="size-4" />
           Open submitted link

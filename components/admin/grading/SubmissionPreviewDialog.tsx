@@ -87,7 +87,7 @@ export function SubmissionPreviewDialog({
                       href={response.response}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3.5 py-2.5 text-sm font-medium text-ring hover:underline"
+                      className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3.5 py-2.5 text-sm font-medium text-ring underline underline-offset-4"
                     >
                       <LinkIcon className="size-4 shrink-0" />
                       Open submitted link

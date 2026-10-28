@@ -12,6 +12,8 @@ import { LearnShell } from "@/components/learn/LearnShell"
 import { LearnSidebar } from "@/components/learn/LearnSidebar"
 import { LessonPane } from "@/components/learn/LessonPane"
 
+export const metadata = { title: "Lesson" }
+
 export default async function LearnPage({
   params,
   searchParams,

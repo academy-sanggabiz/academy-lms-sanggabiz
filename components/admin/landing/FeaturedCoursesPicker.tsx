@@ -44,7 +44,7 @@ export function FeaturedCoursesPicker({
     <div className="space-y-3">
       <div className="flex gap-2.5">
         <Select value={pickerValue} onValueChange={(v) => v && setPickerValue(v)}>
-          <SelectTrigger className="flex-1">
+          <SelectTrigger aria-label="Course to feature" className="flex-1">
             <SelectValue placeholder="Select a course" />
           </SelectTrigger>
           <SelectContent>

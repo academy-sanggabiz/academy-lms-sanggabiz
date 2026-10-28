@@ -115,7 +115,7 @@ export function LandingForm({
             control={form.control}
             name="subheading"
             render={({ field }) => (
-              <RichTextEditor value={field.value} onChange={field.onChange} />
+              <RichTextEditor ariaLabel="Subheading" value={field.value} onChange={field.onChange} />
             )}
           />
         </div>
@@ -158,8 +158,9 @@ export function LandingForm({
                 size="sm"
                 disabled={fields.length <= 1}
                 onClick={() => remove(index)}
+                aria-label={`Remove feature ${index + 1}`}
               >
-                <Trash2 className="size-4" />
+                <Trash2 className="size-4" aria-hidden />
               </Button>
             </div>
 
@@ -192,7 +193,11 @@ export function LandingForm({
                 control={form.control}
                 name={`features.${index}.description` as const}
                 render={({ field }) => (
-                  <RichTextEditor value={field.value} onChange={field.onChange} />
+                  <RichTextEditor
+                    ariaLabel={`Feature ${index + 1} description`}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
                 )}
               />
             </div>

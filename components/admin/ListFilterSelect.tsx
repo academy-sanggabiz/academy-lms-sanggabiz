@@ -28,7 +28,7 @@ export function ListFilterSelect({
       onValueChange={(next) => setParams({ [paramKey]: next === defaultValue ? null : next })}
       disabled={isPending}
     >
-      <SelectTrigger className={className ?? "h-9 w-[160px] bg-card"}>
+      <SelectTrigger aria-label={placeholder} className={className ?? "h-9 w-[160px] bg-card"}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

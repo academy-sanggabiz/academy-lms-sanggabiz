@@ -50,7 +50,7 @@ export function PrerequisitesSettings({ availableCourses }: { availableCourses: 
             Require learners to complete other courses before enrolling in this course
           </div>
         </div>
-        <Switch checked={draft.requirePrerequisites} onCheckedChange={handleToggle} />
+        <Switch aria-label="Require prerequisites" checked={draft.requirePrerequisites} onCheckedChange={handleToggle} />
       </div>
 
       {draft.requirePrerequisites && (
@@ -59,7 +59,7 @@ export function PrerequisitesSettings({ availableCourses }: { availableCourses: 
             <div className="mb-2.5 text-xs font-semibold">Prerequisite Courses</div>
             <div className="flex gap-2.5">
               <Select value={pickerValue} onValueChange={(v) => v && setPickerValue(v)}>
-                <SelectTrigger className="flex-1">
+                <SelectTrigger aria-label="Prerequisite course" className="flex-1">
                   <SelectValue placeholder="Select a course" />
                 </SelectTrigger>
                 <SelectContent>

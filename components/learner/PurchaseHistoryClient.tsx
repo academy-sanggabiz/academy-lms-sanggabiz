@@ -63,11 +63,12 @@ export function PurchaseHistoryClient({ purchases }: { purchases: LearnerPurchas
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by course..."
+              aria-label="Search by course"
               className="h-9 pl-8"
             />
           </div>
           <Select value={status} onValueChange={(value) => setStatus(value as StatusFilter)}>
-            <SelectTrigger className="h-9 w-[160px]">
+            <SelectTrigger aria-label="Filter by status" className="h-9 w-[160px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>

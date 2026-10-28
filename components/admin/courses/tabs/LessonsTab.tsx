@@ -251,7 +251,7 @@ const SectionCard = memo(function SectionCard({
           <button
             type="button"
             onClick={() => setEditingTitle(true)}
-            className="min-w-0 flex-1 truncate text-left text-sm font-bold hover:underline"
+            className="min-h-6 min-w-0 flex-1 truncate text-left text-sm font-bold hover:underline"
             title="Click to rename"
           >
             {section.title}
@@ -544,6 +544,7 @@ const LessonCard = memo(function LessonCard({
             {contentType === "text" && (
               <>
                 <RichTextEditor
+                  ariaLabel="Lesson content"
                   value={content}
                   onChange={(html) => {
                     setContent(html)

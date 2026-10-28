@@ -165,10 +165,14 @@ function reducer(state: State, action: CourseDraftAction): State {
       // within the same section shifts indices once the dragged item is
       // spliced out).
       let moved: DraftLesson | null = null
+      let fromSectionId: string | null = null
+      let fromIndex = -1
       const withoutLesson = draft.sections.map((s) => {
         const idx = s.lessons.findIndex((l) => l.id === action.lessonId)
         if (idx === -1) return s
         moved = s.lessons[idx]
+        fromSectionId = s.id
+        fromIndex = idx
         return { ...s, lessons: s.lessons.filter((l) => l.id !== action.lessonId) }
       })
       if (!moved) return state
@@ -177,7 +181,13 @@ function reducer(state: State, action: CourseDraftAction): State {
         if (s.id !== action.toSectionId) return s
         const lessons = [...s.lessons]
         const overIndex = action.overLessonId ? lessons.findIndex((l) => l.id === action.overLessonId) : -1
-        const toIndex = overIndex >= 0 ? overIndex : lessons.length
+        // v2 fix: within one section, a lesson dropped on a LATER lesson
+        // must land after it (arrayMove semantics). Before, it was inserted
+        // before the target in the post-removal list, so every downward move
+        // fell one place short and a one-step move down did nothing.
+        const movingDown =
+          fromSectionId === s.id && overIndex >= 0 && fromIndex >= 0 && overIndex >= fromIndex
+        const toIndex = overIndex >= 0 ? overIndex + (movingDown ? 1 : 0) : lessons.length
         lessons.splice(toIndex, 0, movedLesson)
         return { ...s, lessons }
       })

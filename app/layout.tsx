@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sanggabiz Academy",
+  title: { default: "Sanggabiz Academy", template: "%s · Sanggabiz Academy" },
   description: "Learn and teach, made easy.",
 };
 

@@ -43,10 +43,11 @@ export default async function AdminCoursePreviewPage({
         <Button
           variant="outline"
           size="icon"
+          aria-label="Back to course editor"
           render={<Link href={`/admin/courses/${course.id}/edit`} />}
           nativeButton={false}
         >
-          <ArrowLeft className="size-4" />
+          <ArrowLeft className="size-4" aria-hidden />
         </Button>
         <h1 className="text-2xl leading-tight font-bold">{course.title}</h1>
         <Badge
