@@ -16,6 +16,7 @@ import type {
   Quiz,
   Resource,
 } from "@/lib/courses"
+import { dbErrorMessage } from "@/lib/db-error-message"
 
 /**
  * lib/courses.ts's client-safe Quiz/Question/QuestionOption types omit
@@ -303,12 +304,12 @@ export async function createDraftCourse(): Promise<{ id: string } | { error: str
     data: { user },
   } = await supabase.auth.getUser()
 
-  const slug = `${slugify("Untitled Course")}-${Date.now().toString(36)}`
+  const slug = `${slugify("Kursus Tanpa Judul")}-${Date.now().toString(36)}`
 
   const { data, error } = await supabase
     .from("courses")
     .insert({
-      title: "Untitled Course",
+      title: "Kursus Tanpa Judul",
       slug,
       description: null,
       thumbnail_url: null,
@@ -323,7 +324,7 @@ export async function createDraftCourse(): Promise<{ id: string } | { error: str
     .single()
 
   if (error || !data) {
-    return { error: error?.message ?? "Failed to create course" }
+    return { error: dbErrorMessage(error?.message, "Gagal membuat kursus.") }
   }
 
   return { id: data.id }
@@ -332,7 +333,7 @@ export async function createDraftCourse(): Promise<{ id: string } | { error: str
 export async function deleteCourse(id: string): Promise<{ ok: true } | { error: string }> {
   const supabase = await createClient()
   const { error } = await supabase.from("courses").delete().eq("id", id)
-  if (error) return { error: error.message }
+  if (error) return { error: dbErrorMessage(error.message) }
   return { ok: true }
 }
 
@@ -342,7 +343,7 @@ export async function setCourseStatus(
 ): Promise<{ ok: true } | { error: string }> {
   const supabase = await createClient()
   const { error } = await supabase.from("courses").update({ status }).eq("id", id)
-  if (error) return { error: error.message }
+  if (error) return { error: dbErrorMessage(error.message) }
   return { ok: true }
 }
 
@@ -369,14 +370,14 @@ export async function createInstructor(input: {
     .select("id")
     .single()
 
-  if (error || !data) return { error: error?.message ?? "Failed to create instructor" }
+  if (error || !data) return { error: dbErrorMessage(error?.message, "Gagal menambahkan instruktur.") }
   return { id: data.id }
 }
 
 export async function deleteInstructor(id: string): Promise<{ ok: true } | { error: string }> {
   const supabase = await createClient()
   const { error } = await supabase.from("instructors").delete().eq("id", id)
-  if (error) return { error: error.message }
+  if (error) return { error: dbErrorMessage(error.message) }
   return { ok: true }
 }
 
@@ -429,7 +430,7 @@ export async function getOwnedCourseIdsOrNull(): Promise<string[] | null> {
 type SnapshotQuestion = AdminQuestion & { quiz_id: string }
 
 function wrapSaveError(step: string, message: string): { error: string } {
-  return { error: `Save failed at ${step}. Your changes are still here — press Save again. (${message})` }
+  return { error: `Gagal menyimpan ${step}. Perubahan Anda masih ada, tekan Simpan lagi. (${dbErrorMessage(message)})` }
 }
 
 /**
@@ -474,10 +475,10 @@ export async function saveCourseDraft(
   status: "draft" | "published"
 ): Promise<{ ok: true } | { error: string }> {
   const snapshot = await getCourseDetailForAdmin(courseId)
-  if (!snapshot) return { error: "Course not found" }
+  if (!snapshot) return { error: "Kursus tidak ditemukan." }
 
   if (draft.prerequisiteIds.includes(courseId)) {
-    return { error: "A course cannot be its own prerequisite" }
+    return { error: "Kursus tidak dapat menjadi prasyarat bagi dirinya sendiri." }
   }
 
   // Backstop for the same check CourseFormShell runs before submitting -- a
@@ -763,45 +764,45 @@ export async function saveCourseDraft(
 
   if (sectionRows.length > 0) {
     const { error } = await supabase.from("course_sections").upsert(sectionRows, { onConflict: "id" })
-    if (error) return wrapSaveError("modules", error.message)
+    if (error) return wrapSaveError("modul", error.message)
   }
 
   if (lessonRows.length > 0) {
     const { error } = await supabase.from("lessons").upsert(lessonRows, { onConflict: "id" })
-    if (error) return wrapSaveError("lessons", error.message)
+    if (error) return wrapSaveError("pelajaran", error.message)
   }
 
   if (resourceRows.length > 0) {
     const { error } = await supabase.from("resources").upsert(resourceRows, { onConflict: "id" })
-    if (error) return wrapSaveError("resources", error.message)
+    if (error) return wrapSaveError("sumber belajar", error.message)
   }
 
   if (quizRows.length > 0) {
     const { error } = await supabase.from("quizzes").upsert(quizRows, { onConflict: "id" })
-    if (error) return wrapSaveError("quizzes", error.message)
+    if (error) return wrapSaveError("kuis", error.message)
   }
 
   if (questionRows.length > 0) {
     const { error } = await supabase.from("questions").upsert(questionRows, { onConflict: "id" })
-    if (error) return wrapSaveError("questions", error.message)
+    if (error) return wrapSaveError("soal", error.message)
   }  if (explanationRows.length > 0) {
     const { error } = await supabase
       .from("question_explanations")
       .upsert(explanationRows, { onConflict: "question_id" })
-    if (error) return wrapSaveError("question explanations", error.message)
+    if (error) return wrapSaveError("penjelasan soal", error.message)
   }
 
 
   if (optionRows.length > 0) {
     const { error } = await supabase.from("question_options").upsert(optionRows, { onConflict: "id" })
-    if (error) return wrapSaveError("answer options", error.message)
+    if (error) return wrapSaveError("pilihan jawaban", error.message)
   }
 
   if (prerequisitesChanged && prerequisiteRows.length > 0) {
     const { error } = await supabase
       .from("course_prerequisites")
       .upsert(prerequisiteRows, { onConflict: "course_id,prerequisite_course_id" })
-    if (error) return wrapSaveError("prerequisites", error.message)
+    if (error) return wrapSaveError("prasyarat", error.message)
   }
 
   if (certificateChanged) {
@@ -809,10 +810,10 @@ export async function saveCourseDraft(
       const { error } = await supabase
         .from("course_certificate_settings")
         .upsert({ course_id: courseId, ...certificate }, { onConflict: "course_id" })
-      if (error) return wrapSaveError("certificate settings", error.message)
+      if (error) return wrapSaveError("pengaturan sertifikat", error.message)
     } else {
       const { error } = await supabase.from("course_certificate_settings").delete().eq("course_id", courseId)
-      if (error) return wrapSaveError("certificate settings", error.message)
+      if (error) return wrapSaveError("pengaturan sertifikat", error.message)
     }
   }
 
@@ -835,23 +836,23 @@ export async function saveCourseDraft(
 
   if (deletedOptionIds.length > 0) {
     const { error } = await supabase.from("question_options").delete().in("id", deletedOptionIds)
-    if (error) return { error: error.message }
+    if (error) return { error: dbErrorMessage(error.message) }
   }
   if (deletedQuestionIds.length > 0) {
     const { error } = await supabase.from("questions").delete().in("id", deletedQuestionIds)
-    if (error) return { error: error.message }
+    if (error) return { error: dbErrorMessage(error.message) }
   }
   if (deletedResourceIds.length > 0) {
     const { error } = await supabase.from("resources").delete().in("id", deletedResourceIds)
-    if (error) return { error: error.message }
+    if (error) return { error: dbErrorMessage(error.message) }
   }
   if (deletedLessonIds.length > 0) {
     const { error } = await supabase.from("lessons").delete().in("id", deletedLessonIds)
-    if (error) return { error: error.message }
+    if (error) return { error: dbErrorMessage(error.message) }
   }
   if (deletedSectionIds.length > 0) {
     const { error } = await supabase.from("course_sections").delete().in("id", deletedSectionIds)
-    if (error) return { error: error.message }
+    if (error) return { error: dbErrorMessage(error.message) }
   }
   if (removedPrereqIds.length > 0) {
     const { error } = await supabase
@@ -859,7 +860,7 @@ export async function saveCourseDraft(
       .delete()
       .eq("course_id", courseId)
       .in("prerequisite_course_id", removedPrereqIds)
-    if (error) return { error: error.message }
+    if (error) return { error: dbErrorMessage(error.message) }
   }
 
   return { ok: true }

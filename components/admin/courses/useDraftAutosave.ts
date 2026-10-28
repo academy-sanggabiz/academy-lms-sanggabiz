@@ -129,7 +129,7 @@ export function useDraftAutosave({
         window.localStorage.setItem(storageKey(courseId), JSON.stringify(stored))
       } catch {
         autosaveDisabled = true
-        toast.error("Couldn't save a local backup of your edits (storage full) — save often.")
+        toast.error("Cadangan lokal perubahan Anda gagal disimpan (penyimpanan penuh). Simpan secara berkala.")
       }
     }, DEBOUNCE_MS)
 

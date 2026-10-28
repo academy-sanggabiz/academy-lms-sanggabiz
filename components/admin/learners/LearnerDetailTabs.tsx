@@ -126,7 +126,7 @@ export function LearnerDetailTabs({
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
                       Certificate No. {cert.serial} · Issued{" "}
-                      {new Date(cert.issuedAt).toLocaleDateString("en-US", {
+                      {new Date(cert.issuedAt).toLocaleDateString("id-ID", {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
@@ -170,7 +170,7 @@ export function LearnerDetailTabs({
                     <div className="mt-1 truncate text-xs text-muted-foreground">
                       {q.courseTitle}
                       {q.submittedAt &&
-                        ` · Submitted ${new Date(q.submittedAt).toLocaleDateString("en-US", {
+                        ` · Submitted ${new Date(q.submittedAt).toLocaleDateString("id-ID", {
                           year: "numeric",
                           month: "long",
                           day: "numeric",

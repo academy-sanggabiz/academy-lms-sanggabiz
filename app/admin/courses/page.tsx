@@ -28,15 +28,15 @@ export default async function AdminCoursesPage({
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-[30px] font-bold">Course Management</h1>
+          <h1 className="text-[30px] font-bold">Manajemen Kursus</h1>
           <p className="text-sm text-muted-foreground">
-            Create, edit, and manage all courses in your learning platform
+            Buat, ubah, dan kelola semua kursus di platform belajar Anda
           </p>
         </div>
         <form action={createDraftCourseAction}>
           <Button type="submit" className="bg-brand-gradient text-white hover:brightness-105">
             <Plus className="size-4" />
-            Create Course
+            Buat Kursus
           </Button>
         </form>
       </div>

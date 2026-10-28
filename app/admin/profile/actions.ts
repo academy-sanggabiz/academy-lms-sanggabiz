@@ -11,7 +11,7 @@ export async function updateProfileName(formData: FormData) {
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims?.sub
-  if (!userId) return { error: "Not authenticated" }
+  if (!userId) return { error: "Anda belum masuk" }
 
   const { error } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", userId)
 

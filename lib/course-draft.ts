@@ -197,7 +197,7 @@ export function validateQuizzes(draft: CourseDraft): QuizIssue[] {
 
   for (const section of draft.sections) {
     for (const lesson of section.lessons) {
-      const lessonTitle = lesson.title.trim() || "Untitled lesson"
+      const lessonTitle = lesson.title.trim() || "Pelajaran tanpa judul"
       const quiz = lesson.quiz
       if (!quiz) continue
 
@@ -212,7 +212,7 @@ export function validateQuizzes(draft: CourseDraft): QuizIssue[] {
           })
 
         if (!hasText(question.prompt)) {
-          add("This question has no prompt.")
+          add("Soal ini belum memiliki pertanyaan.")
           return
         }
 
@@ -220,15 +220,15 @@ export function validateQuizzes(draft: CourseDraft): QuizIssue[] {
 
         if (quiz.is_assessment) {
           if (index > 0) {
-            add("A study case can only have one question.")
+            add("Studi kasus hanya boleh berisi satu soal.")
           } else if (!isEssay) {
-            add("A study case must be an essay or file upload question.")
+            add("Studi kasus harus berupa soal esai atau unggah berkas.")
           }
           return
         }
 
         if (isEssay) {
-          add("Essay questions belong in a study case, not a normal quiz.")
+          add("Soal esai hanya untuk studi kasus, bukan kuis biasa.")
           return
         }
 
@@ -236,16 +236,16 @@ export function validateQuizzes(draft: CourseDraft): QuizIssue[] {
 
         if (question.type === "multiple_choice") {
           if (question.options.length < 2) {
-            add("Multiple choice needs at least two options.")
+            add("Pilihan ganda memerlukan minimal dua pilihan.")
           } else if (question.options.some((o) => !o.text.trim())) {
-            add("Every option needs text.")
+            add("Setiap pilihan harus berisi teks.")
           } else if (correct.length === 0) {
-            add("No correct answer selected.")
+            add("Belum ada jawaban benar yang dipilih.")
           }
         } else if (question.type === "true_false" && correct.length === 0) {
-          add("No correct answer selected.")
+          add("Belum ada jawaban benar yang dipilih.")
         } else if (question.type === "short_answer" && correct.length === 0) {
-          add("Short answer needs at least one accepted answer.")
+          add("Isian singkat memerlukan minimal satu jawaban yang diterima.")
         }
       })
     }
@@ -254,9 +254,9 @@ export function validateQuizzes(draft: CourseDraft): QuizIssue[] {
   return issues
 }
 
-/** First issue phrased for a toast, e.g. `Question 2 in "Intro" — No correct answer selected.` */
+/** First issue phrased for a toast, e.g. `Soal 2 di "Intro": Belum ada jawaban benar yang dipilih.` */
 export function describeQuizIssue(issue: QuizIssue): string {
-  return `Question ${issue.questionIndex + 1} in "${issue.lessonTitle}" — ${issue.message}`
+  return `Soal ${issue.questionIndex + 1} di "${issue.lessonTitle}": ${issue.message}`
 }
 
 export function draftFromDetail(course: AdminCourseDetail): CourseDraft {
@@ -409,14 +409,14 @@ const certificateSettingsSchema = z.object({
 })
 
 export const courseDraftSchema = z.object({
-  title: z.string().trim().min(1, "Title is required").max(500),
+  title: z.string().trim().min(1, "Judul wajib diisi").max(500),
   description: z.string().trim().max(20_000),
   requirementsText: z.string().trim().max(20_000),
   audienceText: z.string().trim().max(20_000),
   thumbnail_url: z.string().trim().max(2000),
   level: z.string().trim().max(100),
   enrollmentMode: z.enum(["free", "paid"]),
-  price: z.number().min(0, "Price can't be negative"),
+  price: z.number().min(0, "Harga tidak boleh negatif"),
   isPrivate: z.boolean(),
   passingGrade: z.number().int().min(0).max(100),
   requirePrerequisites: z.boolean(),

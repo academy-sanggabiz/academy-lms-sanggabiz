@@ -3,6 +3,7 @@ import { recordEnrollmentTransaction } from "@/lib/transactions-server"
 import { getOwnedCourseIdsOrNull } from "@/lib/courses-admin"
 import { escapeForOrFilter, paginated, rangeFor, type ListParams, type Paginated } from "@/lib/pagination"
 import { pickRepresentativeAttempt } from "@/lib/quiz-attempt-selection"
+import { dbErrorMessage } from "@/lib/db-error-message"
 
 /** Server-only admin data access for Learner Management -- never import from a Client Component. */
 
@@ -543,7 +544,7 @@ export async function enrollLearnerInCourse(
 
   if (error) {
     console.error("enrollLearnerInCourse failed:", error.message)
-    return { error: error.message }
+    return { error: dbErrorMessage(error.message) }
   }
 
   await recordEnrollmentTransaction(supabase, learnerId, courseId)
@@ -564,7 +565,7 @@ export async function unenrollLearnerFromCourse(
 
   if (error) {
     console.error("unenrollLearnerFromCourse failed:", error.message)
-    return { error: error.message }
+    return { error: dbErrorMessage(error.message) }
   }
   return { ok: true }
 }

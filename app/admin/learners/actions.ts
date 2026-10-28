@@ -15,7 +15,7 @@ export async function getLearnerEnrolledCourseIdsAction(learnerId: string): Prom
   try {
     await requireAdmin()
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const ids = await getLearnerEnrolledCourseIds(learnerId)
@@ -30,7 +30,7 @@ export async function toggleLearnerEnrollmentAction(
   try {
     await requireAdmin()
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const result = enroll

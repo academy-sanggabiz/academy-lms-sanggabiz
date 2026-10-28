@@ -40,16 +40,16 @@ export function AdminUserMenu({ name, role }: { name: string; role: "admin" | "s
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link href="/admin/profile" />}>
           <User />
-          Profile
+          Profil
         </DropdownMenuItem>
         <DropdownMenuItem render={<Link href="/admin/settings" />}>
           <Settings />
-          Settings
+          Pengaturan
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={() => logout()}>
           <LogOut />
-          Log Out
+          Keluar
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

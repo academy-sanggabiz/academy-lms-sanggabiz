@@ -13,14 +13,14 @@ import {
 
 function relativeTime(ms: number): string {
   const diffMinutes = Math.round((Date.now() - ms) / 60_000)
-  if (diffMinutes < 1) return "just now"
-  if (diffMinutes === 1) return "1 minute ago"
-  if (diffMinutes < 60) return `${diffMinutes} minutes ago`
+  if (diffMinutes < 1) return "baru saja"
+  if (diffMinutes === 1) return "1 menit lalu"
+  if (diffMinutes < 60) return `${diffMinutes} menit lalu`
   const diffHours = Math.round(diffMinutes / 60)
-  if (diffHours === 1) return "1 hour ago"
-  if (diffHours < 24) return `${diffHours} hours ago`
+  if (diffHours === 1) return "1 jam lalu"
+  if (diffHours < 24) return `${diffHours} jam lalu`
   const diffDays = Math.round(diffHours / 24)
-  return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`
+  return `${diffDays} hari lalu`
 }
 
 // No onOpenChange -- deliberately not light-dismissable. The admin must
@@ -40,21 +40,21 @@ export function RestoreDraftDialog({
     <AlertDialog open>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Unsaved changes found</AlertDialogTitle>
+          <AlertDialogTitle>Ditemukan perubahan yang belum disimpan</AlertDialogTitle>
           <AlertDialogDescription>
-            You have unsaved changes from {relativeTime(updatedAt)} that were never saved. Restore
-            them, or discard and use the saved version?
+            Ada perubahan dari {relativeTime(updatedAt)} yang belum pernah disimpan. Pulihkan
+            perubahan tersebut, atau buang dan gunakan versi tersimpan?
             {isStale && (
               <span className="mt-2 block">
-                This course has also changed on the server since then — restoring will overwrite
-                those changes the next time you save.
+                Kursus ini juga sudah berubah di server sejak saat itu. Jika dipulihkan, perubahan
+                di server akan tertimpa saat Anda menyimpan.
               </span>
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onDiscard}>Discard</AlertDialogCancel>
-          <AlertDialogAction onClick={onRestore}>Restore</AlertDialogAction>
+          <AlertDialogCancel onClick={onDiscard}>Buang</AlertDialogCancel>
+          <AlertDialogAction onClick={onRestore}>Pulihkan</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

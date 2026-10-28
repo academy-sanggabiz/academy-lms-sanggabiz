@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—"
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+  return new Date(iso).toLocaleDateString("id-ID", { month: "short", day: "numeric", year: "numeric" })
 }
 
 function QuizStatusBadge({ quiz }: { quiz: TrackingDetail["quizzes"][number] }) {

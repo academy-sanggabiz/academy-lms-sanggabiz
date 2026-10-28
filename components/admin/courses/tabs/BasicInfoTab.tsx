@@ -19,45 +19,45 @@ export function BasicInfoTab({ errors = {} }: { errors?: Partial<Record<BasicFie
   return (
     <div className="space-y-5">
       <div className="space-y-1.5">
-        <Label htmlFor="title">Course Title</Label>
+        <Label htmlFor="title">Judul Kursus</Label>
         <Input
           id="title"
           value={draft.title}
           onChange={(e) => setField("title", e.target.value)}
-          placeholder="e.g. Introduction to Web Development"
+          placeholder="misal: Pengantar Pengembangan Web"
         />
         {errors.title && <p className="text-xs text-destructive">{errors.title}</p>}
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="description">Course Description</Label>
+        <Label htmlFor="description">Deskripsi Kursus</Label>
         <Textarea
           id="description"
           value={draft.description}
           onChange={(e) => setField("description", e.target.value)}
-          placeholder="What will learners get from this course?"
+          placeholder="Apa yang akan peserta dapatkan dari kursus ini?"
           rows={4}
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="requirementsText">Requirements</Label>
+        <Label htmlFor="requirementsText">Persyaratan</Label>
         <Textarea
           id="requirementsText"
           value={draft.requirementsText}
           onChange={(e) => setField("requirementsText", e.target.value)}
-          placeholder="One requirement per line"
+          placeholder="Satu persyaratan per baris"
           rows={3}
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="audienceText">Who this course is for</Label>
+        <Label htmlFor="audienceText">Untuk siapa kursus ini</Label>
         <Textarea
           id="audienceText"
           value={draft.audienceText}
           onChange={(e) => setField("audienceText", e.target.value)}
-          placeholder="One audience item per line"
+          placeholder="Satu sasaran peserta per baris"
           rows={3}
         />
       </div>
@@ -66,8 +66,8 @@ export function BasicInfoTab({ errors = {} }: { errors?: Partial<Record<BasicFie
         value={draft.thumbnail_url || null}
         onChange={(url) => setField("thumbnail_url", url)}
         uploadFn={uploadCourseThumbnail}
-        label="Course Thumbnail"
-        hint="PNG or JPEG, max 5MB"
+        label="Gambar Kursus"
+        hint="PNG atau JPEG, maks. 5MB"
       />
       {errors.thumbnail_url && <p className="text-xs text-destructive">{errors.thumbnail_url}</p>}
     </div>

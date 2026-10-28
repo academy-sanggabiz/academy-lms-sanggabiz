@@ -73,10 +73,10 @@ import { RichTextEditor } from "../RichTextEditor"
 import { LessonWritingGuide } from "../LessonWritingGuide"
 
 const LESSON_TYPES: { value: LessonContentType; label: string; description: string }[] = [
-  { value: "video", label: "Video Lesson", description: "Lesson content is primarily video-based" },
-  { value: "text", label: "Text Lesson", description: "Lesson content is primarily text-based" },
-  { value: "ppt", label: "Slides Lesson", description: "Lesson content is a Google Slides presentation" },
-  { value: "quiz", label: "Quiz Lesson", description: "Lesson is a quiz that tests earlier content" },
+  { value: "video", label: "Pelajaran Video", description: "Konten pelajaran berupa video" },
+  { value: "text", label: "Pelajaran Teks", description: "Konten pelajaran berupa teks" },
+  { value: "ppt", label: "Pelajaran Slide", description: "Konten pelajaran berupa presentasi Google Slides" },
+  { value: "quiz", label: "Pelajaran Kuis", description: "Pelajaran berupa kuis untuk menguji materi sebelumnya" },
 ]
 
 const TYPE_ICON: Record<LessonContentType, React.ComponentType<{ className?: string }>> = {
@@ -156,16 +156,16 @@ export function LessonsTab({ quizIssues = [] }: { quizIssues?: QuizIssue[] }) {
   return (
     <QuizIssuesProvider issues={quizIssues}>
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-[17px] font-bold">Course Lessons</h3>
+        <h3 className="text-[17px] font-bold">Pelajaran Kursus</h3>
         <Button onClick={handleAddSection} className="bg-brand-gradient text-white hover:brightness-105">
           <Plus className="size-3.5" />
-          Add Module
+          Tambah Modul
         </Button>
       </div>
 
       {sections.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-          No modules yet — click Add Module to start building the course.
+          Belum ada modul. Klik Tambah Modul untuk mulai menyusun kursus.
         </p>
       ) : (
         <DndContext
@@ -193,7 +193,7 @@ export function LessonsTab({ quizIssues = [] }: { quizIssues?: QuizIssue[] }) {
           <DragOverlay>
             {activeLesson && (
               <div className="rounded-xl border border-ring bg-card px-3.5 py-3 text-sm font-bold shadow-lg">
-                {activeLesson.title || "Untitled Lesson"}
+                {activeLesson.title || "Pelajaran Tanpa Judul"}
               </div>
             )}
           </DragOverlay>
@@ -252,42 +252,41 @@ const SectionCard = memo(function SectionCard({
             type="button"
             onClick={() => setEditingTitle(true)}
             className="min-h-6 min-w-0 flex-1 truncate text-left text-sm font-bold hover:underline"
-            title="Click to rename"
+            title="Klik untuk mengganti nama"
           >
             {section.title}
           </button>
         )}
         <span className="shrink-0 text-xs text-muted-foreground">
-          {section.lessons.length} {section.lessons.length === 1 ? "lesson" : "lessons"}
+          {section.lessons.length} pelajaran
         </span>
         <div className="flex-1" />
         <AlertDialog>
           <AlertDialogTrigger
-            render={<Button type="button" variant="ghost" size="icon-sm" title="Delete module" />}
+            render={<Button type="button" variant="ghost" size="icon-sm" title="Hapus modul" />}
           >
             <Trash2 className="size-3.5 text-destructive" />
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete &quot;{section.title}&quot;?</AlertDialogTitle>
+              <AlertDialogTitle>Hapus &quot;{section.title}&quot;?</AlertDialogTitle>
               <AlertDialogDescription>
-                This removes the module and its {section.lessons.length}{" "}
-                {section.lessons.length === 1 ? "lesson" : "lessons"} (including their resources and quizzes)
-                from the draft. Nothing is deleted from the database until you press Save.
+                Modul ini beserta {section.lessons.length} pelajarannya (termasuk sumber belajar dan
+                kuisnya) akan dihapus dari draf. Tidak ada yang dihapus dari database sampai Anda menekan Simpan.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>Batal</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive/10 text-destructive hover:bg-destructive/20"
                 onClick={handleDelete}
               >
-                Delete
+                Hapus
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <Button type="button" variant="ghost" size="icon-sm" title="Expand" onClick={onToggleExpand}>
+        <Button type="button" variant="ghost" size="icon-sm" title="Buka/tutup" onClick={onToggleExpand}>
           <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
         </Button>
       </div>
@@ -296,7 +295,7 @@ const SectionCard = memo(function SectionCard({
         <div className="flex flex-col gap-3 border-t border-border p-4">
           {section.lessons.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-              No lessons in this module yet.
+              Belum ada pelajaran di modul ini.
             </p>
           ) : (
             <SortableContext
@@ -316,7 +315,7 @@ const SectionCard = memo(function SectionCard({
           )}
           <Button type="button" variant="outline" size="sm" onClick={onAddLesson} className="self-start">
             <Plus className="size-3.5" />
-            Add Lesson
+            Tambah Pelajaran
           </Button>
         </div>
       )}
@@ -407,7 +406,7 @@ const LessonCard = memo(function LessonCard({
           type="button"
           {...attributes}
           {...listeners}
-          aria-label={`Reorder ${title.trim() || `lesson ${index + 1}`}: press Space to pick up, arrow keys to move, Space to drop`}
+          aria-label={`Pindahkan ${title.trim() || `pelajaran ${index + 1}`}: tekan Spasi untuk mengambil, tombol panah untuk memindahkan, Spasi untuk melepas`}
           className="-m-1 flex size-6 cursor-grab touch-none items-center justify-center rounded active:cursor-grabbing"
         >
           <GripVertical className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -416,7 +415,7 @@ const LessonCard = memo(function LessonCard({
           <Icon className="size-3.5" />
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-bold">
-          {title.trim() || `Lesson ${index + 1}`}
+          {title.trim() || `Pelajaran ${index + 1}`}
         </span>
         <span
           className={cn(
@@ -424,48 +423,48 @@ const LessonCard = memo(function LessonCard({
             isComplete ? "bg-success text-success-foreground" : "bg-amber-100 text-amber-700"
           )}
         >
-          {isComplete ? "Complete" : "Incomplete"}
+          {isComplete ? "Lengkap" : "Belum lengkap"}
         </span>
         {issues.length > 0 && (
           <span className="rounded-full bg-destructive/10 px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap text-destructive">
-            {issues.length} quiz {issues.length === 1 ? "issue" : "issues"}
+            {issues.length} masalah kuis
           </span>
         )}
         {durationMin && (
           <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground">
             <Clock className="size-3" />
-            {durationMin} min
+            {durationMin} menit
           </span>
         )}
-        <Button type="button" variant="ghost" size="icon-sm" title="Duplicate lesson" onClick={handleDuplicate}>
+        <Button type="button" variant="ghost" size="icon-sm" title="Duplikat pelajaran" onClick={handleDuplicate}>
           <Copy className="size-3.5" />
         </Button>
         <AlertDialog>
           <AlertDialogTrigger
-            render={<Button type="button" variant="ghost" size="icon-sm" title="Delete lesson" />}
+            render={<Button type="button" variant="ghost" size="icon-sm" title="Hapus pelajaran" />}
           >
             <Trash2 className="size-3.5 text-destructive" />
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete &quot;{lesson.title}&quot;?</AlertDialogTitle>
+              <AlertDialogTitle>Hapus &quot;{lesson.title}&quot;?</AlertDialogTitle>
               <AlertDialogDescription>
-                This removes the lesson and all of its resources from the draft. Nothing is deleted from
-                the database until you press Save.
+                Pelajaran ini beserta seluruh sumber belajarnya akan dihapus dari draf. Tidak ada yang
+                dihapus dari database sampai Anda menekan Simpan.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>Batal</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive/10 text-destructive hover:bg-destructive/20"
                 onClick={handleDelete}
               >
-                Delete
+                Hapus
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <Button type="button" variant="ghost" size="icon-sm" title="Expand" onClick={onToggleExpand}>
+        <Button type="button" variant="ghost" size="icon-sm" title="Buka/tutup" onClick={onToggleExpand}>
           <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
         </Button>
       </div>
@@ -473,7 +472,7 @@ const LessonCard = memo(function LessonCard({
       {expanded && (
         <div className="border-t border-border p-4">
           <div className="mb-4 space-y-1.5">
-            <Label htmlFor={`lesson-title-${lesson.id}`}>Lesson Title</Label>
+            <Label htmlFor={`lesson-title-${lesson.id}`}>Judul Pelajaran</Label>
             <Input
               id={`lesson-title-${lesson.id}`}
               value={title}
@@ -483,7 +482,7 @@ const LessonCard = memo(function LessonCard({
           </div>
 
           <div className="mb-4 space-y-3">
-            <span className="text-sm font-semibold">Lesson Type</span>
+            <span className="text-sm font-semibold">Jenis Pelajaran</span>
             <div className="flex flex-col gap-3">
               {LESSON_TYPES.map((type) => (
                 <div
@@ -507,7 +506,7 @@ const LessonCard = memo(function LessonCard({
           </div>
 
           <div className="mb-2 max-w-[220px] space-y-1.5">
-            <Label htmlFor={`lesson-duration-${lesson.id}`}>Estimated Duration (minutes)</Label>
+            <Label htmlFor={`lesson-duration-${lesson.id}`}>Perkiraan Durasi (menit)</Label>
             <Input
               id={`lesson-duration-${lesson.id}`}
               type="number"
@@ -520,15 +519,15 @@ const LessonCard = memo(function LessonCard({
               aria-describedby={`lesson-duration-help-${lesson.id}`}
             />
             <p id={`lesson-duration-help-${lesson.id}`} className="text-xs text-muted-foreground">
-              Shown to learners. Aim for 5–7 minutes per lesson.
+              Ditampilkan kepada peserta. Usahakan 5–7 menit per pelajaran.
             </p>
           </div>
 
           {contentType !== "quiz" && (
-          <SubSection title="Content" open={contentOpen} onToggle={() => setContentOpen((v) => !v)}>
+          <SubSection title="Konten" open={contentOpen} onToggle={() => setContentOpen((v) => !v)}>
             {contentType === "video" && (
               <div className="space-y-1.5">
-                <Label htmlFor={`lesson-video-${lesson.id}`}>YouTube Video URL</Label>
+                <Label htmlFor={`lesson-video-${lesson.id}`}>URL Video YouTube</Label>
                 <Input
                   id={`lesson-video-${lesson.id}`}
                   placeholder="https://www.youtube.com/watch?v=..."
@@ -537,14 +536,14 @@ const LessonCard = memo(function LessonCard({
                   onBlur={() => save({ video_url: videoUrl.trim() || null })}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Paste the full YouTube link for this lesson&apos;s video
+                  Tempel tautan YouTube lengkap untuk video pelajaran ini
                 </p>
               </div>
             )}
             {contentType === "text" && (
               <>
                 <RichTextEditor
-                  ariaLabel="Lesson content"
+                  ariaLabel="Konten pelajaran"
                   value={content}
                   onChange={(html) => {
                     setContent(html)
@@ -562,7 +561,7 @@ const LessonCard = memo(function LessonCard({
             )}
             {contentType === "ppt" && (
               <div className="space-y-1.5">
-                <Label htmlFor={`lesson-slides-${lesson.id}`}>Google Slides Link</Label>
+                <Label htmlFor={`lesson-slides-${lesson.id}`}>Tautan Google Slides</Label>
                 <Input
                   id={`lesson-slides-${lesson.id}`}
                   placeholder="https://docs.google.com/presentation/d/.../edit"
@@ -571,7 +570,7 @@ const LessonCard = memo(function LessonCard({
                   onBlur={() => save({ video_url: videoUrl.trim() || null })}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Paste the Google Slides share or &quot;Publish to web&quot; link
+                  Tempel tautan berbagi Google Slides atau tautan &quot;Publikasikan ke web&quot;
                 </p>
               </div>
             )}
@@ -579,7 +578,7 @@ const LessonCard = memo(function LessonCard({
           )}
 
           <SubSection
-            title={`Resources (${lesson.resources.length})`}
+            title={`Sumber Belajar (${lesson.resources.length})`}
             open={resourcesOpen}
             onToggle={() => setResourcesOpen((v) => !v)}
           >
@@ -588,7 +587,7 @@ const LessonCard = memo(function LessonCard({
 
           {contentType === "quiz" && (
           <SubSection
-            title={`Quiz (${lesson.quiz?.questions.length ?? 0} questions)`}
+            title={`Kuis (${lesson.quiz?.questions.length ?? 0} soal)`}
             open={quizOpen}
             onToggle={() => setQuizOpen((v) => !v)}
           >
@@ -596,15 +595,15 @@ const LessonCard = memo(function LessonCard({
           </SubSection>
           )}
 
-          <SubSection title="Settings" open={settingsOpen} onToggle={() => setSettingsOpen((v) => !v)}>
+          <SubSection title="Pengaturan" open={settingsOpen} onToggle={() => setSettingsOpen((v) => !v)}>
             <div className="flex items-center justify-between gap-4 opacity-60">
               <div>
-                <div className="text-sm font-medium">Required to Progress</div>
+                <div className="text-sm font-medium">Wajib untuk Melanjutkan</div>
                 <div className="text-xs text-muted-foreground">
-                  Coming soon — needs a new schema not modeled yet.
+                  Segera hadir. Memerlukan skema data baru.
                 </div>
               </div>
-              <Switch checked={false} disabled />
+              <Switch checked={false} disabled aria-label="Wajib untuk melanjutkan" />
             </div>
           </SubSection>
         </div>
@@ -666,19 +665,19 @@ function ResourcesEditor({ lessonId, resources }: { lessonId: string; resources:
     <div>
       <div className="mb-4 flex items-start justify-between gap-3.5">
         <div>
-          <div className="text-sm font-bold">Resources</div>
+          <div className="text-sm font-bold">Sumber Belajar</div>
           <div className="text-xs text-muted-foreground">
-            Add files, documents, or links to supplement the lesson content
+            Tambahkan berkas, dokumen, atau tautan untuk melengkapi konten pelajaran
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
           <Dialog open={dialogType === "link"} onOpenChange={(open) => setDialogType(open ? "link" : null)}>
             <DialogTrigger render={<Button type="button" variant="outline" size="sm" />}>
               <Link2 className="size-3.5" />
-              Add Link
+              Tambah Tautan
             </DialogTrigger>
             <ResourceDialogContent
-              title="Add Link"
+              title="Tambah Tautan"
               resTitle={resTitle}
               resUrl={resUrl}
               onTitleChange={setResTitle}
@@ -689,11 +688,11 @@ function ResourcesEditor({ lessonId, resources }: { lessonId: string; resources:
           <Dialog open={dialogType === "file"} onOpenChange={(open) => setDialogType(open ? "file" : null)}>
             <DialogTrigger render={<Button type="button" variant="outline" size="sm" />}>
               <FileText className="size-3.5" />
-              Add File
+              Tambah Berkas
             </DialogTrigger>
             <ResourceDialogContent
-              title="Add File"
-              urlLabel="File URL"
+              title="Tambah Berkas"
+              urlLabel="URL Berkas"
               resTitle={resTitle}
               resUrl={resUrl}
               onTitleChange={setResTitle}
@@ -743,7 +742,7 @@ function ResourceDialogContent({
       </DialogHeader>
       <div className="space-y-3">
         <div className="space-y-1.5">
-          <Label htmlFor="resource-title">Resource Title</Label>
+          <Label htmlFor="resource-title">Judul Sumber Belajar</Label>
           <Input id="resource-title" value={resTitle} onChange={(e) => onTitleChange(e.target.value)} />
         </div>
         <div className="space-y-1.5">
@@ -758,7 +757,7 @@ function ResourceDialogContent({
       </div>
       <DialogFooter>
         <Button onClick={onSave} disabled={!resTitle.trim() || !resUrl.trim()}>
-          Add
+          Tambah
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -791,19 +790,19 @@ function ResourceRow({
         <Icon className="size-3.5 shrink-0 text-primary" />
         <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{resource.title}</span>
         <span className="shrink-0 rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-semibold text-secondary-foreground">
-          {resource.type === "file" ? "File" : "Link"}
+          {resource.type === "file" ? "Berkas" : "Tautan"}
         </span>
-        <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove}>
+        <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} aria-label={`Hapus ${resource.title}`}>
           <X className="size-3.5 text-destructive" />
         </Button>
-        <Button type="button" variant="ghost" size="icon-sm" onClick={onToggle}>
+        <Button type="button" variant="ghost" size="icon-sm" onClick={onToggle} aria-label={`Ubah ${resource.title}`} aria-expanded={open}>
           <ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
         </Button>
       </div>
       {open && (
         <div className="space-y-3 bg-card p-3.5">
           <div className="space-y-1.5">
-            <Label>Resource Title</Label>
+            <Label>Judul Sumber Belajar</Label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}

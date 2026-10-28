@@ -26,6 +26,7 @@ export function ListToolbar({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder}
+          aria-label={placeholder}
           className="h-9 bg-card pl-8"
         />
       </div>

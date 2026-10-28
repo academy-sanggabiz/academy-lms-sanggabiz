@@ -14,7 +14,7 @@ async function getUserId() {
 
 export async function updateNotificationPref(enabled: boolean) {
   const userId = await getUserId()
-  if (!userId) return { error: "Not authenticated" }
+  if (!userId) return { error: "Anda belum masuk" }
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -49,7 +49,7 @@ export async function changePassword(formData: FormData) {
 
 export async function deleteAccount() {
   const userId = await getUserId()
-  if (!userId) return { error: "Not authenticated" }
+  if (!userId) return { error: "Anda belum masuk" }
 
   const admin = createAdminClient()
   const { error } = await admin.auth.admin.deleteUser(userId)

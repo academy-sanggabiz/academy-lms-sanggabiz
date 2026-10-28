@@ -26,10 +26,10 @@ export function TrackingListClient({ page }: { page: Paginated<TrackingEnrollmen
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead>Learner</TableHead>
-                <TableHead>Course</TableHead>
-                <TableHead>Module</TableHead>
-                <TableHead>Assignment</TableHead>
+                <TableHead>Peserta</TableHead>
+                <TableHead>Kursus</TableHead>
+                <TableHead>Modul</TableHead>
+                <TableHead>Tugas</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>

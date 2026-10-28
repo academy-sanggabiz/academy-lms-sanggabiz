@@ -49,7 +49,7 @@ export function LearnersTab({
         toast.error(result.error)
         return
       }
-      toast.success(`${entry.name} removed`)
+      toast.success(`${entry.name} dikeluarkan`)
       router.refresh()
     })
   }
@@ -59,34 +59,34 @@ export function LearnersTab({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-[17px] font-bold">
-            Enrolled Learners {roster.total > 0 && `(${roster.total})`}
+            Peserta Terdaftar {roster.total > 0 && `(${roster.total})`}
           </h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {isPrivate
-              ? "This course is private, so enrolling a learner here is the only way in."
-              : "This course is public, so learners can also enroll themselves."}
+              ? "Kursus ini privat, jadi peserta hanya dapat masuk jika didaftarkan di sini."
+              : "Kursus ini publik, jadi peserta juga dapat mendaftar sendiri."}
           </p>
         </div>
         <Button variant="outline" onClick={() => setInviteOpen(true)}>
           <UserPlus className="size-4" />
-          Invite learner
+          Undang peserta
         </Button>
       </div>
 
       {roster.total > 0 && (
-        <ListToolbar placeholder="Search enrolled learners..." prefix={ROSTER_PREFIX} />
+        <ListToolbar placeholder="Cari peserta terdaftar..." prefix={ROSTER_PREFIX} />
       )}
 
       {roster.rows.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border py-12 text-center">
           <Lock className="size-6 text-muted-foreground" />
           <p className="text-sm font-medium">
-            {roster.total === 0 ? "No learners enrolled yet" : "No learners match your search"}
+            {roster.total === 0 ? "Belum ada peserta terdaftar" : "Tidak ada peserta yang cocok dengan pencarian Anda"}
           </p>
           {roster.total === 0 && (
             <p className="max-w-[320px] text-xs text-muted-foreground">
-              Use <span className="font-medium">Invite learner</span> to search registered learners
-              and enroll them in this course.
+              Gunakan <span className="font-medium">Undang peserta</span> untuk mencari peserta yang
+              sudah terdaftar di platform dan mendaftarkannya ke kursus ini.
             </p>
           )}
         </div>
@@ -113,7 +113,7 @@ export function LearnersTab({
                       : "border-pill-border bg-muted text-muted-foreground"
                   }
                 >
-                  {entry.status === "completed" ? "Completed" : "Active"}
+                  {entry.status === "completed" ? "Selesai" : "Aktif"}
                 </Badge>
                 <span className="hidden shrink-0 text-xs text-muted-foreground sm:block">
                   {formatEnrolledAt(entry.enrolledAt)}
@@ -122,7 +122,7 @@ export function LearnersTab({
                   variant="ghost"
                   size="sm"
                   disabled={isPending}
-                  aria-label={`Remove ${entry.name}`}
+                  aria-label={`Keluarkan ${entry.name}`}
                   onClick={() => handleUnenroll(entry)}
                 >
                   <X className="size-4" />

@@ -34,20 +34,20 @@ export function PreviewTab() {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={draft.thumbnail_url} alt="" className="absolute inset-0 size-full object-cover" />
         ) : (
-          "course thumbnail"
+          "gambar kursus"
         )}
       </div>
 
-      <h2 className="mb-3 text-2xl leading-snug font-bold">{draft.title || "Untitled course"}</h2>
+      <h2 className="mb-3 text-2xl leading-snug font-bold">{draft.title || "Kursus tanpa judul"}</h2>
 
       <div className="mb-3.5 flex flex-wrap gap-4.5 text-[13px] text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <BookOpen className="size-3.5" />
-          {lessonCount} lessons
+          {lessonCount} pelajaran
         </span>
         <span className="flex items-center gap-1.5">
           <Clock className="size-3.5" />
-          {durationHours} {durationHours === 1 ? "hour" : "hours"}
+          {durationHours} jam
         </span>
         <span className="flex items-center gap-1.5">
           <Tag className="size-3.5" />
@@ -56,7 +56,7 @@ export function PreviewTab() {
       </div>
 
       <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
-        {draft.description || "No description yet."}
+        {draft.description || "Belum ada deskripsi."}
       </p>
     </div>
   )

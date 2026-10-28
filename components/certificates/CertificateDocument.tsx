@@ -168,7 +168,7 @@ export function CertificateDocument({
 }: CertificateDocumentProps) {
   const copy = CERTIFICATE_COPY[certificateType] ?? CERTIFICATE_COPY.completion
   const headline = certificateType === "custom" && customTitle ? customTitle : copy.title
-  const issuedDate = new Date(issuedAt).toLocaleDateString("en-US", {
+  const issuedDate = new Date(issuedAt).toLocaleDateString("id-ID", {
     year: "numeric",
     month: "long",
     day: "numeric",

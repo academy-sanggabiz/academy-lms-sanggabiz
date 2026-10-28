@@ -34,7 +34,7 @@ export async function gradeAttemptsAction(entries: BulkGradeEntry[]): Promise<Ac
   try {
     graderId = (await requireAdmin()).userId
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const succeeded: BulkGradeResult["succeeded"] = []
@@ -66,7 +66,7 @@ export async function getAttemptSubmissionAction(
   try {
     await requireAdmin()
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const responses = await getAttemptSubmission(attemptId)
@@ -90,7 +90,7 @@ export async function importGradesAction(csvText: string): Promise<ActionResult<
   try {
     graderId = (await requireAdmin()).userId
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const parsed = Papa.parse<string[]>(csvText.trim(), { skipEmptyLines: true })

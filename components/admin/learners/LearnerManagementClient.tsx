@@ -51,9 +51,9 @@ export function LearnerManagementClient({
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead>Learner</TableHead>
+                <TableHead>Peserta</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -42,12 +42,12 @@ export async function saveCourseDraftAction(
   try {
     await requireAdmin()
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const parsed = courseDraftSchema.safeParse(draft)
   if (!parsed.success) {
-    return { ok: false, error: "Invalid course data — please refresh and try again." }
+    return { ok: false, error: "Data kursus tidak valid. Muat ulang halaman lalu coba lagi." }
   }
 
   const result = await saveCourseDraft(courseId, parsed.data, status)
@@ -61,7 +61,7 @@ export async function deleteCourseAction(id: string): Promise<ActionResult<undef
   try {
     await requireAdmin()
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const result = await deleteCourse(id)
@@ -78,7 +78,7 @@ export async function toggleCourseStatusAction(
   try {
     await requireAdmin()
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const result = await setCourseStatus(id, status)
@@ -96,7 +96,7 @@ export async function createInstructorAction(input: {
   try {
     await requireAdmin()
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const result = await createInstructor(input)
@@ -109,7 +109,7 @@ export async function deleteInstructorAction(id: string): Promise<ActionResult<u
   try {
     await requireAdmin()
   } catch {
-    return { ok: false, error: "Not authorized" }
+    return { ok: false, error: "Anda tidak berwenang" }
   }
 
   const result = await deleteInstructor(id)

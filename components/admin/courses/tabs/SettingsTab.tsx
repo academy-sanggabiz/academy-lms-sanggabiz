@@ -22,6 +22,12 @@ import { useCourseDraft } from "../CourseDraftContext"
 
 const LEVELS = ["beginner", "intermediate", "advanced"]
 
+const LEVEL_LABEL: Record<string, string> = {
+  beginner: "Pemula",
+  intermediate: "Menengah",
+  advanced: "Lanjutan",
+}
+
 export function SettingsTab({
   status,
   instructors,
@@ -46,20 +52,20 @@ export function SettingsTab({
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <h3 className="text-[17px] font-bold">Basic Settings</h3>
+        <h3 className="text-[17px] font-bold">Pengaturan Dasar</h3>
         <div className="space-y-1.5">
-          <Label htmlFor="level">Level</Label>
+          <Label htmlFor="level">Tingkat</Label>
           <Select
             value={draft.level || undefined}
             onValueChange={(value) => setField("level", value ?? "")}
           >
             <SelectTrigger id="level" className="w-full">
-              <SelectValue placeholder="Select a level" />
+              <SelectValue placeholder="Pilih tingkat" />
             </SelectTrigger>
             <SelectContent>
               {LEVELS.map((level) => (
                 <SelectItem key={level} value={level}>
-                  {level.charAt(0).toUpperCase() + level.slice(1)}
+                  {LEVEL_LABEL[level] ?? level}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -68,15 +74,15 @@ export function SettingsTab({
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-[17px] font-bold">Enrollment Settings</h3>
+        <h3 className="text-[17px] font-bold">Pengaturan Pendaftaran</h3>
         <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
           <div>
             <Label htmlFor="isPrivate" className="text-sm font-medium">
-              Private course
+              Kursus privat
             </Label>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Only learners you enroll can find or open this course. It won&apos;t appear in the
-              public catalog. Add them from the Learners tab.
+              Hanya peserta yang Anda daftarkan yang dapat menemukan atau membuka kursus ini. Kursus
+              tidak tampil di katalog publik. Tambahkan peserta dari tab Peserta.
             </p>
           </div>
           <Switch
@@ -89,16 +95,16 @@ export function SettingsTab({
           <div className="flex items-start gap-2 rounded-lg border border-pill-border bg-draft-background p-3 text-xs">
             <TriangleAlert className="mt-px size-4 shrink-0 text-destructive" />
             <p>
-              <span className="font-medium">This course is still a draft.</span> Invited learners
-              won&apos;t be able to open it until you Publish — private only controls who can find
-              it, not whether it&apos;s live.
+              <span className="font-medium">Kursus ini masih berupa draf.</span> Peserta yang diundang
+              belum dapat membukanya sampai Anda menekan Terbitkan. Pengaturan privat hanya mengatur siapa
+              yang dapat menemukannya, bukan apakah kursus sudah tayang.
             </p>
           </div>
         )}
         {draft.isPrivate && (
           <p className="text-xs text-muted-foreground">
-            Learners can&apos;t enroll themselves in a private course, so the pricing option below
-            only applies if you later make it public.
+            Peserta tidak dapat mendaftar sendiri ke kursus privat, jadi opsi harga di bawah hanya
+            berlaku jika nanti kursus dijadikan publik.
           </p>
         )}
         <RadioGroup
@@ -109,25 +115,25 @@ export function SettingsTab({
           <label className="flex items-start gap-2.5 rounded-lg border border-border p-3">
             <RadioGroupItem value="free" className="mt-0.5" />
             <span>
-              <span className="block text-sm font-medium">Public</span>
+              <span className="block text-sm font-medium">Publik</span>
               <span className="block text-xs text-muted-foreground">
-                Anyone can enroll at no cost.
+                Siapa pun dapat mendaftar tanpa biaya.
               </span>
             </span>
           </label>
           <label className="flex items-start gap-2.5 rounded-lg border border-border p-3">
             <RadioGroupItem value="paid" className="mt-0.5" />
             <span>
-              <span className="block text-sm font-medium">Paid</span>
+              <span className="block text-sm font-medium">Berbayar</span>
               <span className="block text-xs text-muted-foreground">
-                Learners pay a fixed price to enroll.
+                Peserta membayar harga tetap untuk mendaftar.
               </span>
             </span>
           </label>
         </RadioGroup>
         {draft.enrollmentMode === "paid" && (
           <div className="space-y-1.5">
-            <Label htmlFor="price">Price</Label>
+            <Label htmlFor="price">Harga</Label>
             <Input
               id="price"
               type="number"
@@ -146,7 +152,7 @@ export function SettingsTab({
       <CertificateSettings />
 
       <section className="space-y-3">
-        <h3 className="text-[17px] font-bold">Instructor Settings</h3>
+        <h3 className="text-[17px] font-bold">Pengaturan Instruktur</h3>
         <InstructorPicker instructors={instructors} />
       </section>
     </div>

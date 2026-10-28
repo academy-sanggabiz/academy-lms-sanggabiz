@@ -24,7 +24,7 @@ const STATUS_VARIANT: Record<TransactionStatus, "default" | "secondary" | "destr
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
+  return new Date(iso).toLocaleDateString("id-ID", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -48,11 +48,11 @@ export function PurchaseManagementClient({ page }: { page: Paginated<AdminPurcha
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead>Learner</TableHead>
-                <TableHead>Course</TableHead>
-                <TableHead>Amount</TableHead>
+                <TableHead>Peserta</TableHead>
+                <TableHead>Kursus</TableHead>
+                <TableHead>Jumlah</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>Tanggal</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
