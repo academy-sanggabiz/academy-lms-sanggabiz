@@ -170,7 +170,7 @@ New signups default to the `learner` role. To create your first **admin** / **su
 | `npm run start` | Serve the production build |
 | `npm run lint` | ESLint (flat config, `eslint-config-next`) |
 | `npm run audit:a11y` | axe-core WCAG 2.2 A/AA audit of every page against a running build (needs Playwright; set `AUDIT_LEARNER_*` / `AUDIT_ADMIN_*`, see `scripts/a11y-audit.mjs`). Exits 1 on any violation |
-| `npm run preview` | Build + preview locally on Cloudflare Workers |
+| `npm run preview` | Build + preview locally on Cloudflare Workers (Cloudflare only; on Vercel just push — see `docs/DEPLOY-VERCEL.md`) |
 | `npm run deploy` | Build + deploy to Cloudflare |
 | `npm run cf-typegen` | Regenerate `CloudflareEnv` types after changing bindings |
 
@@ -215,6 +215,7 @@ academy-lms-sanggabiz/
 
 - [`docs/STANDAR-DIGITAL-LEARNING.md`](./docs/STANDAR-DIGITAL-LEARNING.md) — our digital learning standard (UX, learning science, WCAG 2.2, KPIs) and the audit checklist.
 - [`docs/V2-UPGRADE.md`](./docs/V2-UPGRADE.md) — what v2 changed, why, how it was verified, and how to migrate a v1 deployment.
+- [`docs/DEPLOY-VERCEL.md`](./docs/DEPLOY-VERCEL.md) — deploying to Vercel: Supabase setup, environment variables, auth redirect URLs, regions.
 - [`erd.md`](./erd.md) — data model, entity dictionary, RLS intent, and build status.
 - [`CLAUDE.md`](./CLAUDE.md) / [`AGENTS.md`](./AGENTS.md) — architecture notes and Next.js 16 conventions.
 - `reference/design_handoff_ease_lms/` — high-fidelity design prototype and design tokens (reference only; do not import or run).
