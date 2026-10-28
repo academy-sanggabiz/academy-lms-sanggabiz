@@ -70,6 +70,14 @@ create policy "own profile update" on public.profiles
   using ((select auth.uid()) = id)
   with check ((select auth.uid()) = id);
 
+-- The policy above only checks WHICH row; Supabase grants UPDATE on every
+-- column by default, which let any user PATCH their own `role` to
+-- 'superadmin' over the REST API. Self-service updates are limited to the
+-- columns the app actually edits; roles change only via SQL / service role.
+-- (security review v2, 20261029010000_lesson_content_rls.sql)
+revoke update on public.profiles from anon, authenticated;
+grant update (full_name, notification_email_enabled) on public.profiles to authenticated;
+
 -- Auto-create a profile row (default role 'learner') whenever a new
 -- auth.users row is created, whether via email/password or Google OAuth.
 create function public.handle_new_user()
@@ -314,6 +322,32 @@ $$;
 
 grant execute on function public.is_open_enrollment_course(uuid) to authenticated;
 
+-- Content-level access (lesson content/video_url, resources, quiz questions
+-- and options), stricter than can_read_course(): the caller owns the course
+-- (superadmin: every course), or the course is readable AND the caller is
+-- enrolled in it. The public curriculum goes through the lessons_public view
+-- (section 17) instead. security definer for the same reasons as
+-- can_read_course().
+create function public.can_read_course_content(cid uuid)
+returns boolean
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select public.owns_course(cid)
+    or (
+      public.can_read_course(cid)
+      and exists (
+        select 1 from public.enrollments e
+        where e.course_id = cid and e.learner_id = (select auth.uid())
+      )
+    );
+$$;
+
+revoke execute on function public.can_read_course_content(uuid) from public, anon;
+grant execute on function public.can_read_course_content(uuid) to authenticated;
+
 -- Learners (and anonymous visitors, e.g. the public landing page) may read
 -- published courses -- but a published course marked is_private is readable
 -- only by learners who have actually been enrolled in it by an admin.
@@ -408,39 +442,37 @@ alter table public.course_sections enable row level security;
 alter table public.lessons enable row level security;
 alter table public.resources enable row level security;
 
--- Curriculum (module/lesson titles + types) is part of the public "sales
--- page" for a course, so it's readable whenever the parent course is
--- published — via EXISTS checks up the section/lesson chain.
+-- Module titles are part of the public "sales page" for a course, so
+-- course_sections is readable whenever the parent course is readable.
 --
--- KNOWN FOLLOW-UP: this also exposes lessons.video_url/content to
--- non-enrolled users, since RLS is row-level and can't hide columns. The
--- lesson player (app/learn/[courseId]/) gates access at the page level
--- (redirects to course detail if there's no enrollment), but a non-enrolled
--- authenticated user could still read lesson content directly via the
--- Supabase REST API. Fine while content is placeholder/seed data; real
--- content later should either move gating into RLS (a lessons select policy
--- requiring an enrollment, not just a published course) or accept this as a
--- deliberate page-level-only gate.
+-- Lessons and resources are NOT: RLS is row-level and can't hide columns, so
+-- a course-readable lessons policy exposed video_url/content (and resource
+-- file URLs) of every published course to anyone over the REST API, while
+-- the player only gated at page level. They are readable only by learners
+-- enrolled in the course and by the owning admin (can_read_course_content(),
+-- plus the owns_course() admin policies in section 9). The public curriculum
+-- (lesson title/type/duration/position, resource count) is served by the
+-- lessons_public view in section 17, which never projects content columns.
 create policy "sections readable for readable courses" on public.course_sections
   for select
   to anon, authenticated
   using (public.can_read_course(course_sections.course_id));
 
-create policy "lessons readable for readable courses" on public.lessons
+create policy "lessons readable for enrolled learners" on public.lessons
   for select
-  to anon, authenticated
+  to authenticated
   using (exists (
     select 1 from public.course_sections s
-    where s.id = lessons.section_id and public.can_read_course(s.course_id)
+    where s.id = lessons.section_id and public.can_read_course_content(s.course_id)
   ));
 
-create policy "resources readable for readable courses" on public.resources
+create policy "resources readable for enrolled learners" on public.resources
   for select
-  to anon, authenticated
+  to authenticated
   using (exists (
     select 1 from public.lessons l
     join public.course_sections s on s.id = l.section_id
-    where l.id = resources.lesson_id and public.can_read_course(s.course_id)
+    where l.id = resources.lesson_id and public.can_read_course_content(s.course_id)
   ));
 
 grant select on public.course_sections, public.lessons, public.resources to anon, authenticated;
@@ -500,6 +532,10 @@ drop trigger if exists on_lesson_stats_change on public.lessons;
 create trigger on_lesson_stats_change
 after insert or update of duration_seconds, section_id or delete on public.lessons
 for each row execute function public.handle_lesson_stats_change();
+
+-- Only ever called from the trigger function above (as the definer); no API
+-- role needs to run it directly.
+revoke execute on function public.recalculate_course_lesson_stats(uuid) from public, anon, authenticated;
 
 -- One-time backfill so already-existing courses reflect their real curriculum.
 update public.courses c
@@ -587,10 +623,32 @@ create policy "own transactions readable" on public.transactions
   to authenticated
   using ((select auth.uid()) = learner_id);
 
+-- A learner's own purchase row must belong to an own enrollment and match
+-- the course price (free -> 'free', priced -> 'completed'); before this a
+-- learner could insert any amount/status for any course and skew the owning
+-- admin's revenue figures. A real payment gateway must write these
+-- server-side (service role) instead.
 create policy "own transactions insertable" on public.transactions
   for insert
   to authenticated
-  with check ((select auth.uid()) = learner_id);
+  with check (
+    (select auth.uid()) = learner_id
+    and gateway is null
+    and exists (
+      select 1 from public.enrollments e
+      where e.id = transactions.enrollment_id
+        and e.learner_id = (select auth.uid())
+        and e.course_id = transactions.course_id
+    )
+    and exists (
+      select 1 from public.courses c
+      where c.id = transactions.course_id
+        and c.price = transactions.amount
+        and transactions.status = (
+          case when c.price > 0 then 'completed' else 'free' end
+        )::public.transaction_status
+    )
+  );
 
 create policy "admins read all transactions" on public.transactions
   for select to authenticated
@@ -785,9 +843,11 @@ alter table public.question_options enable row level security;
 alter table public.quiz_attempts enable row level security;
 alter table public.quiz_responses enable row level security;
 
--- Quiz content (title, questions) is part of the public "sales page" for a
--- course, readable whenever the parent course is published — same
--- EXISTS-up-the-chain pattern as course_sections/lessons.
+-- Quiz metadata (title, pass score, limits) is readable whenever the parent
+-- course is readable. Questions (the prompts) are the assessment itself, so
+-- like lesson content they are readable only by enrolled learners and the
+-- owning admin (can_read_course_content()); the curriculum only needs the
+-- lesson's title and type.
 --
 -- question_options deliberately has NO anon/authenticated read policy below
 -- (RLS is row-level, not column-level, so it can't hide just is_correct) —
@@ -808,14 +868,14 @@ create policy "quizzes readable for readable courses" on public.quizzes
     where l.id = quizzes.lesson_id and public.can_read_course(cs.course_id)
   ));
 
-create policy "questions readable for readable courses" on public.questions
+create policy "questions readable for enrolled learners" on public.questions
   for select
-  to anon, authenticated
+  to authenticated
   using (exists (
     select 1 from public.quizzes q
     join public.lessons l on l.id = q.lesson_id
     join public.course_sections cs on cs.id = l.section_id
-    where q.id = questions.quiz_id and public.can_read_course(cs.course_id)
+    where q.id = questions.quiz_id and public.can_read_course_content(cs.course_id)
   ));
 
 -- Learner/anon rendering of option text goes through this view instead of a
@@ -828,7 +888,8 @@ create policy "questions readable for readable courses" on public.questions
 -- question_options rows (is_correct = true, no "wrong" options), so text
 -- itself is the answer for that type -- excluded here for the same reason
 -- is_correct is excluded for every type (matches the app-level scrub this
--- view replaces in lib/courses-server.ts).
+-- view replaces in lib/courses-server.ts). Gated on content access (enrolled
+-- or owner), same as questions.
 create view public.question_options_public
   with (security_invoker = false) as
   select qo.id, qo.question_id, qo.text, qo.position
@@ -839,10 +900,10 @@ create view public.question_options_public
       select 1 from public.quizzes q
       join public.lessons l on l.id = q.lesson_id
       join public.course_sections cs on cs.id = l.section_id
-      join public.courses c on c.id = cs.course_id
-      where q.id = qu.quiz_id and public.can_read_course(cs.course_id)
+      where q.id = qu.quiz_id and public.can_read_course_content(cs.course_id)
     );
 
+revoke all on public.question_options_public from anon, authenticated;
 grant select on public.question_options_public to anon, authenticated;
 
 -- Server-side quiz grading. Runs SECURITY DEFINER (owner privileges) so it
@@ -1016,12 +1077,14 @@ begin
 end;
 $$;
 
-revoke all on function public.grade_attempt(uuid, jsonb) from public;
+revoke all on function public.grade_attempt(uuid, jsonb) from public, anon;
 grant execute on function public.grade_attempt(uuid, jsonb) to authenticated;
 
 -- Attempts/responses are private to the learner who made them, same model as
--- enrollments/lesson_progress. Update is needed on quiz_attempts so
--- submitQuiz can write submitted_at/score/passed after grading.
+-- enrollments/lesson_progress. Insert/update on quiz_attempts let a learner
+-- open an attempt and save draft_answers; WHAT they may write is narrowed by
+-- the guard_quiz_attempt_write trigger (section 17) -- score/passed/status
+-- are only ever written by grade_attempt() and the owning admin.
 create policy "own quiz attempts readable" on public.quiz_attempts
   for select
   to authenticated
@@ -1046,13 +1109,10 @@ create policy "own quiz responses readable" on public.quiz_responses
     where a.id = quiz_responses.attempt_id and a.learner_id = (select auth.uid())
   ));
 
-create policy "own quiz responses insertable" on public.quiz_responses
-  for insert
-  to authenticated
-  with check (exists (
-    select 1 from public.quiz_attempts a
-    where a.id = quiz_responses.attempt_id and a.learner_id = (select auth.uid())
-  ));
+-- No learner insert policy on quiz_responses: grade_attempt() (security
+-- definer) writes every response row itself, and finalizeAttempt sums
+-- points_awarded over all rows of an attempt, so a learner-inserted row could
+-- inflate a manually graded score.
 
 -- Admin > Grading needs to see every attempt/response awaiting review and
 -- write the manual essay grade (quiz_responses) plus the recomputed
@@ -1587,9 +1647,12 @@ insert into storage.buckets (id, name, public)
 values ('course-thumbnails', 'course-thumbnails', true)
 on conflict (id) do nothing;
 
-create policy "public can read course thumbnails" on storage.objects
-  for select to public
-  using (bucket_id = 'course-thumbnails');
+-- No SELECT policy for anon: files are served through the bucket's public
+-- URL, which needs none, while a SELECT policy for `public` also lets anyone
+-- LIST every object in the bucket. Admins need SELECT to manage files.
+create policy "admins can read course thumbnails" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'course-thumbnails' and public.is_admin());
 
 create policy "admins can upload course thumbnails" on storage.objects
   for insert to authenticated
@@ -1609,9 +1672,12 @@ insert into storage.buckets (id, name, public)
 values ('certificate-assets', 'certificate-assets', true)
 on conflict (id) do nothing;
 
-create policy "public can read certificate assets" on storage.objects
-  for select to public
-  using (bucket_id = 'certificate-assets');
+-- No SELECT policy for anon: files are served through the bucket's public
+-- URL, which needs none, while a SELECT policy for `public` also lets anyone
+-- LIST every object in the bucket. Admins need SELECT to manage files.
+create policy "admins can read certificate assets" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'certificate-assets' and public.is_admin());
 
 create policy "admins can upload certificate assets" on storage.objects
   for insert to authenticated
@@ -1640,6 +1706,15 @@ create policy "learners can upload own certificate pdfs" on storage.objects
     and (storage.foldername(name))[2] = (select auth.uid())::text
   );
 
+-- SELECT on the learner's own folder is needed by the upload's upsert.
+create policy "learners can read own certificate pdfs" on storage.objects
+  for select to authenticated
+  using (
+    bucket_id = 'certificate-assets'
+    and (storage.foldername(name))[1] = 'certificates'
+    and (storage.foldername(name))[2] = (select auth.uid())::text
+  );
+
 create policy "learners can update own certificate pdfs" on storage.objects
   for update to authenticated
   using (
@@ -1660,9 +1735,12 @@ insert into storage.buckets (id, name, public)
 values ('lesson-content', 'lesson-content', true)
 on conflict (id) do nothing;
 
-create policy "public can read lesson content" on storage.objects
-  for select to public
-  using (bucket_id = 'lesson-content');
+-- No SELECT policy for anon: files are served through the bucket's public
+-- URL, which needs none, while a SELECT policy for `public` also lets anyone
+-- LIST every object in the bucket. Admins need SELECT to manage files.
+create policy "admins can read lesson content" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'lesson-content' and public.is_admin());
 
 create policy "admins can upload lesson content" on storage.objects
   for insert to authenticated
@@ -2501,3 +2579,166 @@ create policy "learners delete own lesson notes" on public.lesson_notes
   using (learner_id = auth.uid());
 
 -- No admin policy on purpose (see the privacy note at the top).
+
+-- =============================================================================
+-- 17. Lesson content visible to enrolled learners only (v2)
+-- =============================================================================
+--
+-- Security review v2 (docs/SECURITY-REVIEW.md). Applied to a live database
+-- via 20261029010000_lesson_content_rls.sql. The changed definitions are in
+-- place above (profiles column grants in section 2, can_read_course_content()
+-- in section 3, lessons/resources policies in section 5, the transactions
+-- insert policy in section 6, questions/question_options_public/quiz_responses
+-- in section 7, storage SELECT policies in section 10); this section holds the
+-- objects that are new.
+
+-- Public curriculum: what the course "sales page" shows before enrolling.
+-- Deliberately security_invoker = false, like question_options_public: it has
+-- to read past the (enrollment-gated) lessons RLS, and it is safe because it
+-- projects ONLY non-content columns (no video_url, no content, no resource
+-- URLs) and re-applies can_read_course(), so draft and private courses stay
+-- exactly as hidden as they are on public.courses.
+create or replace view public.lessons_public
+  with (security_invoker = false) as
+  select
+    l.id,
+    l.section_id,
+    s.course_id,
+    l.title,
+    l.position,
+    l.content_type,
+    l.duration_seconds,
+    (select count(*)::int from public.resources r where r.lesson_id = l.id) as resource_count
+  from public.lessons l
+  join public.course_sections s on s.id = l.section_id
+  where public.can_read_course(s.course_id);
+
+revoke all on public.lessons_public from anon, authenticated;
+grant select on public.lessons_public to anon, authenticated;
+
+create or replace function public.quiz_course_id(qid uuid)
+returns uuid
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select cs.course_id
+  from public.quizzes q
+  join public.lessons l on l.id = q.lesson_id
+  join public.course_sections cs on cs.id = l.section_id
+  where q.id = qid;
+$$;
+
+revoke execute on function public.quiz_course_id(uuid) from public, anon;
+grant execute on function public.quiz_course_id(uuid) to authenticated;
+
+-- Learners may open an in_progress attempt in a course they are enrolled in
+-- (within the attempt cap) and change draft_answers while it is open --
+-- nothing else. Before this the own-row policies let a learner write their
+-- own score/passed/status (forging a pass, unlocking question_explanations)
+-- and skip the enrollment check and attempt cap that only the app enforced.
+--
+-- security INVOKER on purpose: current_user is then the role that ran the
+-- statement. A learner's REST call runs as `authenticated`; grade_attempt()
+-- (security definer) runs its own UPDATE as the function owner, so the
+-- scoring path is unaffected. Admins who own the course (finalizeAttempt)
+-- are let through too.
+create or replace function public.guard_quiz_attempt_write()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_course uuid;
+  v_quiz record;
+  v_used int;
+  v_max int;
+begin
+  if current_user not in ('anon', 'authenticated') then
+    return new;
+  end if;
+
+  v_course := public.quiz_course_id(new.quiz_id);
+  if v_course is not null and public.owns_course(v_course) then
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' then
+    if new.status <> 'in_progress'
+      or new.submitted_at is not null
+      or new.score is not null
+      or new.passed is not null then
+      raise exception 'A quiz attempt must start in progress' using errcode = '42501';
+    end if;
+
+    if v_course is null or not public.can_read_course_content(v_course) then
+      raise exception 'Not enrolled' using errcode = '42501';
+    end if;
+
+    -- Mirrors the app-level cap (REGULAR_QUIZ_MAX_ATTEMPTS = 3 in
+    -- lib/courses.ts for normal quizzes; quizzes.max_attempts, null =
+    -- unlimited, for study cases) so it can't be bypassed over REST.
+    select q.is_assessment, q.max_attempts into v_quiz
+      from public.quizzes q where q.id = new.quiz_id;
+    v_max := case when v_quiz.is_assessment then v_quiz.max_attempts else 3 end;
+    if v_max is not null then
+      select count(*) into v_used from public.quiz_attempts a
+        where a.quiz_id = new.quiz_id and a.learner_id = new.learner_id;
+      if v_used >= v_max then
+        raise exception 'No attempts remaining' using errcode = '42501';
+      end if;
+    end if;
+
+    return new;
+  end if;
+
+  -- UPDATE: only draft_answers on an attempt that is still open.
+  if old.status <> 'in_progress' then
+    raise exception 'Attempt already submitted' using errcode = '42501';
+  end if;
+  if (new.id, new.quiz_id, new.learner_id, new.attempt_number, new.started_at,
+      new.submitted_at, new.score, new.passed, new.status)
+     is distinct from
+     (old.id, old.quiz_id, old.learner_id, old.attempt_number, old.started_at,
+      old.submitted_at, old.score, old.passed, old.status) then
+    raise exception 'Only draft answers can be changed' using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists guard_quiz_attempt_write on public.quiz_attempts;
+create trigger guard_quiz_attempt_write
+  before insert or update on public.quiz_attempts
+  for each row
+  execute function public.guard_quiz_attempt_write();
+
+-- The own-row enrollment UPDATE policy (status/completed_at for
+-- checkAndIssueCertificate) also let a learner change course_id -- i.e. move
+-- an open-course enrollment onto a private course and read it. learner_id and
+-- course_id are immutable for API roles.
+create or replace function public.guard_enrollment_update()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  if current_user in ('anon', 'authenticated')
+     and (new.learner_id is distinct from old.learner_id
+          or new.course_id is distinct from old.course_id) then
+    raise exception 'An enrollment cannot be moved to another learner or course'
+      using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists guard_enrollment_update on public.enrollments;
+create trigger guard_enrollment_update
+  before update on public.enrollments
+  for each row
+  execute function public.guard_enrollment_update();

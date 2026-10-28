@@ -12,7 +12,8 @@
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "audit:a11y": "node scripts/a11y-audit.mjs"
+    "audit:a11y": "node scripts/a11y-audit.mjs",
+    "test:rls": "node scripts/redirect-check.mjs && node scripts/rls-check.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
