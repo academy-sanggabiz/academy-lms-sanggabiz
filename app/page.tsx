@@ -60,7 +60,7 @@ export default async function Home() {
           className="lesson-prose mt-7 max-w-xl text-lg text-muted-foreground"
           dangerouslySetInnerHTML={{ __html: hero.subheading }}
         />
-        <div className="mt-10 flex gap-3.5">
+        <div className="mt-10 flex flex-wrap justify-center gap-3.5">
           <Button
             size="xl"
             className="bg-brand-gradient text-white hover:brightness-105"

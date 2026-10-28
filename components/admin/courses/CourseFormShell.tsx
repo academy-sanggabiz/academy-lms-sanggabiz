@@ -204,7 +204,7 @@ function CourseFormShellInner({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <Button variant="ghost" size="sm" onClick={handleBack}>
           <ArrowLeft className="size-4" />
           Kembali
@@ -225,7 +225,7 @@ function CourseFormShellInner({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <h1 className="mr-3 text-xl font-bold">{isNew ? "Kursus Baru" : "Ubah Kursus"}</h1>
           <Button variant="outline" disabled={isPending} onClick={() => onSubmit("draft")}>
             Simpan Draf
@@ -240,9 +240,10 @@ function CourseFormShellInner({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-6">
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="mb-6">
+          {/* Scrolls inside its own box on a phone instead of widening the page (WCAG 1.4.10). */}
+          <TabsList className="mb-6 max-w-full justify-start overflow-x-auto">
             <TabsTrigger value="basic">Info Dasar</TabsTrigger>
             <TabsTrigger value="lessons">Pelajaran</TabsTrigger>
             <TabsTrigger value="settings">Pengaturan</TabsTrigger>

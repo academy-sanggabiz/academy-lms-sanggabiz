@@ -8,12 +8,14 @@ import {
   Users,
   ShoppingCart,
   PanelLeftClose,
+  X,
   Layout,
   ClipboardCheck,
   Activity,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { sidebarClasses } from "@/hooks/use-mobile-nav"
 import { useNavigationBlocker } from "@/components/admin/NavigationBlockerContext"
 
 const navItems = [
@@ -27,30 +29,38 @@ const navItems = [
 
 export function AdminSidebar({
   open,
+  mobileOpen,
   onToggle,
+  onCloseMobile,
   role,
 }: {
   open: boolean
+  mobileOpen: boolean
   onToggle: () => void
+  onCloseMobile: () => void
   role: "admin" | "superadmin"
 }) {
   return (
-    <aside
-      className={cn(
-        "sticky top-0 flex h-screen flex-none flex-col overflow-hidden border-r border-border bg-card transition-[width] duration-200",
-        open ? "w-[250px]" : "w-0 border-r-0"
-      )}
-    >
+    <aside id="app-sidebar" aria-label="Navigasi utama" className={sidebarClasses(open, mobileOpen)}>
       <div className="flex items-center gap-2 px-4 py-4 whitespace-nowrap">
-        <img src="/logo.png" alt="Sanggabiz" className="size-8 object-contain" />
+        <img src="/logo.png" alt="" className="size-8 object-contain" />
         <span className="text-[17px] font-bold tracking-tight text-ring">sanggabiz</span>
         <div className="flex-1" />
         <button
-          onClick={onToggle}
-          className="flex size-8 flex-none items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-          title="Tutup sidebar"
+          type="button"
+          onClick={onCloseMobile}
+          aria-label="Tutup menu"
+          className="flex size-8 flex-none items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
         >
-          <PanelLeftClose className="size-[18px]" />
+          <X className="size-[18px]" aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label="Tutup sidebar"
+          className="hidden size-8 flex-none items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground lg:flex"
+        >
+          <PanelLeftClose className="size-[18px]" aria-hidden />
         </button>
       </div>
 
