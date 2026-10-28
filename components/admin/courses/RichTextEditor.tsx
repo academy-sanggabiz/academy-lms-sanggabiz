@@ -76,6 +76,19 @@ function stripPastedColor(html: string): string {
   return doc.body.innerHTML
 }
 
+/**
+ * Ask the author for an image's text alternative (WCAG 1.1.1). Empty means
+ * decorative (alt=""), which screen readers skip; Cancel keeps `current`.
+ */
+function askAltText(current = ""): string | null {
+  const answer = window.prompt(
+    "Describe this image for learners who cannot see it (what it shows and why it matters).\n" +
+      "Leave empty if the image is only decorative.",
+    current
+  )
+  return answer === null ? null : answer.trim()
+}
+
 async function uploadAndInsert(view: EditorView, file: File, pos?: number) {
   const toastId = toast.loading("Uploading image…")
   const result = await uploadLessonImage(file)
@@ -85,7 +98,8 @@ async function uploadAndInsert(view: EditorView, file: File, pos?: number) {
     toast.error(result.error)
     return
   }
-  const node = view.state.schema.nodes.image.create({ src: result.url })
+  const alt = askAltText() ?? ""
+  const node = view.state.schema.nodes.image.create({ src: result.url, alt })
   const tr = pos == null ? view.state.tr.replaceSelectionWith(node) : view.state.tr.insert(pos, node)
   view.dispatch(tr)
 }
@@ -209,7 +223,14 @@ function Toolbar({ editor }: { editor: Editor }) {
       toast.error(result.error)
       return
     }
-    editor.chain().focus().setImage({ src: result.url }).run()
+    const alt = askAltText() ?? ""
+    editor.chain().focus().setImage({ src: result.url, alt }).run()
+  }
+
+  function handleEditAlt() {
+    const current = (editor.getAttributes("image").alt as string | undefined) ?? ""
+    const next = askAltText(current)
+    if (next !== null) editor.chain().focus().updateAttributes("image", { alt: next }).run()
   }
 
   const activeHeading =
@@ -327,11 +348,18 @@ function Toolbar({ editor }: { editor: Editor }) {
         variant="ghost"
         size="icon-sm"
         title="Insert image"
+        aria-label="Insert image"
         disabled={isUploading}
         onClick={() => fileInputRef.current?.click()}
       >
         {isUploading ? <Loader2 className="size-3.5 animate-spin" /> : <ImageIcon className="size-3.5" />}
       </Button>
+
+      {editor.isActive("image") && (
+        <Button type="button" variant="ghost" size="sm" onClick={handleEditAlt} className="text-xs">
+          Alt text
+        </Button>
+      )}
 
       <ToolbarToggle
         title="Blockquote"
@@ -457,6 +485,8 @@ function ToolbarToggle({
       variant="ghost"
       size="icon-sm"
       title={title}
+      aria-label={title}
+      aria-pressed={active}
       onClick={onClick}
       className={cn(active && "bg-muted text-foreground")}
     >

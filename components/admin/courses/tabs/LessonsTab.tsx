@@ -4,6 +4,7 @@ import { memo, useState } from "react"
 import {
   DndContext,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   closestCenter,
   useSensor,
@@ -12,6 +13,7 @@ import {
 } from "@dnd-kit/core"
 import {
   SortableContext,
+  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
@@ -68,6 +70,7 @@ import { useCourseDraft } from "../CourseDraftContext"
 import { QuizIssuesProvider, useLessonQuizIssues } from "../QuizIssuesContext"
 import { QuizEditor } from "./QuizEditor"
 import { RichTextEditor } from "../RichTextEditor"
+import { LessonWritingGuide } from "../LessonWritingGuide"
 
 const LESSON_TYPES: { value: LessonContentType; label: string; description: string }[] = [
   { value: "video", label: "Video Lesson", description: "Lesson content is primarily video-based" },
@@ -106,7 +109,12 @@ export function LessonsTab({ quizIssues = [] }: { quizIssues?: QuizIssue[] }) {
     }
   }
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  // KeyboardSensor: Space/Enter picks a lesson up, arrow keys move it, Space
+  // drops it, Escape cancels -- the non-mouse alternative WCAG 2.5.7 asks for.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   function handleAddSection() {
     const id = newId()
@@ -399,10 +407,10 @@ const LessonCard = memo(function LessonCard({
           type="button"
           {...attributes}
           {...listeners}
-          title="Drag to reorder"
-          className="cursor-grab touch-none active:cursor-grabbing"
+          aria-label={`Reorder ${title.trim() || `lesson ${index + 1}`}: press Space to pick up, arrow keys to move, Space to drop`}
+          className="-m-1 flex size-6 cursor-grab touch-none items-center justify-center rounded active:cursor-grabbing"
         >
-          <GripVertical className="size-4 shrink-0 text-muted-foreground/50" />
+          <GripVertical className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </button>
         <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
           <Icon className="size-3.5" />
@@ -509,7 +517,11 @@ const LessonCard = memo(function LessonCard({
               onBlur={() =>
                 save({ duration_seconds: durationMin.trim() ? Number(durationMin) * 60 : null })
               }
+              aria-describedby={`lesson-duration-help-${lesson.id}`}
             />
+            <p id={`lesson-duration-help-${lesson.id}`} className="text-xs text-muted-foreground">
+              Shown to learners. Aim for 5–7 minutes per lesson.
+            </p>
           </div>
 
           {contentType !== "quiz" && (
@@ -530,13 +542,22 @@ const LessonCard = memo(function LessonCard({
               </div>
             )}
             {contentType === "text" && (
-              <RichTextEditor
-                value={content}
-                onChange={(html) => {
-                  setContent(html)
-                  save({ content: stripEmptyHtml(html) })
-                }}
-              />
+              <>
+                <RichTextEditor
+                  value={content}
+                  onChange={(html) => {
+                    setContent(html)
+                    save({ content: stripEmptyHtml(html) })
+                  }}
+                />
+                <LessonWritingGuide
+                  html={content}
+                  onUseAsDuration={(minutes) => {
+                    setDurationMin(String(minutes))
+                    save({ duration_seconds: minutes * 60 })
+                  }}
+                />
+              </>
             )}
             {contentType === "ppt" && (
               <div className="space-y-1.5">
