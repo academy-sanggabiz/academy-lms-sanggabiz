@@ -227,6 +227,7 @@ function reducer(state: State, action: CourseDraftAction): State {
         prompt: "",
         allow_multiple: false,
         case_sensitive: false,
+        explanation: "",
         options:
           action.questionType === "true_false"
             ? [

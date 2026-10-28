@@ -137,13 +137,23 @@ export function QuizPlayer({
         </div>
 
         {isChoice ? (
-          <div className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-6">
+          <div
+            role={question.type === "multiple_choice" && question.allow_multiple ? "group" : "radiogroup"}
+            aria-label="Answer options"
+            className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-6"
+          >
+            {question.type === "multiple_choice" && question.allow_multiple && (
+              <p className="text-sm text-muted-foreground">Select all answers that apply.</p>
+            )}
             {question.options.map((option) => {
               const selected = selectedIds.includes(option.id)
               const multi = question.type === "multiple_choice" && question.allow_multiple
               return (
                 <button
                   key={option.id}
+                  type="button"
+                  role={multi ? "checkbox" : "radio"}
+                  aria-checked={selected}
                   onClick={() => toggleOption(option.id)}
                   className={cn(
                     "flex items-center gap-3 rounded-xl border px-5 py-4 text-left hover:border-ring",
@@ -174,6 +184,7 @@ export function QuizPlayer({
         ) : (
           <div className="rounded-2xl border border-border bg-card p-6">
             <textarea
+              aria-label="Your answer"
               value={answers[question.id] ?? ""}
               onChange={(e) => setAnswers((a) => ({ ...a, [question.id]: e.target.value }))}
               placeholder="Type your answer..."
@@ -222,8 +233,16 @@ export function QuizPlayer({
                 {result.score}%
               </div>
               <div className="text-[14.5px] text-muted-foreground">
-                {result.correctCount} of {result.total} correct
+                {result.correctCount} of {result.total} correct · {result.passed ? "Passed" : "Not passed yet"}
               </div>
+              {/* Feedback ends with the next step (Hattie & Timperley: where to next). */}
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                {result.passed
+                  ? "You passed this quiz. Continue with the next lesson."
+                  : canRetry
+                    ? "Read the explanations below, review the lessons they point to, then try again."
+                    : "Read the explanations below and review the lessons they point to."}
+              </p>
             </>
           )}
         </div>
@@ -251,19 +270,33 @@ export function QuizPlayer({
                 className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4.5"
               >
                 {isCorrect === true && (
-                  <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-700 dark:text-emerald-400" />
+                  <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-700 dark:text-emerald-400" aria-hidden />
                 )}
                 {isCorrect === false && (
-                  <XCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
+                  <XCircle className="mt-0.5 size-5 shrink-0 text-destructive" aria-hidden />
                 )}
                 {isCorrect === null && (
-                  <CircleHelp className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+                  <CircleHelp className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
                 )}
                 <div className="min-w-0 flex-1">
+                  {/* State in words, not only by icon colour (WCAG 1.4.1). */}
+                  <div
+                    className={cn(
+                      "mb-1 text-xs font-semibold tracking-wide uppercase",
+                      isCorrect === true && "text-emerald-700 dark:text-emerald-400",
+                      isCorrect === false && "text-destructive",
+                      isCorrect === null && "text-muted-foreground"
+                    )}
+                  >
+                    {isCorrect === true ? "Correct" : isCorrect === false ? "Incorrect" : "Pending review"}
+                  </div>
                   <QuestionPrompt prompt={question.prompt} className="text-[14.5px] font-semibold" />
                   <div className="mt-1 text-[13px] text-muted-foreground">Your answer: {answerText}</div>
-                  {isCorrect === null && (
-                    <div className="mt-1 text-[13px] font-medium text-muted-foreground">Pending review</div>
+                  {result.explanations?.[question.id] && (
+                    <p className="mt-2 rounded-lg bg-secondary/60 px-3 py-2 text-[13px] leading-relaxed text-foreground">
+                      <span className="font-semibold">Why: </span>
+                      {result.explanations[question.id]}
+                    </p>
                   )}
                 </div>
               </div>

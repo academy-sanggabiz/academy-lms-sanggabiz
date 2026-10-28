@@ -25,7 +25,10 @@ import type {
  * these admin-only types just widen the TS shape for authoring UI.
  */
 export type AdminQuestionOption = QuestionOption & { is_correct: boolean }
-export type AdminQuestion = Omit<Question, "options"> & { options: AdminQuestionOption[] }
+// `explanation` lives in public.question_explanations (admin-readable; a
+// learner can read it only after submitting) and is folded in here so the
+// editor treats it like any other question field.
+export type AdminQuestion = Omit<Question, "options"> & { options: AdminQuestionOption[]; explanation: string }
 export type AdminQuiz = Omit<Quiz, "questions"> & { questions: AdminQuestion[] }
 
 export type { AuthorableQuestionType }
@@ -202,7 +205,7 @@ export async function getCourseDetailForAdmin(id: string): Promise<AdminCourseDe
         lessons(
           *,
           resources(*),
-          quiz:quizzes(*, questions(*, options:question_options(*)))
+          quiz:quizzes(*, questions(*, options:question_options(*), explanation_row:question_explanations(explanation)))
         )
       ),
       course_instructors(instructor:instructors(*)),
@@ -242,10 +245,17 @@ export async function getCourseDetailForAdmin(id: string): Promise<AdminCourseDe
               ? {
                   ...quiz,
                   questions: [...quiz.questions]
-                    .map((q) => ({
-                      ...q,
-                      options: [...q.options].sort((a, b) => a.position - b.position),
-                    }))
+                    .map((q) => {
+                      const { explanation_row, ...rest } = q as typeof q & {
+                        explanation_row?: { explanation: string } | { explanation: string }[] | null
+                      }
+                      const row = Array.isArray(explanation_row) ? explanation_row[0] : explanation_row
+                      return {
+                        ...rest,
+                        explanation: row?.explanation ?? "",
+                        options: [...q.options].sort((a, b) => a.position - b.position),
+                      }
+                    })
                     .sort((a, b) => a.position - b.position),
                 }
               : null,
@@ -543,6 +553,7 @@ export async function saveCourseDraft(
     case_sensitive: boolean
     position: number
   }[] = []
+  const explanationRows: { question_id: string; explanation: string; updated_at: string }[] = []
   const optionRows: {
     id: string
     question_id: string
@@ -666,6 +677,15 @@ export async function saveCourseDraft(
             })
           }
 
+          const explanation = question.explanation ?? ""
+          if ((existingQuestion?.explanation ?? "") !== explanation) {
+            explanationRows.push({
+              question_id: question.id,
+              explanation,
+              updated_at: new Date().toISOString(),
+            })
+          }
+
           question.options.forEach((option, optionIndex) => {
             seenOptionIds.add(option.id)
             const existingOption = optionsById.get(option.id)
@@ -764,7 +784,13 @@ export async function saveCourseDraft(
   if (questionRows.length > 0) {
     const { error } = await supabase.from("questions").upsert(questionRows, { onConflict: "id" })
     if (error) return wrapSaveError("questions", error.message)
+  }  if (explanationRows.length > 0) {
+    const { error } = await supabase
+      .from("question_explanations")
+      .upsert(explanationRows, { onConflict: "question_id" })
+    if (error) return wrapSaveError("question explanations", error.message)
   }
+
 
   if (optionRows.length > 0) {
     const { error } = await supabase.from("question_options").upsert(optionRows, { onConflict: "id" })

@@ -31,6 +31,8 @@ export type DraftQuestion = {
   prompt: string
   allow_multiple: boolean
   case_sensitive: boolean
+  /** Shown to the learner after they submit, next to their result. */
+  explanation: string
   options: DraftOption[]
 }
 
@@ -308,6 +310,7 @@ export function draftFromDetail(course: AdminCourseDetail): CourseDraft {
                   prompt: q.prompt,
                   allow_multiple: q.allow_multiple,
                   case_sensitive: q.case_sensitive,
+                  explanation: q.explanation ?? "",
                   options: q.options.map((o) => ({
                     id: o.id,
                     text: o.text,
@@ -351,6 +354,8 @@ const questionSchema = z.object({
   prompt: z.string().max(50_000),
   allow_multiple: z.boolean(),
   case_sensitive: z.boolean(),
+  // .default("") so a v1 draft restored from localStorage still parses.
+  explanation: z.string().max(5000).default(""),
   options: z.array(optionSchema).max(50),
 })
 

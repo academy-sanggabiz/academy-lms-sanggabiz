@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { RichTextEditor } from "../RichTextEditor"
 import type { AuthorableQuestionType } from "@/lib/courses-admin"
@@ -313,6 +314,25 @@ function QuestionCard({ question, index }: { question: DraftQuestion; index: num
                 </p>
               )}
             </>
+          )}
+
+          {!isEssayQuestion(question.type) && (
+            <div className="space-y-1.5">
+              <Label htmlFor={`explanation-${question.id}`}>Explanation (optional)</Label>
+              <p id={`explanation-help-${question.id}`} className="text-xs text-muted-foreground">
+                Shown to the learner after they submit: why the right answer is right, and what to review if
+                they missed it. One or two plain sentences.
+              </p>
+              <Textarea
+                id={`explanation-${question.id}`}
+                aria-describedby={`explanation-help-${question.id}`}
+                value={question.explanation ?? ""}
+                maxLength={5000}
+                onChange={(e) => save({ explanation: e.target.value })}
+                placeholder="e.g. Retrieval beats re-reading: answering from memory strengthens recall. Review lesson 2."
+                className="min-h-[72px]"
+              />
+            </div>
           )}
 
           {isEssayQuestion(question.type) && (

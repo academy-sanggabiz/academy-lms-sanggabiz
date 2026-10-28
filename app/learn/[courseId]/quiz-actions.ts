@@ -13,6 +13,8 @@ export type SubmitQuizResult = {
   correctCount: number
   total: number
   perQuestion: Record<string, boolean | null>
+  /** question_id -> author's explanation; only questions that have one. */
+  explanations: Record<string, string>
 }
 
 export async function startQuiz(
@@ -232,7 +234,21 @@ export async function submitQuiz(
 
   if (error) return { error: error.message }
 
-  const result = data as SubmitQuizResult
+  const result = { ...(data as Omit<SubmitQuizResult, "explanations">), explanations: {} } as SubmitQuizResult
+
+  // Explanations become readable (RLS) only now that this attempt is
+  // submitted -- see supabase/migrations/20261028000000_question_explanations.sql.
+  const { data: attemptRow } = await supabase.from("quiz_attempts").select("quiz_id").eq("id", attemptId).single()
+  if (attemptRow) {
+    const { data: explanationRows, error: explanationError } = await supabase
+      .from("question_explanations")
+      .select("question_id, explanation, question:questions!inner(quiz_id)")
+      .eq("question.quiz_id", attemptRow.quiz_id)
+    if (explanationError) console.error("submitQuiz explanations lookup failed:", explanationError.message)
+    for (const row of explanationRows ?? []) {
+      if (row.explanation.trim()) result.explanations[row.question_id] = row.explanation
+    }
+  }
 
   if (result.passed) {
     const { data: attempt } = await supabase
