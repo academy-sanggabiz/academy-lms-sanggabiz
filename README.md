@@ -1,16 +1,17 @@
 <div align="center">
 
-# Sanggabiz LMS
+# Sanggabiz LMS v2
 
 **A modern Learning Management System — course authoring, assessments, progress tracking & certificates.**
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.4-black?logo=next.js)](https://nextjs.org/)
+[![WCAG](https://img.shields.io/badge/WCAG_2.2-AA_(axe:_0_violations)-0b6f69)](./docs/V2-UPGRADE.md)
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Enabled-green?logo=supabase)](https://supabase.com)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38bdf8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
-[Features](#-features) • [Tech Stack](#️-tech-stack) • [Quick Start](#-quick-start) • [Project Structure](#️-project-structure) • [Roadmap](#️-roadmap)
+[What's new in v2](#-whats-new-in-v2) • [Features](#-features) • [Tech Stack](#️-tech-stack) • [Quick Start](#-quick-start) • [Project Structure](#️-project-structure) • [Roadmap](#️-roadmap)
 
 </div>
 
@@ -23,6 +24,20 @@ Sanggabiz LMS is a Learning Management System built with **Next.js 16**, **React
 Access is organized around three roles: **learner**, **admin**, and **superadmin**, enforced end-to-end by Supabase Row-Level Security.
 
 > ⚠️ **This is not the Next.js you may know.** Next.js 16 has real breaking changes: middleware is renamed to **Proxy** (the root file is `proxy.ts` exporting `proxy()`, there is **no** `middleware.ts`), and async APIs (`cookies()`, `headers()`, `params`, `searchParams`) are async-only. See [`AGENTS.md`](./AGENTS.md) and [`CLAUDE.md`](./CLAUDE.md) before relying on prior Next.js knowledge.
+
+---
+
+## 🆕 What's new in v2
+
+v2 upgrades v1 to our [Digital Learning Standard](./docs/STANDAR-DIGITAL-LEARNING.md). Full notes, evidence and migration steps: [`docs/V2-UPGRADE.md`](./docs/V2-UPGRADE.md).
+
+- **Accessible (WCAG 2.2 AA):** retuned colour tokens (every text pair ≥ 4.5:1), solid focus ring, skip link, page titles, accessible names, 24px targets, keyboard lesson reordering, image alt text. `npm run audit:a11y` reports **0 axe violations on 26 pages**.
+- **Mobile-ready player:** course content becomes a drawer below `lg`; no horizontal scroll at 390px; "Lesson 3 of 8 · Module 1", lessons done and time left in the header.
+- **One clear next step:** "Complete & continue" under every lesson; a real *Continue learning* card on the dashboard (next lesson + progress).
+- **Feedback that teaches:** per-question explanations shown after a quiz is submitted (RLS keeps them hidden before), results in words, next-step guidance.
+- **Authoring guidance:** live reading time against the 5–7 minute, one-goal lesson size, plus a content checklist.
+- **Platform:** Next.js 16.4.3 with `proxy.ts`, a lockfile that builds on Linux/CI, 0 production dependency vulnerabilities.
+- **Removed:** the AI Assistant and Notes tabs in the player, which looked usable but did nothing.
 
 ---
 
@@ -94,7 +109,7 @@ Access is organized around three roles: **learner**, **admin**, and **superadmin
 
 1. **Install dependencies**
    ```bash
-   npm install
+   npm ci
    ```
 
 2. **Set up environment variables**
@@ -105,7 +120,13 @@ Access is organized around three roles: **learner**, **admin**, and **superadmin
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
    ```
 
-   > No service-role key is used — every DB access runs under the anon/authenticated key and is gated by RLS.
+   Optional, server-only:
+   ```env
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key   # only for "Delete account" in Settings
+   NEXT_PUBLIC_HCAPTCHA_SITE_KEY=your_hcaptcha_site_key
+   ```
+
+   > Every other DB access runs under the anon/authenticated key and is gated by RLS. The service-role key is read only by `lib/supabase/admin.ts` (account deletion); never prefix it with `NEXT_PUBLIC_`.
 
 3. **Set up the Supabase database**
 
@@ -148,11 +169,12 @@ New signups default to the `learner` role. To create your first **admin** / **su
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
 | `npm run lint` | ESLint (flat config, `eslint-config-next`) |
+| `npm run audit:a11y` | axe-core WCAG 2.2 A/AA audit of every page against a running build (needs Playwright; set `AUDIT_LEARNER_*` / `AUDIT_ADMIN_*`, see `scripts/a11y-audit.mjs`). Exits 1 on any violation |
 | `npm run preview` | Build + preview locally on Cloudflare Workers |
 | `npm run deploy` | Build + deploy to Cloudflare |
 | `npm run cf-typegen` | Regenerate `CloudflareEnv` types after changing bindings |
 
-> There is no test suite configured yet.
+> There is no unit test suite yet. Definition of done for UI changes: typecheck, lint, build, `npm run audit:a11y`, and a manual check at 390px with the keyboard only (see `docs/V2-UPGRADE.md` §7).
 
 ---
 
@@ -191,6 +213,8 @@ academy-lms-sanggabiz/
 
 ## 📖 Documentation
 
+- [`docs/STANDAR-DIGITAL-LEARNING.md`](./docs/STANDAR-DIGITAL-LEARNING.md) — our digital learning standard (UX, learning science, WCAG 2.2, KPIs) and the audit checklist.
+- [`docs/V2-UPGRADE.md`](./docs/V2-UPGRADE.md) — what v2 changed, why, how it was verified, and how to migrate a v1 deployment.
 - [`erd.md`](./erd.md) — data model, entity dictionary, RLS intent, and build status.
 - [`CLAUDE.md`](./CLAUDE.md) / [`AGENTS.md`](./AGENTS.md) — architecture notes and Next.js 16 conventions.
 - `reference/design_handoff_ease_lms/` — high-fidelity design prototype and design tokens (reference only; do not import or run).
@@ -205,12 +229,15 @@ Per [`erd.md`](./erd.md), the following are not yet built:
 - [ ] **Course categories** — `categories` table + `courses.category_id` + category filtering.
 - [ ] **Brand settings** — site name, logo, and primary color (partially covered by the landing-page editor).
 - [ ] **Email notifications** — enrollment / completion / certificate emails.
-- [ ] Additional quiz question types (true/false, matching, fill-in-the-blank — enum-reserved).
+- [ ] Additional quiz question types (matching, fill-in-the-blank — enum-reserved).
+- [ ] **Indonesian UI (i18n)** — content is Indonesian, the interface is still English.
+- [ ] **Saved lesson notes** and an **AI course assistant** — removed from v2 until they have a real backend.
+- [ ] **Learning analytics** — completion rate, 7-day return rate and first-week drop-out as defined KPIs (standard §12).
 
 ---
 
 <div align="center">
 
-**Sanggabiz LMS** — built with Next.js 16, Supabase, and Tailwind CSS.
+**Sanggabiz LMS v2** — built with Next.js 16, Supabase, and Tailwind CSS.
 
 </div>
