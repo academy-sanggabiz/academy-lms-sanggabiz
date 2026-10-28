@@ -78,10 +78,10 @@ export function QuizPlayer({
             </div>
             <div className="text-xl font-bold">{quiz.title}</div>
             <p className="text-sm text-muted-foreground">
-              {quiz.questions.length} questions · test what you&apos;ve learned in this module
+              {quiz.questions.length} soal · uji pemahaman Anda tentang modul ini
             </p>
             {attemptInfo?.pendingReview && (
-              <p className="text-sm text-muted-foreground">Your last attempt is awaiting instructor review.</p>
+              <p className="text-sm text-muted-foreground">Percobaan terakhir Anda sedang menunggu penilaian instruktur.</p>
             )}
             {error && <p className="text-sm text-destructive">{error}</p>}
             {canAttempt ? (
@@ -91,11 +91,11 @@ export function QuizPlayer({
                 onClick={handleStart}
                 className="bg-brand-gradient text-white hover:brightness-105"
               >
-                {attemptsUsed > 0 ? "Retry Quiz" : "Start Quiz"}
+                {attemptsUsed > 0 ? "Ulangi Kuis" : "Mulai Kuis"}
               </Button>
             ) : (
               <p className="text-sm text-muted-foreground">
-                {alreadyPassed ? "You already passed this quiz." : "No attempts remaining."}
+                {alreadyPassed ? "Anda sudah lulus kuis ini." : "Kesempatan mencoba sudah habis."}
               </p>
             )}
           </div>
@@ -127,10 +127,10 @@ export function QuizPlayer({
         <div className="rounded-2xl border border-border bg-card p-7">
           <div className="flex items-start justify-between gap-3.5">
             <div className="text-2xl font-bold">
-              Question {questionIndex + 1} of {quiz.questions.length}
+              Soal {questionIndex + 1} dari {quiz.questions.length}
             </div>
             <div className="shrink-0 rounded-full bg-secondary px-4 py-2 text-[13.5px] font-semibold whitespace-nowrap">
-              Attempt {attemptNumber} of {REGULAR_QUIZ_MAX_ATTEMPTS}
+              Percobaan {attemptNumber} dari {REGULAR_QUIZ_MAX_ATTEMPTS}
             </div>
           </div>
           <QuestionPrompt prompt={question.prompt} className="mt-4 text-[17px]" />
@@ -139,11 +139,11 @@ export function QuizPlayer({
         {isChoice ? (
           <div
             role={question.type === "multiple_choice" && question.allow_multiple ? "group" : "radiogroup"}
-            aria-label="Answer options"
+            aria-label="Pilihan jawaban"
             className="flex flex-col gap-3.5 rounded-2xl border border-border bg-card p-6"
           >
             {question.type === "multiple_choice" && question.allow_multiple && (
-              <p className="text-sm text-muted-foreground">Select all answers that apply.</p>
+              <p className="text-sm text-muted-foreground">Pilih semua jawaban yang sesuai.</p>
             )}
             {question.options.map((option) => {
               const selected = selectedIds.includes(option.id)
@@ -184,10 +184,10 @@ export function QuizPlayer({
         ) : (
           <div className="rounded-2xl border border-border bg-card p-6">
             <textarea
-              aria-label="Your answer"
+              aria-label="Jawaban Anda"
               value={answers[question.id] ?? ""}
               onChange={(e) => setAnswers((a) => ({ ...a, [question.id]: e.target.value }))}
-              placeholder="Type your answer..."
+              placeholder="Ketik jawaban Anda..."
               className="min-h-[120px] w-full resize-y rounded-lg border border-input bg-card p-3.5 text-[15px] outline-none focus:border-ring"
             />
           </div>
@@ -201,7 +201,7 @@ export function QuizPlayer({
           onClick={() => handleNext(isLast)}
           className="w-full bg-brand-gradient text-white hover:brightness-105 disabled:bg-none disabled:bg-muted-foreground/40"
         >
-          {isLast ? "Submit Quiz" : "Next Question"}
+          {isLast ? "Kirim Kuis" : "Soal Berikutnya"}
         </Button>
       </div>
     )
@@ -213,13 +213,13 @@ export function QuizPlayer({
     return (
       <div className="mx-auto flex max-w-2xl flex-col gap-5 p-10">
         <div className="flex flex-col items-center gap-2.5 rounded-2xl border border-border bg-card p-10 text-center">
-          <div className="text-[15px] font-semibold text-muted-foreground">Quiz Results</div>
+          <div className="text-[15px] font-semibold text-muted-foreground">Hasil Kuis</div>
           {result.pending ? (
             <>
-              <div className="text-2xl font-bold text-muted-foreground">Awaiting Review</div>
+              <div className="text-2xl font-bold text-muted-foreground">Menunggu penilaian</div>
               <p className="text-[14.5px] text-muted-foreground">
-                This quiz includes questions that need to be graded by an instructor. You&apos;ll see your
-                final score once it&apos;s reviewed.
+                Kuis ini berisi soal yang dinilai oleh instruktur. Nilai akhir Anda akan
+                tampil setelah penilaian selesai.
               </p>
             </>
           ) : (
@@ -233,15 +233,15 @@ export function QuizPlayer({
                 {result.score}%
               </div>
               <div className="text-[14.5px] text-muted-foreground">
-                {result.correctCount} of {result.total} correct · {result.passed ? "Passed" : "Not passed yet"}
+                {result.correctCount} dari {result.total} benar · {result.passed ? "Lulus" : "Belum lulus"}
               </div>
               {/* Feedback ends with the next step (Hattie & Timperley: where to next). */}
               <p className="mt-1 max-w-md text-sm text-muted-foreground">
                 {result.passed
-                  ? "You passed this quiz. Continue with the next lesson."
+                  ? "Anda lulus kuis ini. Lanjutkan ke pelajaran berikutnya."
                   : canRetry
-                    ? "Read the explanations below, review the lessons they point to, then try again."
-                    : "Read the explanations below and review the lessons they point to."}
+                    ? "Baca penjelasan di bawah, pelajari kembali materi terkait, lalu coba lagi."
+                    : "Baca penjelasan di bawah dan pelajari kembali materi terkait."}
               </p>
             </>
           )}
@@ -260,7 +260,7 @@ export function QuizPlayer({
                     .join(", ") || "—"
                 : question.type === "file_upload"
                   ? answer
-                    ? "Link submitted"
+                    ? "Tautan terkirim"
                     : "—"
                   : answer || "—"
 
@@ -288,13 +288,13 @@ export function QuizPlayer({
                       isCorrect === null && "text-muted-foreground"
                     )}
                   >
-                    {isCorrect === true ? "Correct" : isCorrect === false ? "Incorrect" : "Pending review"}
+                    {isCorrect === true ? "Benar" : isCorrect === false ? "Salah" : "Menunggu penilaian"}
                   </div>
                   <QuestionPrompt prompt={question.prompt} className="text-[14.5px] font-semibold" />
-                  <div className="mt-1 text-[13px] text-muted-foreground">Your answer: {answerText}</div>
+                  <div className="mt-1 text-[13px] text-muted-foreground">Jawaban Anda: {answerText}</div>
                   {result.explanations?.[question.id] && (
                     <p className="mt-2 rounded-lg bg-secondary/60 px-3 py-2 text-[13px] leading-relaxed text-foreground">
-                      <span className="font-semibold">Why: </span>
+                      <span className="font-semibold">Penjelasan: </span>
                       {result.explanations[question.id]}
                     </p>
                   )}
@@ -316,7 +316,7 @@ export function QuizPlayer({
                 setStage("intro")
               }}
             >
-              Retry Quiz
+              Ulangi Kuis
             </Button>
           )}
           <Button
@@ -324,7 +324,7 @@ export function QuizPlayer({
             className="flex-1 bg-brand-gradient text-white hover:brightness-105"
             onClick={() => setStage("intro")}
           >
-            Continue
+            Lanjutkan
           </Button>
         </div>
       </div>

@@ -26,7 +26,7 @@ export function CourseFeedbackForm({ courseId }: { courseId: string }) {
         toast.error(result.error)
         return
       }
-      toast.success("Thanks for your feedback!")
+      toast.success("Terima kasih atas ulasan Anda.")
       router.refresh()
     })
   }
@@ -37,12 +37,13 @@ export function CourseFeedbackForm({ courseId }: { courseId: string }) {
       <Textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        placeholder="What did you think of this course?"
+        placeholder="Bagaimana pendapat Anda tentang kursus ini?"
+        aria-label="Ulasan kursus"
         className="min-h-[90px] bg-card"
         disabled={isPending}
       />
       <div className="flex w-full items-center justify-between text-xs text-muted-foreground">
-        <span>Minimum {MIN_COMMENT_LENGTH} characters</span>
+        <span>Minimal {MIN_COMMENT_LENGTH} karakter</span>
         <span>{comment.trim().length}/{MIN_COMMENT_LENGTH}</span>
       </div>
       <Button
@@ -50,7 +51,7 @@ export function CourseFeedbackForm({ courseId }: { courseId: string }) {
         disabled={!canSubmit}
         onClick={handleSubmit}
       >
-        {isPending ? "Submitting..." : "Submit feedback & unlock certificate"}
+        {isPending ? "Mengirim..." : "Kirim ulasan & buka sertifikat"}
       </Button>
     </div>
   )

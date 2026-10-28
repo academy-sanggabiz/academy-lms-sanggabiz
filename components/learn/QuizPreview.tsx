@@ -10,7 +10,7 @@ export function QuizPreview({ quiz }: { quiz: AdminQuiz }) {
       <div className="rounded-2xl border border-border bg-card p-7">
         <div className="text-2xl font-bold">{quiz.title}</div>
         <p className="mt-1 text-sm text-muted-foreground">
-          {quiz.questions.length} questions · read-only preview, answers shown
+          {quiz.questions.length} soal · pratinjau baca saja, kunci jawaban ditampilkan
         </p>
       </div>
 
@@ -20,7 +20,7 @@ export function QuizPreview({ quiz }: { quiz: AdminQuiz }) {
         return (
           <div key={question.id} className="rounded-2xl border border-border bg-card p-6">
             <div className="text-[13px] font-semibold text-muted-foreground">
-              Question {index + 1} · {question.points} {question.points === 1 ? "point" : "points"}
+              Soal {index + 1} · {question.points} poin
             </div>
             <QuestionPrompt prompt={question.prompt} className="mt-1.5 text-[17px] font-semibold" />
 
@@ -51,7 +51,7 @@ export function QuizPreview({ quiz }: { quiz: AdminQuiz }) {
             {question.type === "short_answer" && (
               <div className="mt-4 rounded-xl border border-input bg-muted/40 p-4">
                 <div className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  Accepted answers{question.case_sensitive ? " (case sensitive)" : ""}
+                  Jawaban yang diterima{question.case_sensitive ? " (huruf besar/kecil berpengaruh)" : ""}
                 </div>
                 {keywordOptions.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
@@ -65,20 +65,20 @@ export function QuizPreview({ quiz }: { quiz: AdminQuiz }) {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No accepted answers set — not auto-graded.</p>
+                  <p className="text-sm text-muted-foreground">Belum ada jawaban yang diterima, sehingga tidak dinilai otomatis.</p>
                 )}
               </div>
             )}
 
             {question.type === "essay" && (
               <p className="mt-4 text-sm text-muted-foreground">
-                Essay — written answer, graded manually, no answer key.
+                Esai: jawaban tertulis, dinilai manual, tanpa kunci jawaban.
               </p>
             )}
 
             {question.type === "file_upload" && (
               <p className="mt-4 text-sm text-muted-foreground">
-                Essay — file or link upload, graded manually, no answer key.
+                Esai: unggah berkas atau tautan, dinilai manual, tanpa kunci jawaban.
               </p>
             )}
           </div>
