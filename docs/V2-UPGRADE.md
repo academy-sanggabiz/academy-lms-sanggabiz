@@ -128,6 +128,7 @@ Belum dilakukan: uji manual dengan screen reader (NVDA/VoiceOver) dan usability 
 ## 6. Cara upgrade deployment v1 yang sudah berjalan
 
 1. Jalankan `supabase/migrations/20261028000000_question_explanations.sql` di SQL Editor Supabase. Migrasi ini aman diulang karena memakai `if not exists` dan `drop policy if exists`. Instalasi baru cukup menjalankan `databaseSetup.sql`; bagian 15 sudah memuatnya.
+   Lalu jalankan `supabase/migrations/20261029000000_lesson_notes.sql` (tabel `lesson_notes` untuk "Catatan saya", juga aman diulang). Instalasi baru: bagian 16 `databaseSetup.sql`.
 2. `npm ci && npm run build`. Lockfile baru sudah portabel, tidak perlu workaround.
 3. Tidak ada perubahan variabel environment.
 4. Draft kursus v1 yang tersimpan di localStorage browser admin tetap bisa dipulihkan, karena field `explanation` punya default `""`.
@@ -144,7 +145,8 @@ Setiap perubahan UI baru wajib lolos:
 ## 8. Belum dikerjakan di v2 (roadmap)
 
 - **Bahasa antarmuka.** UI masih berbahasa Inggris, sementara konten berbahasa Indonesia (§9: satu bahasa yang konsisten). Langkah berikutnya: i18n dengan bahasa Indonesia sebagai default.
-- **Notes yang tersimpan** dan **asisten AI.** Keduanya dihapus, bukan dibangun. Kalau mau dibangun, perlu tabel `lesson_notes` dan backend AI yang jelas sumber datanya.
+- **Catatan saya (notes yang tersimpan): sudah dibangun.** Tabel `public.lesson_notes` (migrasi `20261029000000_lesson_notes.sql`), autosave di player di bawah pelajaran video/slide/teks, dan daftar catatan per kursus di `/learner/courses/[id]`. Catatan bersifat pribadi: admin tidak bisa membacanya.
+- **Asisten AI.** Dihapus, bukan dibangun. Kalau mau dibangun, perlu backend AI yang jelas sumber datanya.
 - **Alt text** masih memakai dialog `window.prompt` bawaan browser. Bisa diganti dialog sendiri.
 - **Penjelasan untuk studi kasus/esai** belum ada. Esai dinilai manual, dan feedback pengajar per jawaban adalah fitur terpisah.
 - **Analytics dan KPI** (§12): definisi completion rate, return rate 7 hari, dan drop-out minggu pertama belum dibangun menjadi dashboard.

@@ -6,6 +6,7 @@ import { getLearnData } from "@/lib/learn-server"
 import { resolveUserRole, roleHomePath } from "@/lib/auth/require-admin"
 import { checkAndIssueCertificate } from "@/lib/certificates"
 import { getCourseFeedbackForLearner } from "@/lib/feedback-server"
+import { getLessonNote } from "@/lib/notes-server"
 import { createClient } from "@/lib/supabase/server"
 import { formatDuration } from "@/lib/courses"
 import { LearnShell } from "@/components/learn/LearnShell"
@@ -69,6 +70,8 @@ export default async function LearnPage({
   }
 
   const feedback = isCourseComplete ? await getCourseFeedbackForLearner(courseId) : null
+  const isContentLesson = currentLesson.content_type !== "quiz" && currentLesson.content_type !== "mixed"
+  const note = isContentLesson ? await getLessonNote(currentLesson.id) : null
 
   const currentSection = course.sections.find((s) => s.lessons.some((l) => l.id === currentLesson.id))
   const remainingSeconds = allLessons
@@ -126,6 +129,7 @@ export default async function LearnPage({
           isCourseComplete={isCourseComplete}
           feedbackGiven={feedback !== null}
           isLessonDone={completedLessonIds.has(currentLesson.id)}
+          note={note}
         />
       }
       sidebar={

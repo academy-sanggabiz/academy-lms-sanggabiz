@@ -19,6 +19,8 @@ import { QuizPlayer } from "@/components/learn/QuizPlayer"
 import { QuizPreview } from "@/components/learn/QuizPreview"
 import { EssayAssessmentPlayer } from "@/components/learn/EssayAssessmentPlayer"
 import { CourseFeedbackForm } from "@/components/learn/CourseFeedbackForm"
+import { LessonNotes } from "@/components/learn/LessonNotes"
+import type { LessonNote } from "@/lib/notes"
 import { toggleLessonComplete } from "@/app/learn/[courseId]/actions"
 
 export function LessonPane({
@@ -33,6 +35,7 @@ export function LessonPane({
   isCourseComplete = false,
   feedbackGiven = false,
   isLessonDone = false,
+  note = null,
 }: {
   courseId: string
   course: Course
@@ -45,6 +48,8 @@ export function LessonPane({
   isCourseComplete?: boolean
   feedbackGiven?: boolean
   isLessonDone?: boolean
+  /** The learner's saved note for this lesson (learner mode only). */
+  note?: LessonNote | null
 }) {
   const isQuiz = lesson.content_type === "quiz" || lesson.content_type === "mixed"
   // Assessments are long, multi-question study cases -- scroll them from the top
@@ -131,6 +136,10 @@ export function LessonPane({
                 basePath={basePath}
                 mode={mode}
               />
+            )}
+
+            {mode === "learner" && lesson.content_type !== "quiz" && lesson.content_type !== "mixed" && (
+              <LessonNotes lessonId={lesson.id} initialNote={note} />
             )}
 
             {lesson.content_type !== "quiz" && lesson.content_type !== "mixed" && lesson.content_type !== "text" && (
