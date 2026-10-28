@@ -25,7 +25,7 @@ export default async function LearnerLayout({ children }: { children: React.Reac
     getNotifications(5),
   ])
 
-  const name = profile?.full_name || profile?.email || "there"
+  const name = profile?.full_name || profile?.email || "Peserta"
   const email = profile?.email || String(claims?.email ?? "")
 
   return (

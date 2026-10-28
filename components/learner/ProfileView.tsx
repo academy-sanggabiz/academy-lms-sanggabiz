@@ -52,7 +52,8 @@ export function ProfileView({
           </div>
           <button
             onClick={() => setIsEditing(true)}
-            title="Edit profile"
+            title="Ubah profil"
+            aria-label="Ubah profil"
             className="absolute right-0 bottom-0 flex size-8 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-[0_2px_8px_rgba(20,55,64,0.15)] hover:bg-muted"
           >
             <Pencil className="size-3.5" />
@@ -67,7 +68,7 @@ export function ProfileView({
             </span>
             <span className="flex items-center gap-2">
               <Calendar className="size-3.5 text-ring" />
-              Joined since {joinedYear}
+              Bergabung sejak {joinedYear}
             </span>
           </div>
         </div>
@@ -101,7 +102,7 @@ function ProfileTabs({
               tab === t ? "bg-card text-ring shadow-sm" : "text-muted-foreground hover:text-foreground"
             )}
           >
-            {t === "enrolled" ? "Enrolled Courses" : "Certificates"}
+            {t === "enrolled" ? "Kursus Terdaftar" : "Sertifikat"}
           </button>
         ))}
       </div>
@@ -110,7 +111,7 @@ function ProfileTabs({
         <div className="rounded-2xl border border-border bg-card p-7">
           <div className="mb-4 flex items-center gap-2.5 text-lg font-bold">
             <BookOpen className="size-[18px]" />
-            Enrolled Courses ({enrolledCourses.length})
+            Kursus Terdaftar ({enrolledCourses.length})
           </div>
 
           {enrolledCourses.length > 0 ? (
@@ -128,13 +129,13 @@ function ProfileTabs({
                     </div>
                     <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Clock className="size-3" />
-                      {course.lesson_count} lessons · {course.duration_hours} hours
+                      {course.lesson_count} pelajaran · {course.duration_hours} jam
                     </div>
                   </div>
                   {course.status === "completed" && (
                     <span className="flex flex-none items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
                       <CheckCircle2 className="size-3.5" />
-                      Completed
+                      Selesai
                     </span>
                   )}
                 </Link>
@@ -142,9 +143,9 @@ function ProfileTabs({
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3 p-7 text-center">
-              <p className="text-sm text-muted-foreground">You haven&apos;t enrolled in any courses yet.</p>
+              <p className="text-sm text-muted-foreground">Anda belum terdaftar di kursus mana pun.</p>
               <Button className="bg-brand-gradient text-white hover:brightness-105" render={<Link href="/learner/courses" />} nativeButton={false}>
-                Browse Courses
+                Lihat Kursus
               </Button>
             </div>
           )}
@@ -153,7 +154,7 @@ function ProfileTabs({
         <div className="rounded-2xl border border-border bg-card p-7">
           <div className="mb-4 flex items-center gap-2.5 text-lg font-bold">
             <Award className="size-[18px]" />
-            Certificates ({certificates.length})
+            Sertifikat ({certificates.length})
           </div>
 
           {certificates.length > 0 ? (
@@ -171,8 +172,8 @@ function ProfileTabs({
                       {cert.courseTitle}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      Certificate No. {cert.serial} · Issued{" "}
-                      {new Date(cert.issuedAt).toLocaleDateString("en-US", {
+                      Sertifikat No. {cert.serial} · Terbit{" "}
+                      {new Date(cert.issuedAt).toLocaleDateString("id-ID", {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
@@ -187,7 +188,7 @@ function ProfileTabs({
                       nativeButton={false}
                     >
                       <Lock className="size-3.5" />
-                      Rate to unlock
+                      Beri ulasan untuk membuka
                     </Button>
                   ) : cert.pdfUrl ? (
                     <Button
@@ -197,10 +198,10 @@ function ProfileTabs({
                       nativeButton={false}
                     >
                       <Download className="size-3.5" />
-                      Download
+                      Unduh
                     </Button>
                   ) : (
-                    <span className="flex-none text-xs text-muted-foreground">Generating…</span>
+                    <span className="flex-none text-xs text-muted-foreground">Sedang dibuat…</span>
                   )}
                 </div>
               ))}
@@ -208,7 +209,7 @@ function ProfileTabs({
           ) : (
             <div className="flex flex-col items-center gap-3 p-7 text-center">
               <Award className="size-10 text-muted-foreground/40" strokeWidth={1.5} />
-              <p className="text-sm text-muted-foreground">Complete a course to earn your first certificate!</p>
+              <p className="text-sm text-muted-foreground">Selesaikan kursus untuk mendapatkan sertifikat pertama Anda.</p>
             </div>
           )}
         </div>
@@ -236,12 +237,13 @@ function EditProfileForm({
       <div className="mb-6 flex items-center gap-3.5">
         <button
           onClick={onDone}
-          title="Back to profile"
+          title="Kembali ke profil"
+          aria-label="Kembali ke profil"
           className="flex size-9 flex-none items-center justify-center rounded-lg border border-border bg-card hover:bg-muted"
         >
           <ArrowLeft className="size-[17px]" />
         </button>
-        <div className="text-2xl font-bold">Edit Profile</div>
+        <div className="text-2xl font-bold">Ubah Profil</div>
       </div>
 
       <form
@@ -265,7 +267,7 @@ function EditProfileForm({
         </div>
 
         <Label htmlFor="fullName" className="mb-2 block text-sm font-semibold">
-          Name
+          Nama
         </Label>
         <Input id="fullName" name="fullName" defaultValue={name} className="mb-4 w-full" />
 
@@ -273,16 +275,16 @@ function EditProfileForm({
           Email
         </Label>
         <Input id="email" value={email} disabled className="w-full bg-muted" />
-        <p className="mt-1.5 mb-4 text-xs text-muted-foreground">Email cannot be changed</p>
+        <p className="mt-1.5 mb-4 text-xs text-muted-foreground">Email tidak dapat diubah</p>
 
         {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 
         <div className="flex gap-3">
           <Button type="submit" disabled={isPending} className="bg-brand-gradient text-white hover:brightness-105">
-            {isPending ? "Saving..." : "Save Changes"}
+            {isPending ? "Menyimpan..." : "Simpan Perubahan"}
           </Button>
           <Button type="button" variant="outline" onClick={onDone}>
-            Cancel
+            Batal
           </Button>
         </div>
       </form>

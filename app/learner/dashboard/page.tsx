@@ -41,20 +41,20 @@ export default async function LearnerDashboardPage() {
     getContinueLearning(),
   ])
 
-  const displayName = profile?.full_name || claims?.email || "there"
+  const displayName = profile?.full_name || claims?.email || "Peserta"
   const recommended = publishedCourses.filter((c) => !enrolledCourseIds.includes(c.id)).slice(0, 2)
   const [primary, ...others] = continueItems
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Hi, {displayName}</h1>
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Halo, {displayName}</h1>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <Card>
           <CardContent>
             <div className="flex items-center gap-2.5 text-sm font-semibold text-ring">
               <BookOpen className="size-[18px]" aria-hidden />
-              Courses in progress
+              Kursus berjalan
             </div>
             <div className="mt-4 text-4xl leading-none font-bold">{inProgressCount ?? 0}</div>
           </CardContent>
@@ -63,7 +63,7 @@ export default async function LearnerDashboardPage() {
           <CardContent>
             <div className="flex items-center gap-2.5 text-sm font-semibold text-primary">
               <CheckCircle2 className="size-[18px]" aria-hidden />
-              Completed courses
+              Kursus selesai
             </div>
             <div className="mt-4 text-4xl leading-none font-bold">{completedCount ?? 0}</div>
           </CardContent>
@@ -73,7 +73,7 @@ export default async function LearnerDashboardPage() {
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <Card className="min-h-[280px]">
           <CardContent>
-            <h2 className="mb-4 text-lg font-bold">Continue learning</h2>
+            <h2 className="mb-4 text-lg font-bold">Lanjutkan belajar</h2>
             {primary ? (
               <div className="space-y-4">
                 <ContinueRow item={primary} prominent />
@@ -83,9 +83,9 @@ export default async function LearnerDashboardPage() {
               </div>
             ) : (
               <div className="space-y-3 pt-2">
-                <p className="text-sm text-muted-foreground">You have no course in progress yet.</p>
+                <p className="text-sm text-muted-foreground">Belum ada kursus yang sedang Anda ikuti.</p>
                 <Button variant="outline" render={<Link href="/learner/courses" />} nativeButton={false}>
-                  Browse courses
+                  Lihat kursus
                 </Button>
               </div>
             )}
@@ -94,7 +94,7 @@ export default async function LearnerDashboardPage() {
 
         <Card className="min-h-[280px]">
           <CardContent>
-            <h2 className="mb-4 text-lg font-bold">Recommended courses</h2>
+            <h2 className="mb-4 text-lg font-bold">Kursus rekomendasi</h2>
             {recommended.length > 0 ? (
               <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {recommended.map((course) => (
@@ -113,19 +113,19 @@ export default async function LearnerDashboardPage() {
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={course.thumbnail_url} alt="" className="absolute inset-0 size-full object-cover" />
                         ) : (
-                          <span aria-hidden>course thumbnail</span>
+                          <span aria-hidden>gambar kursus</span>
                         )}
                       </div>
                       <div className="p-3.5">
                         <p className="line-clamp-2 text-sm leading-snug font-semibold">{course.title}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{course.lesson_count} lessons</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{course.lesson_count} pelajaran</p>
                       </div>
                     </Link>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="pt-2 text-sm text-muted-foreground">No recommendations available</p>
+              <p className="pt-2 text-sm text-muted-foreground">Belum ada rekomendasi</p>
             )}
           </CardContent>
         </Card>
@@ -150,23 +150,23 @@ function ContinueRow({ item, prominent = false }: { item: ContinueLearningItem; 
       <p className="line-clamp-2 font-semibold">{item.title}</p>
       {item.nextLesson && (
         <p className="mt-1 text-sm text-muted-foreground">
-          Next: lesson {item.nextLesson.position} of {item.totalCount} · {item.nextLesson.title}
+          Berikutnya: pelajaran {item.nextLesson.position} dari {item.totalCount} · {item.nextLesson.title}
         </p>
       )}
       <div className="mt-3 flex items-center gap-3">
         <div
           role="progressbar"
-          aria-label={`Progress in ${item.title}`}
+          aria-label={`Progres ${item.title}`}
           aria-valuemin={0}
           aria-valuemax={item.totalCount}
           aria-valuenow={item.doneCount}
-          aria-valuetext={`${item.doneCount} of ${item.totalCount} lessons done`}
+          aria-valuetext={`${item.doneCount} dari ${item.totalCount} pelajaran selesai`}
           className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary"
         >
           <div className="h-full bg-brand-gradient" style={{ width: `${pct}%` }} />
         </div>
         <span className="text-xs font-semibold whitespace-nowrap text-primary">
-          {item.doneCount} of {item.totalCount} done
+          {item.doneCount} dari {item.totalCount} selesai
         </span>
       </div>
       {prominent ? (
@@ -175,12 +175,12 @@ function ContinueRow({ item, prominent = false }: { item: ContinueLearningItem; 
           render={<Link href={href} />}
           nativeButton={false}
         >
-          {item.doneCount === 0 ? "Start" : "Continue"}: lesson {item.nextLesson?.position ?? item.totalCount}
+          {item.doneCount === 0 ? "Mulai" : "Lanjutkan"}: pelajaran {item.nextLesson?.position ?? item.totalCount}
           <ArrowRight className="size-4" aria-hidden />
         </Button>
       ) : (
         <Link href={href} className="mt-3 inline-block text-sm font-semibold text-primary underline underline-offset-4">
-          Continue
+          Lanjutkan
           <span className="sr-only"> {item.title}</span>
         </Link>
       )}

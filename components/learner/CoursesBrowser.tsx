@@ -18,9 +18,9 @@ import type { Course } from "@/lib/courses"
 type SortKey = "newest" | "title" | "price"
 
 const sortOptions: { key: SortKey; label: string }[] = [
-  { key: "newest", label: "Newest" },
-  { key: "title", label: "Title A–Z" },
-  { key: "price", label: "Price: Low to High" },
+  { key: "newest", label: "Terbaru" },
+  { key: "title", label: "Judul A–Z" },
+  { key: "price", label: "Harga: Terendah" },
 ]
 
 export function CoursesBrowser({
@@ -67,13 +67,14 @@ export function CoursesBrowser({
     [enrolledCourses, completedIds, sort]
   )
 
-  const sortLabel = sortOptions.find((o) => o.key === sort)?.label ?? "Sort"
+  const sortLabel = sortOptions.find((o) => o.key === sort)?.label ?? "Urutkan"
 
   return (
     <div className="space-y-5">
       <div className="flex gap-3.5">
         <Input
-          placeholder="Search courses..."
+          placeholder="Cari kursus..."
+          aria-label="Cari kursus"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="h-11 flex-1 rounded-[10px] bg-card px-4"
@@ -100,13 +101,13 @@ export function CoursesBrowser({
       <Tabs defaultValue="all">
         <TabsList className="mx-auto h-auto w-fit gap-1.5 rounded-[10px] bg-secondary p-1.5">
           <TabsTrigger value="all" className="h-9 rounded-lg px-4 data-active:bg-card">
-            All Courses
+            Semua Kursus
           </TabsTrigger>
           <TabsTrigger value="enrolled" className="h-9 rounded-lg px-4 data-active:bg-card">
-            Enrolled
+            Terdaftar
           </TabsTrigger>
           <TabsTrigger value="completed" className="h-9 rounded-lg px-4 data-active:bg-card">
-            Completed
+            Selesai
           </TabsTrigger>
         </TabsList>
 
@@ -123,7 +124,7 @@ export function CoursesBrowser({
               ))}
             </div>
           ) : (
-            <EmptyState message="No courses match your search." />
+            <EmptyState message="Tidak ada kursus yang cocok dengan pencarian Anda." />
           )}
         </TabsContent>
 
@@ -135,7 +136,7 @@ export function CoursesBrowser({
               ))}
             </div>
           ) : (
-            <EmptyState message="You haven't enrolled in any courses yet." />
+            <EmptyState message="Anda belum terdaftar di kursus mana pun." />
           )}
         </TabsContent>
 
@@ -147,7 +148,7 @@ export function CoursesBrowser({
               ))}
             </div>
           ) : (
-            <EmptyState message="You haven't completed any courses yet." />
+            <EmptyState message="Anda belum menyelesaikan kursus apa pun." />
           )}
         </TabsContent>
       </Tabs>

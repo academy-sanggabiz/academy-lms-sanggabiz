@@ -19,7 +19,7 @@ export default async function ProfilePage({
     getLearnerCertificates(),
   ])
 
-  const name = profile?.full_name || profile?.email || "there"
+  const name = profile?.full_name || profile?.email || "Peserta"
   const email = profile?.email || ""
   const joinedYear = profile?.created_at
     ? new Date(profile.created_at).getFullYear()

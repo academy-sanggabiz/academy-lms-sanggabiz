@@ -1823,7 +1823,7 @@ begin
     select
       new.learner_id,
       'enrollment',
-      'You have been enrolled in a new course',
+      'Anda telah didaftarkan ke kursus baru',
       c.title,
       '/learner/courses/' || c.id
     from public.courses c

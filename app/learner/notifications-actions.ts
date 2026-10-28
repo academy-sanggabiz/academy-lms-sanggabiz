@@ -15,7 +15,7 @@ import { createClient } from "@/lib/supabase/server"
 export async function markNotificationsReadAction(): Promise<{ error?: string }> {
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
-  if (!claimsData?.claims?.sub) return { error: "Not authenticated" }
+  if (!claimsData?.claims?.sub) return { error: "Anda belum masuk" }
 
   const { error } = await supabase
     .from("notifications")

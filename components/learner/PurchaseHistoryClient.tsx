@@ -19,10 +19,10 @@ import type { LearnerPurchase, TransactionStatus } from "@/lib/purchases-server"
 type StatusFilter = "all" | TransactionStatus
 
 const STATUS_LABEL: Record<TransactionStatus, string> = {
-  completed: "Paid",
-  free: "Public",
-  pending: "Pending",
-  refunded: "Refunded",
+  completed: "Berbayar",
+  free: "Publik",
+  pending: "Tertunda",
+  refunded: "Dikembalikan",
 }
 
 const STATUS_VARIANT: Record<TransactionStatus, "default" | "secondary" | "destructive" | "outline"> = {
@@ -33,7 +33,7 @@ const STATUS_VARIANT: Record<TransactionStatus, "default" | "secondary" | "destr
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
+  return new Date(iso).toLocaleDateString("id-ID", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -55,28 +55,28 @@ export function PurchaseHistoryClient({ purchases }: { purchases: LearnerPurchas
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">All Purchases</h2>
+        <h2 className="text-lg font-bold">Semua Pembelian</h2>
         <div className="flex flex-wrap gap-2">
           <div className="relative min-w-[240px]">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by course..."
-              aria-label="Search by course"
+              placeholder="Cari kursus..."
+              aria-label="Cari berdasarkan kursus"
               className="h-9 pl-8"
             />
           </div>
           <Select value={status} onValueChange={(value) => setStatus(value as StatusFilter)}>
-            <SelectTrigger aria-label="Filter by status" className="h-9 w-[160px]">
+            <SelectTrigger aria-label="Filter berdasarkan status" className="h-9 w-[160px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="completed">Paid</SelectItem>
-              <SelectItem value="free">Public</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="refunded">Refunded</SelectItem>
+              <SelectItem value="all">Semua Status</SelectItem>
+              <SelectItem value="completed">Berbayar</SelectItem>
+              <SelectItem value="free">Publik</SelectItem>
+              <SelectItem value="pending">Tertunda</SelectItem>
+              <SelectItem value="refunded">Dikembalikan</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -84,17 +84,17 @@ export function PurchaseHistoryClient({ purchases }: { purchases: LearnerPurchas
 
       {filtered.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
-          {purchases.length === 0 ? "No purchases yet." : "No purchases match your search."}
+          {purchases.length === 0 ? "Belum ada pembelian." : "Tidak ada pembelian yang cocok dengan pencarian Anda."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead>Course</TableHead>
-                <TableHead>Amount</TableHead>
+                <TableHead>Kursus</TableHead>
+                <TableHead>Jumlah</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>Tanggal</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -20,9 +20,9 @@ export default async function LearnerNotificationsPage({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-[30px] font-bold">Notifications</h1>
+        <h1 className="text-[30px] font-bold">Notifikasi</h1>
         <p className="text-sm text-muted-foreground">
-          Everything you&apos;ve been notified about, newest first
+          Semua notifikasi Anda, dari yang terbaru
         </p>
       </div>
 

@@ -6,18 +6,18 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function updateProfileName(formData: FormData) {
   const fullName = String(formData.get("fullName") ?? "").trim()
-  if (!fullName) return { error: "Name cannot be empty" }
+  if (!fullName) return { error: "Nama tidak boleh kosong" }
 
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims?.sub
-  if (!userId) return { error: "Not authenticated" }
+  if (!userId) return { error: "Anda belum masuk" }
 
   const { error } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", userId)
 
   if (error) {
     console.error("updateProfileName failed:", error.message)
-    return { error: error.message }
+    return { error: "Gagal menyimpan nama. Coba lagi." }
   }
 
   revalidatePath("/learner/profile")
