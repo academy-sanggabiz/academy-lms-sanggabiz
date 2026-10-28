@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { CourseCurriculumGate } from "@/components/learner/CourseCurriculumGate"
 import { EnrollButton } from "@/components/learner/EnrollButton"
+import { CourseNotes } from "@/components/learner/CourseNotes"
 import { getCourseDetail } from "@/lib/courses-server"
 import { getEnrollmentProgress, getLearnerCourseGrade } from "@/lib/enrollments-server"
 import { formatCourseAccess } from "@/lib/courses"
+import { getCourseNotes } from "@/lib/notes-server"
 import { cn } from "@/lib/utils"
 
 export default async function CourseDetailPage({
@@ -25,6 +27,7 @@ export default async function CourseDetailPage({
 
   const { enrolled, started } = await getEnrollmentProgress(course.id)
   const courseGrade = enrolled ? await getLearnerCourseGrade(course.id) : null
+  const notes = enrolled ? await getCourseNotes(course.id) : null
   const price = formatCourseAccess(course)
   const initialOpen = enrollParam === "required"
 
@@ -68,6 +71,8 @@ export default async function CourseDetailPage({
               />
             </CardContent>
           </Card>
+
+          {notes && <CourseNotes courseId={course.id} notes={notes} />}
 
           {course.who_for.length > 0 && (
             <Card>
