@@ -51,7 +51,9 @@ feedback-issue-template.md
 
 # claude code tooling
 .agents/
-.claude/
+# keep the shared agent definitions (e.g. the devops agent); ignore the rest
+.claude/*
+!.claude/agents/
 
 # OpenNext
 .open-next
@@ -66,3 +68,6 @@ feedback-issue-template.md
 reference/
 CLAUDE.md
 erd.md
+
+# Supabase CLI local state (link info, cache)
+supabase/.temp/
